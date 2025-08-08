@@ -28,52 +28,79 @@ export class TerminalService extends EventEmitter {
   createSession(userId: string, cols = 80, rows = 24): string {
     const sessionId = `term_${Date.now()}_${randomBytes(8).toString('hex')}`;
     
-    // Create PTY instance
-    const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
-    const ptyProcess = pty.spawn(shell, [], {
-      name: 'xterm-256color',
-      cols,
-      rows,
-      cwd: process.env.HOME || process.cwd(),
-      env: {
-        ...process.env,
-        TERM: 'xterm-256color',
-        COLORTERM: 'truecolor'
+    try {
+      // Determine shell based on platform
+      let shell: string;
+      let shellArgs: string[] = [];
+      
+      if (process.platform === 'win32') {
+        shell = 'powershell.exe';
+      } else if (process.platform === 'darwin') {
+        // macOS
+        shell = '/bin/zsh';
+        shellArgs = ['-l']; // Login shell
+      } else {
+        // Linux
+        shell = '/bin/bash';
+        shellArgs = ['-l']; // Login shell
       }
-    });
+      
+      console.log(`Creating PTY with shell: ${shell}, args: ${shellArgs}`);
+      
+      // Create PTY instance with better error handling
+      const ptyProcess = pty.spawn(shell, shellArgs, {
+        name: 'xterm-256color',
+        cols,
+        rows,
+        cwd: process.env.HOME || process.cwd(),
+        env: {
+          ...process.env,
+          TERM: 'xterm-256color',
+          COLORTERM: 'truecolor',
+          LANG: process.env.LANG || 'en_US.UTF-8'
+        }
+      });
 
-    // Create session
-    const session: TerminalSession = {
-      id: sessionId,
-      pty: ptyProcess,
-      userId,
-      createdAt: new Date(),
-      lastActivity: new Date(),
-      rows,
-      cols
-    };
+      // Create session
+      const session: TerminalSession = {
+        id: sessionId,
+        pty: ptyProcess,
+        userId,
+        createdAt: new Date(),
+        lastActivity: new Date(),
+        rows,
+        cols
+      };
 
-    this.sessions.set(sessionId, session);
+      this.sessions.set(sessionId, session);
 
-    // Set up PTY event handlers
-    ptyProcess.onData((data) => {
-      session.lastActivity = new Date();
-      this.emit('data', sessionId, data);
-    });
+      // Set up PTY event handlers
+      ptyProcess.onData((data) => {
+        session.lastActivity = new Date();
+        this.emit('data', sessionId, data);
+      });
 
-    ptyProcess.onExit(({ exitCode, signal }) => {
-      console.log(`Terminal ${sessionId} exited with code ${exitCode} and signal ${signal}`);
-      this.destroySession(sessionId);
-    });
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        console.log(`Terminal ${sessionId} exited with code ${exitCode} and signal ${signal}`);
+        this.destroySession(sessionId);
+      });
 
-    console.log(`Created terminal session ${sessionId} for user ${userId}`);
-    
-    // Send initial prompt
-    setTimeout(() => {
-      this.emit('data', sessionId, '\r\n🚀 Web Terminal Ready\r\n\r\n');
-    }, 100);
+      console.log(`Created terminal session ${sessionId} for user ${userId}`);
+      
+      // Send initial prompt
+      setTimeout(() => {
+        this.emit('data', sessionId, '\r\n🚀 Web Terminal Ready\r\n\r\n');
+      }, 100);
 
-    return sessionId;
+      return sessionId;
+    } catch (error) {
+      console.error(`Failed to create terminal session:`, error);
+      // Clean up if session was partially created
+      if (this.sessions.has(sessionId)) {
+        this.sessions.delete(sessionId);
+      }
+      throw new Error(`Failed to create terminal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   writeToSession(sessionId: string, data: string): boolean {

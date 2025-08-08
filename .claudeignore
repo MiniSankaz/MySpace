@@ -1,0 +1,73 @@
+# Claude Code Ignore File
+# This file tells Claude Code which files and directories to ignore
+# to improve performance and reduce context usage
+
+# Build outputs
+node_modules/
+dist/
+.next/
+build/
+out/
+.turbo/
+.vercel/
+
+# Cache and temporary files
+*.cache
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+tsconfig.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Data and logs
+logs/
+data/conversations/
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Environment files (already in .gitignore but listed for clarity)
+.env.local
+.env.production
+.env*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Generated files
+.docusaurus/
+.cache-loader/
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.zip
+*.tar.gz
+
+# Specific project files to ignore
+test-*.js
+test-*.ts
+check-*.ts
+*.test.ts
+*.spec.ts

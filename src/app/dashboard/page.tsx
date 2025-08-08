@@ -11,7 +11,8 @@ import {
   UsersIcon,
   ChartBarIcon,
   BellIcon,
-  CommandLineIcon
+  CommandLineIcon,
+  FolderOpenIcon
 } from '@heroicons/react/24/outline';
 
 interface User {
@@ -180,6 +181,17 @@ export default function Dashboard() {
                 AI Assistant
               </button>
               <button
+                onClick={() => setActiveTab('workspace')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeTab === 'workspace'
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <FolderOpenIcon className="mr-3 h-5 w-5" />
+                Workspace
+              </button>
+              <button
                 onClick={() => setActiveTab('terminal')}
                 className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                   activeTab === 'terminal'
@@ -278,7 +290,7 @@ export default function Dashboard() {
                 {/* Quick Actions */}
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     <button
                       onClick={() => router.push('/assistant')}
                       className="p-4 text-left border rounded-lg hover:bg-gray-50"
@@ -286,6 +298,14 @@ export default function Dashboard() {
                       <ChatBubbleLeftRightIcon className="h-6 w-6 text-indigo-600 mb-2" />
                       <p className="font-medium">Open AI Assistant</p>
                       <p className="text-sm text-gray-500">Start a conversation</p>
+                    </button>
+                    <button
+                      onClick={() => router.push('/workspace')}
+                      className="p-4 text-left border rounded-lg hover:bg-gray-50"
+                    >
+                      <FolderOpenIcon className="h-6 w-6 text-indigo-600 mb-2" />
+                      <p className="font-medium">Project Workspace</p>
+                      <p className="text-sm text-gray-500">Manage development projects</p>
                     </button>
                     <button
                       onClick={() => setActiveTab('profile')}
@@ -381,6 +401,59 @@ export default function Dashboard() {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'workspace' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Project Workspace</h2>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <p className="text-gray-600 mb-4">
+                    Manage your development projects with dual terminal system for OS commands and Claude Code.
+                  </p>
+                  <div className="space-y-4 mb-6">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 text-sm font-medium">1</span>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">Project Management</h4>
+                        <p className="text-sm text-gray-600">Create and manage multiple projects with configurations</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 text-sm font-medium">2</span>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">Dual Terminal System</h4>
+                        <p className="text-sm text-gray-600">System terminal for OS commands, Claude terminal for AI assistance</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 text-sm font-medium">3</span>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">File Structure Visualization</h4>
+                        <p className="text-sm text-gray-600">View and navigate project structure with auto-scan</p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/workspace')}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    <FolderOpenIcon className="mr-2 h-5 w-5" />
+                    Open Workspace
+                  </button>
                 </div>
               </div>
             )}

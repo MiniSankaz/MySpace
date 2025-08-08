@@ -2,6 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Terminal specific styles */
+.xterm {
+  height: 100%;
+  padding: 8px;
+}
+
+.xterm .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.xterm .xterm-screen {
+  height: 100%;
+}
+
+/* Ensure terminal containers have proper height */
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.terminal-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.4);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.6);
+  background-clip: padding-box;
+}
+
+/* Dark theme scrollbar */
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: padding-box;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  background-clip: padding-box;
+}
+
+/* File Editor Styles */
+.file-editor-modal {
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+.file-editor-modal pre {
+  tab-size: 2;
+}
+
+.file-editor-modal textarea {
+  tab-size: 2;
+}
+
+/* Syntax Highlighting Enhancements */
+.token.comment {
+  font-style: italic;
+}
+
+.token.keyword {
+  font-weight: 600;
+}
+
+.token.function {
+  font-weight: 500;
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -150,5 +249,33 @@
   /* Transitions */
   .transition-default {
     @apply transition-all duration-200 ease-in-out;
+  }
+  
+  /* Custom scrollbar styles */
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+  
+  /* Terminal-specific styles */
+  .terminal-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Workspace panel constraints */
+  .workspace-terminal-panel {
+    min-height: 200px;
+    max-height: 70vh;
+  }
+  
+  /* Fix for panel resize handle */
+  .panel-resize-handle {
+    z-index: 10;
+    position: relative;
   }
 }

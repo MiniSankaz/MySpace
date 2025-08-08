@@ -21,6 +21,8 @@ const publicRoutes = [
   '/api/ums/auth/register',
   '/api/health',
   '/favicon.ico',
+  // Temporarily allow workspace API for testing
+  // '/api/workspace',
 ];
 
 // Admin-only routes
@@ -62,6 +64,16 @@ function checkRateLimit(request: NextRequest): boolean {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  
+  // In development, redirect localhost to 127.0.0.1 to fix WebSocket issues
+  if (process.env.NODE_ENV === 'development') {
+    const host = request.headers.get('host');
+    if (host && host.startsWith('localhost:')) {
+      const url = request.nextUrl.clone();
+      url.hostname = '127.0.0.1';
+      return NextResponse.redirect(url);
+    }
+  }
   
   // Check if route is public or static resource
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route)) ||

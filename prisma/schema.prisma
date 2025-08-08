@@ -1140,3 +1140,57 @@ model TeamMember {
   @@index([teamId])
   @@index([userId])
 }
+
+// Workspace Module Models
+model Project {
+  id            String    @id @default(uuid())
+  name          String
+  description   String
+  path          String
+  structure     Json      // FileNode[] stored as JSON
+  envVariables  Json      @default("{}") // Record<string, string>
+  scripts       Json      @default("[]") // Script[] stored as JSON
+  settings      Json?     // ProjectSettings
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  terminals     TerminalSession[]
+  commands      TerminalCommand[]
+  
+  @@index([name])
+  @@index([createdAt])
+}
+
+model TerminalSession {
+  id          String    @id @default(uuid())
+  projectId   String
+  type        String    // 'system' or 'claude'
+  tabName     String
+  active      Boolean   @default(true)
+  output      Json      @default("[]") // string[] stored as JSON
+  currentPath String
+  pid         Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  commands    TerminalCommand[]
+  
+  @@index([projectId])
+  @@index([type])
+  @@index([active])
+}
+
+model TerminalCommand {
+  id          String          @id @default(uuid())
+  sessionId   String
+  projectId   String
+  command     String
+  output      String          @db.Text
+  exitCode    Int?
+  timestamp   DateTime        @default(now())
+  Session     TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  Project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([sessionId])
+  @@index([projectId])
+  @@index([timestamp])
+}

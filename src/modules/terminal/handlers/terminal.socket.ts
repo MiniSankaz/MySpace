@@ -57,7 +57,7 @@ export function initTerminalSocket(io: Server) {
     let currentSessionId: string | null = null;
 
     // Create new terminal session
-    socket.on('terminal:create', (data: TerminalData) => {
+    socket.on('terminal:create', async (data: TerminalData) => {
       try {
         // Check if user has permission (optional: require admin role)
         // if (!userRoles.includes('admin')) {
@@ -66,35 +66,44 @@ export function initTerminalSocket(io: Server) {
         // }
 
         const { cols = 80, rows = 24 } = data;
-        const sessionId = terminalService.createSession(userId, cols, rows);
         
-        currentSessionId = sessionId;
-        socket.join(sessionId); // Join room for this session
+        try {
+          const sessionId = terminalService.createSession(userId, cols, rows);
+          
+          currentSessionId = sessionId;
+          socket.join(sessionId); // Join room for this session
 
-        // Listen for terminal output
-        const dataHandler = (sid: string, output: string) => {
-          if (sid === sessionId) {
-            socket.emit('terminal:data', { sessionId, data: output });
-          }
-        };
+          // Listen for terminal output
+          const dataHandler = (sid: string, output: string) => {
+            if (sid === sessionId) {
+              socket.emit('terminal:data', { sessionId, data: output });
+            }
+          };
 
-        const closeHandler = (sid: string) => {
-          if (sid === sessionId) {
-            socket.emit('terminal:closed', { sessionId });
-            terminalService.removeListener('data', dataHandler);
-            terminalService.removeListener('session-closed', closeHandler);
-          }
-        };
+          const closeHandler = (sid: string) => {
+            if (sid === sessionId) {
+              socket.emit('terminal:closed', { sessionId });
+              terminalService.removeListener('data', dataHandler);
+              terminalService.removeListener('session-closed', closeHandler);
+            }
+          };
 
-        terminalService.on('data', dataHandler);
-        terminalService.on('session-closed', closeHandler);
+          terminalService.on('data', dataHandler);
+          terminalService.on('session-closed', closeHandler);
 
-        socket.emit('terminal:created', { sessionId });
-        
-        console.log(`Terminal session created: ${sessionId}`);
+          socket.emit('terminal:created', { sessionId });
+          
+          console.log(`Terminal session created: ${sessionId}`);
+        } catch (ptyError: any) {
+          console.error('PTY creation error:', ptyError);
+          // Send more specific error message to client
+          socket.emit('terminal:error', { 
+            error: `Failed to create terminal: ${ptyError.message}. This might be due to platform compatibility issues with node-pty.`
+          });
+        }
       } catch (error: any) {
         console.error('Error creating terminal session:', error);
-        socket.emit('terminal:error', { error: error.message });
+        socket.emit('terminal:error', { error: error.message || 'Unknown error creating terminal session' });
       }
     });
 
