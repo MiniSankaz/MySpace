@@ -1,0 +1,21 @@
+{
+  "userId": "guest-1754556761866",
+  "sessionId": "session-1754556681435",
+  "messages": [
+    {
+      "id": "1754556761867-3jj9hbb7z",
+      "userId": "guest-1754556761866",
+      "content": "เย้คุณทำงานได้แล้ว",
+      "type": "user",
+      "timestamp": "2025-08-07T08:52:41.867Z"
+    },
+    {
+      "id": "1754556767076-mtzyggzp2",
+      "userId": "guest-1754556761866",
+      "content": "มีอะไรให้ผมช่วยเกี่ยวกับโปรเจค TypeScript/React ของคุณไหมครับ?",
+      "type": "assistant",
+      "timestamp": "2025-08-07T08:52:47.076Z"
+    }
+  ],
+  "lastUpdated": "2025-08-07T08:52:47.076Z"
+}

@@ -1,0 +1,141 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import { verifyAuth } from '@/middleware/auth';
+
+const prisma = new PrismaClient();
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { sessionId: string } }
+) {
+  try {
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Authentication required' 
+        },
+        { status: 401 }
+      );
+    }
+
+    const { sessionId } = params;
+
+    // First check if the session belongs to the user
+    const session = await prisma.assistantConversation.findFirst({
+      where: {
+        sessionId: sessionId,
+        userId: user.id
+      }
+    });
+
+    if (!session) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Session not found or access denied' 
+        },
+        { status: 404 }
+      );
+    }
+
+    // Delete the session and all related messages (cascade delete)
+    await prisma.assistantConversation.delete({
+      where: {
+        id: session.id
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Session deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete session error:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Failed to delete session' 
+      },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { sessionId: string } }
+) {
+  try {
+    // Verify authentication
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Authentication required' 
+        },
+        { status: 401 }
+      );
+    }
+
+    const { sessionId } = params;
+
+    // Get the session with messages
+    const session = await prisma.assistantConversation.findFirst({
+      where: {
+        sessionId: sessionId,
+        userId: user.id
+      },
+      include: {
+        messages: {
+          orderBy: {
+            createdAt: 'asc'
+          }
+        }
+      }
+    });
+
+    if (!session) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Session not found' 
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      session: {
+        id: session.id,
+        sessionId: session.sessionId,
+        title: session.title,
+        startedAt: session.startedAt,
+        messageCount: session.messages.length,
+        messages: session.messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          type: msg.type,
+          createdAt: msg.createdAt
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get session error:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Failed to get session' 
+      },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+}

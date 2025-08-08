@@ -1,0 +1,336 @@
+import { spawn, ChildProcess } from 'child_process';
+import { EventEmitter } from 'events';
+import { ClaudeRealtimeService } from './claude-realtime.service';
+
+export interface ClaudeConfig {
+  apiKey?: string;
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+  command?: string; // Claude CLI command
+  useRealtime?: boolean; // Use realtime background Claude
+}
+
+export interface ClaudeMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export interface ClaudeResponse {
+  content: string;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+  model?: string;
+  error?: string;
+}
+
+export class ClaudeAIService extends EventEmitter {
+  private config: ClaudeConfig;
+  private claudeProcess: ChildProcess | null = null;
+  private isReady = false;
+  private realtimeService?: ClaudeRealtimeService;
+  private sessionId: string;
+  private messageQueue: Array<{
+    message: string;
+    resolve: (value: ClaudeResponse) => void;
+    reject: (error: any) => void;
+  }> = [];
+
+  constructor(config: ClaudeConfig = {}) {
+    super();
+    this.config = {
+      apiKey: config.apiKey || process.env.CLAUDE_API_KEY,
+      model: config.model || 'claude-3-sonnet',
+      maxTokens: config.maxTokens || 4000,
+      temperature: config.temperature || 0.7,
+      command: config.command || 'claude',
+      useRealtime: config.useRealtime || process.env.CLAUDE_REALTIME === 'true'
+    };
+    
+    this.sessionId = `session_${Date.now()}`;
+    
+    // Initialize realtime service if enabled
+    if (this.config.useRealtime) {
+      this.realtimeService = ClaudeRealtimeService.getInstance();
+    }
+  }
+
+  async initialize(): Promise<void> {
+    // Try to initialize realtime service first
+    if (this.config.useRealtime && this.realtimeService) {
+      try {
+        await this.realtimeService.initialize();
+        console.log('✅ Claude AI Service initialized with realtime background process');
+        this.isReady = true;
+        return;
+      } catch (error) {
+        console.warn('Failed to initialize realtime service, falling back to API mode:', error);
+        this.config.useRealtime = false;
+      }
+    }
+
+    // Fallback to API/CLI mode
+    console.log('Claude AI Service initialized in API/fallback mode');
+    this.isReady = true;
+    return Promise.resolve();
+  }
+
+  private startClaudeProcess(): void {
+    try {
+      // Start Claude in interactive mode
+      this.claudeProcess = spawn('claude', ['chat'], {
+        env: {
+          ...process.env,
+          CLAUDE_API_KEY: this.config.apiKey
+        }
+      });
+
+      this.claudeProcess.stdout?.on('data', (data) => {
+        const output = data.toString();
+        this.handleClaudeOutput(output);
+      });
+
+      this.claudeProcess.stderr?.on('data', (data) => {
+        console.error('Claude error:', data.toString());
+      });
+
+      this.claudeProcess.on('close', (code) => {
+        console.log(`Claude process exited with code ${code}`);
+        this.isReady = false;
+        this.claudeProcess = null;
+        
+        // Restart if needed
+        if (this.messageQueue.length > 0) {
+          this.startClaudeProcess();
+        }
+      });
+
+      this.isReady = true;
+      this.emit('ready');
+    } catch (error) {
+      console.error('Failed to start Claude process:', error);
+      this.isReady = true; // Fall back to API mode
+    }
+  }
+
+  private handleClaudeOutput(output: string): void {
+    if (this.messageQueue.length > 0) {
+      const { resolve } = this.messageQueue.shift()!;
+      resolve({
+        content: output.trim(),
+        model: 'claude-cli'
+      });
+    }
+  }
+
+  async sendMessage(message: string, context?: ClaudeMessage[]): Promise<ClaudeResponse> {
+    console.log('Processing message:', message);
+    
+    // Always try Claude Direct Only Service - no fallbacks
+    try {
+      const { ClaudeDirectOnlyService } = await import('@/services/claude-direct-only.service');
+      const claude = ClaudeDirectOnlyService.getInstance();
+      
+      console.log('[Claude] Sending to Claude directly...');
+      const response = await claude.sendToClaude(message);
+      
+      console.log('[Claude] Response received');
+      return {
+        content: response,
+        model: 'claude-cli'
+      };
+    } catch (error) {
+      console.error('[Claude] Error:', error);
+      // Return error message, not fallback
+      return {
+        content: `Claude error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        model: 'error'
+      };
+    }
+  }
+  
+  private async generateEnhancedLocalResponse(message: string, context?: ClaudeMessage[]): Promise<ClaudeResponse> {
+    const lowerMessage = message.toLowerCase();
+    
+    // Thai language responses
+    if (message.includes('สวัสดี') || message.includes('หวัดดี')) {
+      return {
+        content: 'สวัสดีครับ! ผมคือ AI Assistant ยินดีที่ได้รู้จักครับ มีอะไรให้ช่วยไหม?',
+        model: 'local-enhanced'
+      };
+    }
+    
+    if (message.includes('อากาศ') || message.includes('วันนี้')) {
+      return {
+        content: 'ขออภัยครับ ผมไม่สามารถเข้าถึงข้อมูลสภาพอากาศแบบ real-time ได้ แต่คุณสามารถเช็คได้จาก:\n- Google Weather\n- แอพพยากรณ์อากาศในมือถือ\n- weather.com\n\nมีอะไรอื่นที่ผมช่วยได้ไหมครับ? 😊',
+        model: 'local-enhanced'
+      };
+    }
+    
+    if (message.includes('ชื่อ') || message.includes('คุณคือ')) {
+      return {
+        content: 'ผมคือ Personal AI Assistant ครับ ผมถูกสร้างมาเพื่อช่วยเหลือคุณในด้านต่างๆ เช่น:\n- จัดการงาน (Tasks)\n- ตั้งเตือน (Reminders)\n- จดบันทึก (Notes)\n- ตอบคำถามทั่วไป\n- ช่วยเขียนโค้ด\n\nลองพิมพ์ "help" เพื่อดูคำสั่งทั้งหมดครับ',
+        model: 'local-enhanced'
+      };
+    }
+    
+    // More specific responses
+    if (message.includes('testdemo.md') || message.includes('ไฟล์')) {
+      return {
+        content: 'ผมสามารถช่วยจัดการไฟล์ได้ครับ แต่ต้องใช้คำสั่งที่ถูกต้อง:\n\n📄 **คำสั่งจัดการไฟล์:**\n- `note create testdemo.md` - สร้างไฟล์ note\n- `note list` - ดูรายการไฟล์ note\n- `note search [keyword]` - ค้นหาใน notes\n\nหากต้องการสร้างไฟล์ testdemo.md ให้พิมพ์:\n`note create testdemo content here`',
+        model: 'local-enhanced'
+      };
+    }
+    
+    if (message.includes('ให้ทำยังไง') || message.includes('ทำยังไง')) {
+      return {
+        content: 'ผมพร้อมช่วยเหลือครับ! บอกรายละเอียดเพิ่มเติมหน่อย:\n\n🤔 **คุณต้องการ:**\n- เขียนโค้ด? - บอกภาษาและ requirements\n- แก้ bug? - แชร์ error message\n- จัดการงาน? - ใช้ `task add [งาน]`\n- ตั้งเตือน? - ใช้ `reminder set [เรื่อง] at [เวลา]`\n- อื่นๆ? - อธิบายเพิ่มเติม\n\nตัวอย่าง: "เขียนโค้ด Python คำนวณ fibonacci"',
+        model: 'local-enhanced'
+      };
+    }
+    
+    // Coding questions
+    if (lowerMessage.includes('code') || lowerMessage.includes('โค้ด')) {
+      return {
+        content: 'ผมสามารถช่วยเขียนโค้ดได้ครับ! บอกผมว่าต้องการโค้ดอะไร เช่น:\n- ภาษาอะไร (Python, JavaScript, TypeScript, etc.)\n- ทำอะไร (function, class, algorithm)\n- รายละเอียดเพิ่มเติม\n\nตัวอย่าง: "เขียนโค้ด Python function คำนวณ fibonacci"',
+        model: 'local-enhanced'
+      };
+    }
+    
+    // General conversation
+    if (message.includes('ทำอะไรได้') || lowerMessage.includes('help')) {
+      return {
+        content: 'ผมสามารถช่วยคุณได้ดังนี้ครับ:\n\n📋 **Task Management**\n- `task add [title]` - เพิ่มงานใหม่\n- `task list` - ดูรายการงาน\n- `task complete [id]` - ทำเครื่องหมายเสร็จ\n\n⏰ **Reminders**\n- `reminder set [title] at [time]` - ตั้งเตือน\n- `reminder list` - ดูการเตือน\n\n📝 **Notes**\n- `note create [content]` - สร้างโน้ต\n- `note list` - ดูโน้ตทั้งหมด\n\n💬 **General Chat**\n- ถามคำถามทั่วไป\n- ขอคำแนะนำ coding\n- พูดคุยเรื่องทั่วไป',
+        model: 'local-enhanced'
+      };
+    }
+    
+    // Default response
+    return {
+      content: `ผมได้รับข้อความของคุณแล้ว: "${message}"\n\nผมพร้อมช่วยเหลือคุณครับ ลองถามคำถามหรือใช้คำสั่งต่างๆ ได้เลย\n\nพิมพ์ "help" เพื่อดูคำสั่งทั้งหมด`,
+      model: 'local-enhanced'
+    };
+  }
+
+  private sendToCLI(message: string): Promise<ClaudeResponse> {
+    return new Promise((resolve, reject) => {
+      if (!this.claudeProcess) {
+        reject(new Error('Claude process not running'));
+        return;
+      }
+
+      this.messageQueue.push({ message, resolve, reject });
+      this.claudeProcess.stdin?.write(message + '\n');
+    });
+  }
+
+  private async sendToAPI(message: string, context?: ClaudeMessage[]): Promise<ClaudeResponse> {
+    try {
+      // If no API key, return a helpful response
+      if (!this.config.apiKey) {
+        return {
+          content: this.generateLocalResponse(message),
+          model: 'local-nlp'
+        };
+      }
+
+      // Call Claude API
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.config.apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: this.config.model,
+          max_tokens: this.config.maxTokens,
+          temperature: this.config.temperature,
+          messages: [
+            ...(context || []),
+            { role: 'user', content: message }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      return {
+        content: data.content[0].text,
+        usage: data.usage,
+        model: data.model
+      };
+    } catch (error) {
+      console.error('Claude API error:', error);
+      
+      // Fallback to local NLP
+      return {
+        content: this.generateLocalResponse(message),
+        model: 'local-nlp',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  private generateLocalResponse(message: string): string {
+    // Enhanced local NLP fallback
+    const lowerMessage = message.toLowerCase();
+    
+    // Code-related responses
+    if (lowerMessage.includes('code') || lowerMessage.includes('function') || lowerMessage.includes('implement')) {
+      return 'ฉันสามารถช่วยเขียนโค้ดได้ แต่ขณะนี้ทำงานในโหมด offline กรุณาระบุรายละเอียดที่ต้องการ';
+    }
+    
+    // Debug/fix related
+    if (lowerMessage.includes('debug') || lowerMessage.includes('fix') || lowerMessage.includes('error')) {
+      return 'สำหรับการ debug กรุณาแชร์ error message หรือโค้ดที่มีปัญหา ฉันจะช่วยวิเคราะห์ให้';
+    }
+    
+    // Explain related
+    if (lowerMessage.includes('explain') || lowerMessage.includes('what is') || lowerMessage.includes('how')) {
+      return 'ฉันสามารถอธิบายแนวคิดทางโปรแกรมมิ่งได้ กรุณาระบุหัวข้อที่ต้องการเรียนรู้';
+    }
+    
+    // Default technical response
+    return 'ฉันเป็น AI Assistant ที่สามารถช่วยงานด้าน coding, debugging และตอบคำถามทางเทคนิคได้ กรุณาบอกว่าต้องการความช่วยเหลือด้านใด';
+  }
+
+  async analyzeCode(code: string, language: string = 'typescript'): Promise<ClaudeResponse> {
+    const prompt = `Analyze this ${language} code and provide suggestions for improvements:\n\n\`\`\`${language}\n${code}\n\`\`\``;
+    return this.sendMessage(prompt);
+  }
+
+  async generateCode(requirements: string, language: string = 'typescript'): Promise<ClaudeResponse> {
+    const prompt = `Generate ${language} code for the following requirements:\n${requirements}`;
+    return this.sendMessage(prompt);
+  }
+
+  async explainCode(code: string, language: string = 'typescript'): Promise<ClaudeResponse> {
+    const prompt = `Explain this ${language} code in detail:\n\n\`\`\`${language}\n${code}\n\`\`\``;
+    return this.sendMessage(prompt);
+  }
+
+  async debugCode(code: string, error: string, language: string = 'typescript'): Promise<ClaudeResponse> {
+    const prompt = `Debug this ${language} code that produces the following error:\n\nError: ${error}\n\nCode:\n\`\`\`${language}\n${code}\n\`\`\``;
+    return this.sendMessage(prompt);
+  }
+
+  terminate(): void {
+    // Stop realtime service if running
+    if (this.realtimeService) {
+      this.realtimeService.stop();
+    }
+    
+    if (this.claudeProcess) {
+      this.claudeProcess.kill();
+      this.claudeProcess = null;
+    }
+    this.isReady = false;
+  }
+}

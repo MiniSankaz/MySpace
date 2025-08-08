@@ -1,0 +1,21 @@
+{
+  "userId": "guest-1754556681432",
+  "sessionId": "session-1754556681435",
+  "messages": [
+    {
+      "id": "1754556681436-pj69mj5av",
+      "userId": "guest-1754556681432",
+      "content": "\\",
+      "type": "user",
+      "timestamp": "2025-08-07T08:51:21.436Z"
+    },
+    {
+      "id": "1754556695631-7loqytxps",
+      "userId": "guest-1754556681432",
+      "content": "This appears to be a Next.js-based CMS/ERP system with TypeScript, React, and Prisma. The project includes:\n\n- **Frontend**: Next.js 15 with React 19, TypeScript, Tailwind CSS\n- **Backend**: Next.js API routes with Prisma ORM (PostgreSQL)\n- **Features**: Personal assistant with Claude AI integration, page builder, i18n, user management\n- **Infrastructure**: Docker support, PM2 ecosystem config, various shell scripts for setup\n\nThe project is configured to run on port 4000 and includes comprehensive tooling for development, testing, and code generation.",
+      "type": "assistant",
+      "timestamp": "2025-08-07T08:51:35.631Z"
+    }
+  ],
+  "lastUpdated": "2025-08-07T08:51:35.632Z"
+}

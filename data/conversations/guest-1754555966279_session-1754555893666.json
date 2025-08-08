@@ -1,0 +1,21 @@
+{
+  "userId": "guest-1754555966279",
+  "sessionId": "session-1754555893666",
+  "messages": [
+    {
+      "id": "1754555966280-ykhz84tng",
+      "userId": "guest-1754555966279",
+      "content": "ให้ไฟล์ testdemo.md ใน project นี้หน่อย",
+      "type": "user",
+      "timestamp": "2025-08-07T08:39:26.280Z"
+    },
+    {
+      "id": "1754555976286-02c5uxffj",
+      "userId": "guest-1754555966279",
+      "content": "ได้รับข้อความของคุณแล้วครับ: \"ให้ไฟล์ testdemo.md ใน project นี้หน่อย\"\n\nผมพร้อมช่วยเหลือคุณ ลองถามคำถามหรือขอความช่วยเหลือได้เลยครับ",
+      "type": "assistant",
+      "timestamp": "2025-08-07T08:39:36.286Z"
+    }
+  ],
+  "lastUpdated": "2025-08-07T08:39:36.286Z"
+}

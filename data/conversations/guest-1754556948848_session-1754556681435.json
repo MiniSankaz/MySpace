@@ -1,0 +1,21 @@
+{
+  "userId": "guest-1754556948848",
+  "sessionId": "session-1754556681435",
+  "messages": [
+    {
+      "id": "1754556948849-9tktnofmu",
+      "userId": "guest-1754556948848",
+      "content": "เมื่อกี้ timeout หรอ",
+      "type": "user",
+      "timestamp": "2025-08-07T08:55:48.849Z"
+    },
+    {
+      "id": "1754556955724-jtmiwh003",
+      "userId": "guest-1754556948848",
+      "content": "ขออภัย ไม่มีข้อมูลเกี่ยวกับ timeout ในบริบทที่ให้มา คุณช่วยอธิบายเพิ่มเติมได้ไหมว่า:\n- timeout เกิดขึ้นตอนทำอะไร (เช่น รัน command, build, หรือ request API)\n- มี error message ที่เฉพาะเจาะจงไหม\n- เกิดขึ้นกับ service หรือ process ไหนของโปรเจค",
+      "type": "assistant",
+      "timestamp": "2025-08-07T08:55:55.724Z"
+    }
+  ],
+  "lastUpdated": "2025-08-07T08:55:55.724Z"
+}

@@ -1,0 +1,96 @@
+name: Route Structure Check
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/app/**'
+      - 'src/__tests__/routes.test.ts'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/app/**'
+      - 'src/__tests__/routes.test.ts'
+
+jobs:
+  route-check:
+    name: Check Route Structure
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run route structure tests
+        run: npm test -- routes.test.ts
+        
+      - name: Generate route report
+        if: always()
+        run: |
+          echo "## 📊 Route Structure Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Route Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          find src/app -name "page.tsx" -o -name "route.ts" | sort | sed 's|src/app||g' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Check for route conflicts
+        run: |
+          # Custom script to check for route conflicts
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          
+          function checkRoutes(dir, routes = new Map()) {
+            const files = fs.readdirSync(dir);
+            
+            for (const file of files) {
+              const filePath = path.join(dir, file);
+              const stat = fs.statSync(filePath);
+              
+              if (stat.isDirectory()) {
+                checkRoutes(filePath, routes);
+              } else if (file === 'page.tsx') {
+                const route = dir.replace(/^src\/app/, '').replace(/\([^)]+\)/g, '');
+                if (routes.has(route)) {
+                  console.error('❌ Duplicate route:', route);
+                  console.error('  - ' + routes.get(route));
+                  console.error('  - ' + dir);
+                  process.exit(1);
+                }
+                routes.set(route, dir);
+              }
+            }
+            return routes;
+          }
+          
+          try {
+            const routes = checkRoutes('src/app');
+            console.log('✅ No route conflicts found');
+            console.log('Total routes:', routes.size);
+          } catch (error) {
+            console.error('Error checking routes:', error.message);
+            process.exit(1);
+          }
+          "
+          
+      - name: Post comment on PR
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Route Structure Check Failed**\n\nPlease review the route structure and fix any conflicts or anti-patterns.\n\nRun `npm test routes.test.ts` locally to see details.'
+            })

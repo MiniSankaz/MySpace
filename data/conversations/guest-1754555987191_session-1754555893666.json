@@ -1,0 +1,21 @@
+{
+  "userId": "guest-1754555987191",
+  "sessionId": "session-1754555893666",
+  "messages": [
+    {
+      "id": "1754555987192-3j9h0bjlx",
+      "userId": "guest-1754555987191",
+      "content": "note create ",
+      "type": "user",
+      "timestamp": "2025-08-07T08:39:47.192Z"
+    },
+    {
+      "id": "1754555995306-eynqv3tk9",
+      "userId": "guest-1754555987191",
+      "content": "I need permission to create the note file. Once you grant permission, I'll create a note file for you. What would you like to include in the note?",
+      "type": "assistant",
+      "timestamp": "2025-08-07T08:39:55.306Z"
+    }
+  ],
+  "lastUpdated": "2025-08-07T08:39:55.306Z"
+}

@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./",
+    "strict": false,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@core/*": ["./src/core/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@shared/*": ["./src/shared/*"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "src/lib/socket-server.ts",
+    "src/modules/personal-assistant/**/*.ts",
+    "src/core/database/*.ts",
+    "src/services/*.ts"
+  ],
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.spec.ts", "**/*.tsx"]
+}

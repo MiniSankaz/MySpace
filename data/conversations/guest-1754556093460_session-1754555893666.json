@@ -1,0 +1,21 @@
+{
+  "userId": "guest-1754556093460",
+  "sessionId": "session-1754555893666",
+  "messages": [
+    {
+      "id": "1754556093461-q8p0brn4y",
+      "userId": "guest-1754556093460",
+      "content": "...",
+      "type": "user",
+      "timestamp": "2025-08-07T08:41:33.461Z"
+    },
+    {
+      "id": "1754556096662-oyfz4qpox",
+      "userId": "guest-1754556093460",
+      "content": "I'll help you with your project. What would you like me to work on today?",
+      "type": "assistant",
+      "timestamp": "2025-08-07T08:41:36.662Z"
+    }
+  ],
+  "lastUpdated": "2025-08-07T08:41:36.662Z"
+}

@@ -1,0 +1,21 @@
+{
+  "userId": "guest-1754555211760",
+  "sessionId": "session-1754555205803",
+  "messages": [
+    {
+      "id": "1754555211762-7eo594h2i",
+      "userId": "guest-1754555211760",
+      "content": "ทดสอบ",
+      "type": "user",
+      "timestamp": "2025-08-07T08:26:51.762Z"
+    },
+    {
+      "id": "1754555211762-dx93ms9g2",
+      "userId": "guest-1754555211760",
+      "content": "ฉันเป็น AI Assistant ที่สามารถช่วยงานด้าน coding, debugging และตอบคำถามทางเทคนิคได้ กรุณาบอกว่าต้องการความช่วยเหลือด้านใด",
+      "type": "assistant",
+      "timestamp": "2025-08-07T08:26:51.762Z"
+    }
+  ],
+  "lastUpdated": "2025-08-07T08:26:51.762Z"
+}

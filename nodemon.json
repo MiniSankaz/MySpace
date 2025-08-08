@@ -1,0 +1,23 @@
+{
+  "watch": [
+    "dist/**/*.js",
+    "server.js",
+    ".env",
+    ".env.local"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "src/**",
+    "*.test.js",
+    "node_modules/**",
+    ".next/**",
+    "logs/**",
+    "data/**"
+  ],
+  "exec": "node server.js",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": "1000",
+  "verbose": true
+}

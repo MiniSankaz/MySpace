@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Universal Project Manager - Quick Access Script
+# Shortcut: upm
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Execute the main script with all arguments
+"$SCRIPT_DIR/universal-project-manager.sh" "$@"
