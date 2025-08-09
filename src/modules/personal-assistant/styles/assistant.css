@@ -59,6 +59,10 @@
 .message-bubble-user {
   @apply bg-gradient-to-br from-blue-500 to-blue-600 text-white 
          rounded-2xl rounded-br-sm shadow-lg;
+  max-width: 80%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 1rem;
 }
 
 .message-bubble-assistant {
@@ -66,6 +70,11 @@
          text-gray-800 dark:text-gray-200 
          border border-gray-200 dark:border-gray-700
          rounded-2xl rounded-bl-sm shadow-md;
+  max-width: 80%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow-x: auto;
+  padding: 1rem;
 }
 
 .message-bubble-system {
@@ -128,6 +137,53 @@
 .code-block {
   @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto;
   font-family: 'Fira Code', 'Monaco', monospace;
+  max-width: 100%;
+}
+
+/* Pre-formatted text in messages */
+.message-bubble-assistant pre,
+.message-bubble-user pre {
+  overflow-x: auto;
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0.5rem 0;
+}
+
+/* Code snippets in messages */
+.message-bubble-assistant code,
+.message-bubble-user code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+  display: inline;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+.message-bubble-assistant pre code,
+.message-bubble-user pre code {
+  display: block;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  overflow-x: auto;
+}
+
+/* Long text handling in message bubbles */
+.message-bubble-assistant .prose,
+.message-bubble-user .prose {
+  max-width: 100% !important;
+}
+
+.message-bubble-assistant .prose > *,
+.message-bubble-user .prose > * {
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
 }
 
 /* Animations */

@@ -705,7 +705,13 @@ className="new-chat-button"
                   {/* Message bubble */}
                   <div className={`message-bubble ${message.type}`}>
                     <div
-                      className="prose prose-sm max-w-none"
+                      className="prose prose-sm"
+                      style={{ 
+                        maxWidth: '100%', 
+                        overflowWrap: 'break-word', 
+                        wordBreak: 'break-word',
+                        overflow: 'hidden'
+                      }}
                       dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
                     />
                   </div>

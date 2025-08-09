@@ -278,4 +278,27 @@ body.modal-open {
     z-index: 10;
     position: relative;
   }
+  
+  /* Override prose defaults for messages */
+  .message-bubble .prose code {
+    white-space: normal !important;
+    word-break: break-all !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100% !important;
+    display: inline !important;
+  }
+
+  .message-bubble .prose pre {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+
+  .message-bubble .prose {
+    max-width: 100% !important;
+  }
+
+  .message-bubble .prose * {
+    max-width: 100% !important;
+    word-break: break-word !important;
+  }
 }

@@ -158,8 +158,10 @@
 .message-area {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 2rem;
   padding-bottom: 8rem;
+  max-width: 100%;
 }
 
 .message-area::-webkit-scrollbar {
@@ -215,6 +217,8 @@
   display: flex;
   margin-bottom: 1.5rem;
   animation: messageSlideIn 0.3s ease-out;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .message-wrapper.user {
@@ -226,10 +230,13 @@
 }
 
 .message-bubble {
-  max-width: 42rem;
+  max-width: min(42rem, 80%);
   padding: 1rem 1.25rem;
   border-radius: 1.25rem;
   word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: auto;
 }
 
 .message-bubble.user {
@@ -245,6 +252,42 @@
   border: 1px solid rgba(71, 85, 105, 0.5);
   border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* Handle long content in message bubbles */
+.message-bubble > * {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.message-bubble pre {
+  overflow-x: auto;
+  max-width: 100%;
+  white-space: pre-wrap;
+}
+
+.message-bubble code {
+  overflow-wrap: break-word !important;
+  word-break: break-all !important;
+  display: inline;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  max-width: 100%;
+  hyphens: auto;
+}
+
+.message-bubble pre code {
+  display: block;
+  padding: 0.75rem;
+  overflow-x: auto;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 0.5rem;
+  line-height: 1.5;
 }
 
 /* Input Area */
@@ -407,7 +450,7 @@
   }
   
   .message-bubble {
-    max-width: 85%;
+    max-width: min(85%, calc(100vw - 3rem));
   }
   
   .message-area {
