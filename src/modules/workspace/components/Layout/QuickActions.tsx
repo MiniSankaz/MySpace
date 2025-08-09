@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
+import { useRouter } from 'next/navigation';
 
 interface QuickActionsProps {
   onClose: () => void;
@@ -19,7 +21,33 @@ interface Action {
 const QuickActions: React.FC<QuickActionsProps> = ({ onClose, theme }) => {
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showProjectModal, setShowProjectModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const { createProject, currentProject } = useWorkspace();
+
+  // Function to create new terminal session
+  const createNewTerminal = () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 't',
+      code: 'KeyT',
+      metaKey: true,
+      bubbles: true
+    });
+    window.dispatchEvent(event);
+  };
+
+  // Function to create new Claude terminal
+  const createNewClaudeTerminal = () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'T',
+      code: 'KeyT',
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true
+    });
+    window.dispatchEvent(event);
+  };
 
   const actions: Action[] = [
     {
@@ -29,16 +57,10 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onClose, theme }) => {
       description: 'Create a new project',
       shortcut: '⌘N',
       category: 'project',
-      action: () => console.log('New project'),
-    },
-    {
-      id: 'open-project',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>,
-      title: 'Open Project',
-      description: 'Open an existing project',
-      shortcut: '⌘O',
-      category: 'project',
-      action: () => console.log('Open project'),
+      action: () => {
+        setShowProjectModal(true);
+        // You can implement a modal here or navigate to project creation page
+      },
     },
     {
       id: 'new-terminal',
@@ -47,7 +69,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onClose, theme }) => {
       description: 'Open a new terminal tab',
       shortcut: '⌘T',
       category: 'terminal',
-      action: () => console.log('New terminal'),
+      action: createNewTerminal,
     },
     {
       id: 'claude-terminal',
@@ -55,34 +77,29 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onClose, theme }) => {
       title: 'Claude Terminal',
       description: 'Open Claude Code CLI',
       category: 'terminal',
-      action: () => console.log('Claude terminal'),
+      action: createNewClaudeTerminal,
     },
     {
-      id: 'search-files',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
-      title: 'Search Files',
-      description: 'Search in project files',
-      shortcut: '⌘P',
-      category: 'file',
-      action: () => console.log('Search files'),
+      id: 'go-to-assistant',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>,
+      title: 'Go to AI Assistant',
+      description: 'Open AI Assistant page',
+      shortcut: '⌘A',
+      category: 'project',
+      action: () => {
+        router.push('/assistant');
+      },
     },
     {
-      id: 'settings',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-      title: 'Settings',
-      description: 'Open workspace settings',
-      shortcut: '⌘,',
-      category: 'settings',
-      action: () => console.log('Settings'),
-    },
-    {
-      id: 'keyboard-shortcuts',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>,
-      title: 'Keyboard Shortcuts',
-      description: 'View all keyboard shortcuts',
-      shortcut: '⌘?',
-      category: 'help',
-      action: () => console.log('Keyboard shortcuts'),
+      id: 'view-logs',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+      title: 'View Logs',
+      description: 'View system logs and analytics',
+      shortcut: '⌘L',
+      category: 'project',
+      action: () => {
+        router.push('/logs');
+      },
     },
   ];
 
@@ -130,6 +147,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onClose, theme }) => {
   };
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -237,6 +255,118 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onClose, theme }) => {
         </div>
       </motion.div>
     </motion.div>
+
+    {/* New Project Modal */}
+    {showProjectModal && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+        onClick={() => setShowProjectModal(false)}
+      >
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className={`relative w-full max-w-md ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl p-6`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Create New Project
+          </h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const name = formData.get('name') as string;
+            const description = formData.get('description') as string;
+            const path = formData.get('path') as string;
+            
+            try {
+              await createProject({
+                name,
+                description,
+                path,
+              });
+              setShowProjectModal(false);
+              onClose();
+            } catch (error) {
+              console.error('Failed to create project:', error);
+            }
+          }}>
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  className={`w-full px-3 py-2 rounded-lg ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 text-white border-gray-600' 
+                      : 'bg-gray-100 text-gray-900 border-gray-300'
+                  } border focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="My Project"
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  className={`w-full px-3 py-2 rounded-lg ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 text-white border-gray-600' 
+                      : 'bg-gray-100 text-gray-900 border-gray-300'
+                  } border focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="Project description..."
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Project Path
+                </label>
+                <input
+                  type="text"
+                  name="path"
+                  required
+                  className={`w-full px-3 py-2 rounded-lg ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 text-white border-gray-600' 
+                      : 'bg-gray-100 text-gray-900 border-gray-300'
+                  } border focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="/Users/username/projects/my-project"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowProjectModal(false)}
+                className={`px-4 py-2 rounded-lg ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                } transition-colors`}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                Create Project
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    )}
+    </>
   );
 };
 
