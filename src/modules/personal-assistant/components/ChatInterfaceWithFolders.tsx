@@ -681,7 +681,7 @@ className="new-chat-button"
 
         {/* Messages Area */}
         <div className="message-area scrollbar-custom">
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div style={{ maxWidth: '55rem' }} className="mx-auto space-y-4">
             {messages.length === 0 ? (
               <div className="text-center py-12">
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
