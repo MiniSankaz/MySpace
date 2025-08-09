@@ -11,9 +11,12 @@ const moveSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
+    // Await params as required in Next.js 15
+    const { sessionId } = await params;
+    
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
@@ -35,7 +38,7 @@ export async function PATCH(
     // Check if conversation exists and belongs to user
     const conversation = await prisma.assistantConversation.findFirst({
       where: {
-        sessionId: params.sessionId,
+        sessionId: sessionId,
         userId: user.id
       }
     });

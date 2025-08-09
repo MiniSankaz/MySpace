@@ -67,34 +67,61 @@ export class ClaudeAIService {
         fullMessage = conversationParts.join('\n');
       }
       
-      // Escape message for shell
-      const escapedMessage = fullMessage
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "'\\''")
-        .replace(/"/g, '\\"')
-        .replace(/\$/g, '\\$')
-        .replace(/`/g, '\\`')
-        .replace(/\n/g, '\\\\n'); // Keep newlines for context
+      // Use a safer method - write to stdin instead of echo
+      const { spawn } = require('child_process');
       
-      // Send to Claude CLI
-      const command = `echo -e "${escapedMessage}" | claude 2>&1`;
-      
-      const { stdout, stderr } = await execAsync(command, {
-        timeout: this.config.timeout,
-        maxBuffer: 100 * 1024 * 1024 // 100MB
+      return new Promise((resolve, reject) => {
+        const claude = spawn('claude', [], {
+          timeout: this.config.timeout,
+          shell: false
+        });
+        
+        let stdout = '';
+        let stderr = '';
+        
+        claude.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+        
+        claude.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
+        
+        claude.on('close', (code: number) => {
+          if (stderr && !stderr.includes('warning')) {
+            console.error('[Claude] stderr:', stderr);
+          }
+          
+          const response = stdout.trim();
+          console.log('[Claude] Response length:', response.length);
+          
+          if (code !== 0 && !response) {
+            resolve({
+              content: `Claude CLI error (code ${code}): ${stderr || 'Unknown error'}`,
+              model: 'error',
+              error: stderr || `Exit code ${code}`
+            });
+          } else {
+            resolve({
+              content: response || 'No response from Claude',
+              model: 'claude-cli'
+            });
+          }
+        });
+        
+        claude.on('error', (error: Error) => {
+          console.error('[Claude] Process error:', error);
+          resolve({
+            content: `Failed to run Claude CLI: ${error.message}. Please ensure Claude CLI is installed and accessible.`,
+            model: 'error',
+            error: error.message
+          });
+        });
+        
+        // Write message to stdin
+        claude.stdin.write(fullMessage);
+        claude.stdin.end();
       });
-
-      if (stderr && !stderr.includes('warning')) {
-        console.error('[Claude] stderr:', stderr);
-      }
-
-      const response = stdout.trim();
-      console.log('[Claude] Response length:', response.length);
-      
-      return {
-        content: response,
-        model: 'claude-cli'
-      };
       
     } catch (error: any) {
       console.error('[Claude] Error:', error);

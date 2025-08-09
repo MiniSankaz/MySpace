@@ -80,6 +80,18 @@ export class AssistantLoggingService {
   // SESSION MANAGEMENT
   // ============================================
 
+  async getSession(sessionId: string) {
+    try {
+      const session = await prisma.assistantChatSession.findUnique({
+        where: { id: sessionId }
+      });
+      return session;
+    } catch (error) {
+      console.error('[AssistantLog] Failed to get session:', error);
+      return null;
+    }
+  }
+
   async createSession(data: AssistantSessionData) {
     try {
       const session = await prisma.assistantChatSession.create({
@@ -170,6 +182,33 @@ export class AssistantLoggingService {
     if (!messages || messages.length === 0) return;
 
     try {
+      // Check if session exists before flushing
+      const sessionExists = await prisma.assistantChatSession.findUnique({
+        where: { id: sessionId }
+      });
+
+      if (!sessionExists) {
+        console.warn(`[AssistantLog] Session ${sessionId} not found, creating new session before flushing messages`);
+        
+        // Extract userId from first message or use default
+        const firstMessage = messages[0];
+        const userId = firstMessage.userId || 'system';
+        
+        // Create a new session
+        await prisma.assistantChatSession.create({
+          data: {
+            id: sessionId,
+            userId: userId,
+            model: 'claude-3-sonnet',
+            temperature: 0.7,
+            maxTokens: 4096,
+            totalTokensUsed: 0,
+            totalCost: 0,
+            createdAt: new Date(),
+          }
+        });
+      }
+
       await prisma.assistantChatMessage.createMany({
         data: messages.map(msg => ({
           id: uuidv4(),
@@ -185,6 +224,8 @@ export class AssistantLoggingService {
       this.messageQueue.set(sessionId, []);
     } catch (error) {
       console.error('[AssistantLog] Failed to flush messages:', error);
+      // Clear problematic messages to prevent repeated errors
+      this.messageQueue.set(sessionId, []);
     }
   }
 

@@ -44,15 +44,33 @@ export const POST = withRateLimit(async (request: NextRequest) => {
     // Create or get logging session
     let loggingSessionId = sessionId;
     try {
-      const loggingSession = await assistantLogger.createSession({
-        userId,
-        projectId,
-        sessionName: `Chat Session - ${new Date().toLocaleString()}`,
-        model: directMode ? 'claude-direct' : 'claude-assistant',
-      });
-      loggingSessionId = loggingSession.id;
+      // Check if session exists in database
+      const existingSession = await assistantLogger.getSession(sessionId);
+      
+      if (!existingSession) {
+        // Create new session if it doesn't exist
+        const loggingSession = await assistantLogger.createSession({
+          userId,
+          projectId,
+          sessionName: `Chat Session - ${new Date().toLocaleString()}`,
+          model: directMode ? 'claude-direct' : 'claude-assistant',
+        });
+        loggingSessionId = loggingSession.id;
+      }
     } catch (error) {
-      console.error('Failed to create logging session:', error);
+      console.error('Failed to create/get logging session:', error);
+      // Create a fallback session to prevent errors
+      try {
+        const fallbackSession = await assistantLogger.createSession({
+          userId,
+          projectId,
+          sessionName: `Fallback Session - ${new Date().toLocaleString()}`,
+          model: directMode ? 'claude-direct' : 'claude-assistant',
+        });
+        loggingSessionId = fallbackSession.id;
+      } catch (fallbackError) {
+        console.error('Failed to create fallback session:', fallbackError);
+      }
     }
     
     // Log user message

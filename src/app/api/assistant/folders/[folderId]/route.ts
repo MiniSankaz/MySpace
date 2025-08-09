@@ -14,9 +14,12 @@ const updateFolderSchema = z.object({
 // GET specific folder with conversations
 export async function GET(
   request: NextRequest,
-  { params }: { params: { folderId: string } }
+  { params }: { params: Promise<{ folderId: string }> }
 ) {
   try {
+    // Await params as required in Next.js 15
+    const { folderId } = await params;
+    
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
@@ -27,7 +30,7 @@ export async function GET(
 
     const folder = await prisma.assistantFolder.findFirst({
       where: {
-        id: params.folderId,
+        id: folderId,
         userId: user.id
       },
       include: {
@@ -78,9 +81,12 @@ export async function GET(
 // PATCH update folder
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { folderId: string } }
+  { params }: { params: Promise<{ folderId: string }> }
 ) {
   try {
+    // Await params as required in Next.js 15
+    const { folderId } = await params;
+    
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
@@ -102,7 +108,7 @@ export async function PATCH(
     // Check if folder exists and belongs to user
     const folder = await prisma.assistantFolder.findFirst({
       where: {
-        id: params.folderId,
+        id: folderId,
         userId: user.id
       }
     });
@@ -120,7 +126,7 @@ export async function PATCH(
         where: {
           userId: user.id,
           name: validation.data.name,
-          id: { not: params.folderId }
+          id: { not: folderId }
         }
       });
 
@@ -133,7 +139,7 @@ export async function PATCH(
     }
 
     const updatedFolder = await prisma.assistantFolder.update({
-      where: { id: params.folderId },
+      where: { id: folderId },
       data: validation.data
     });
 
@@ -160,9 +166,12 @@ export async function PATCH(
 // DELETE folder
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { folderId: string } }
+  { params }: { params: Promise<{ folderId: string }> }
 ) {
   try {
+    // Await params as required in Next.js 15
+    const { folderId } = await params;
+    
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
@@ -174,7 +183,7 @@ export async function DELETE(
     // Check if folder exists and belongs to user
     const folder = await prisma.assistantFolder.findFirst({
       where: {
-        id: params.folderId,
+        id: folderId,
         userId: user.id
       }
     });
@@ -188,7 +197,7 @@ export async function DELETE(
 
     // Delete folder (conversations will have folderId set to null due to onDelete: SetNull)
     await prisma.assistantFolder.delete({
-      where: { id: params.folderId }
+      where: { id: folderId }
     });
 
     return NextResponse.json({
