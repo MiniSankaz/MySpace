@@ -35,7 +35,13 @@ export async function verifyAuth(request: NextRequest): Promise<AuthUser | null>
 
 function verifyToken(token: string): AuthUser | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    // Use ignoreExpiration option for tokens without exp claim
+    const decoded = jwt.verify(token, JWT_SECRET, { 
+      ignoreExpiration: false // Will handle tokens without exp claim properly
+    }) as any;
+    
+    // If token doesn't have exp claim, it's valid (never expires)
+    // If it has exp claim, jwt.verify will check it
     
     return {
       id: decoded.userId || decoded.id,
@@ -43,7 +49,13 @@ function verifyToken(token: string): AuthUser | null {
       username: decoded.username,
       roles: decoded.roles
     };
-  } catch (error) {
+  } catch (error: any) {
+    // If error is about expiry, log it for debugging
+    if (error.name === 'TokenExpiredError') {
+      console.log('Token expired:', error.message);
+    } else if (error.name === 'JsonWebTokenError') {
+      console.log('Invalid token:', error.message);
+    }
     return null;
   }
 }
