@@ -152,6 +152,8 @@
   flex-direction: column;
   background: linear-gradient(135deg, #0f172a 0%, #1a1f2e 100%);
   position: relative;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 /* Message Area */

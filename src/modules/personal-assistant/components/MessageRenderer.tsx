@@ -181,6 +181,15 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({ content, type 
                       margin: 0,
                       borderRadius: '0 0 0.5rem 0.5rem',
                       fontSize: '0.875rem',
+                      maxWidth: '100%',
+                      overflowX: 'auto',
+                      wordBreak: 'break-all',
+                    }}
+                    codeTagProps={{
+                      style: {
+                        wordBreak: 'break-all',
+                        whiteSpace: 'pre-wrap',
+                      }
                     }}
                     {...props}
                   >

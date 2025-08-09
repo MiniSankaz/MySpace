@@ -5,6 +5,8 @@
   position: relative;
   width: 100%;
   max-width: 100%;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 /* Copy Message Button */
@@ -40,6 +42,7 @@
   background: #1e1e1e;
   border: 1px solid rgba(71, 85, 105, 0.5);
   max-width: 100%;
+  word-break: break-all;
 }
 
 /* Code Block Header */
@@ -197,6 +200,20 @@
 .code-block-wrapper > div > pre {
   max-width: 100% !important;
   overflow-x: auto !important;
+  word-break: break-all !important;
+}
+
+/* Force all content to respect container width */
+.message-content-wrapper * {
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+}
+
+.message-content-wrapper pre,
+.message-content-wrapper code {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
 }
 
 /* Responsive */
