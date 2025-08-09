@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Message } from '../types';
+import { MessageRenderer } from './MessageRenderer';
 import '../styles/chat-wrapper.scss';
+import '../styles/message-renderer.css';
 
 interface SessionInfo {
   sessionId: string;
@@ -441,33 +443,6 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
     }
   };
 
-  const formatMessage = (content: string) => {
-    // First handle code blocks to preserve their formatting
-    let formatted = content
-      .replace(/```([\s\S]*?)```/g, '<pre class="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto my-2"><code>$1</code></pre>')
-      .replace(/`(.*?)`/g, '<code class="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm">$1</code>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // Split by double newlines for paragraphs
-    const paragraphs = formatted.split(/\n\n+/);
-    
-    // Wrap each paragraph in <p> tags and handle single line breaks
-    formatted = paragraphs
-      .map(p => {
-        // Don't wrap if it's already a block element (pre, ul, ol)
-        if (p.trim().startsWith('<pre') || p.trim().startsWith('<ul') || p.trim().startsWith('<ol')) {
-          return p;
-        }
-        // Replace single newlines with <br> within paragraphs
-        return `<p>${p.replace(/\n/g, '<br />')}</p>`;
-      })
-      .filter(p => p.trim()) // Remove empty paragraphs
-      .join('');
-    
-    return formatted;
-  };
-
   const renderSessionCard = (session: SessionInfo, isInFolder: boolean = false) => (
     <div
       key={session.sessionId}
@@ -703,16 +678,10 @@ className="new-chat-button"
                   </div>
                   
                   {/* Message bubble */}
-                  <div className={`message-bubble ${message.type}`}>
-                    <div
-                      className="prose prose-sm"
-                      style={{ 
-                        maxWidth: '100%', 
-                        overflowWrap: 'break-word', 
-                        wordBreak: 'break-word',
-                        overflow: 'hidden'
-                      }}
-                      dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
+                  <div className={`message-bubble message-bubble-${message.type}`}>
+                    <MessageRenderer 
+                      content={message.content} 
+                      type={message.type as 'user' | 'assistant' | 'system'}
                     />
                   </div>
                 </div>

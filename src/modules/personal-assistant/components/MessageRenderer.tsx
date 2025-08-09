@@ -1,337 +1,248 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Copy, Check } from 'lucide-react';
 
 interface MessageRendererProps {
   content: string;
-  type: 'user' | 'assistant';
+  type: 'user' | 'assistant' | 'system';
 }
 
 export const MessageRenderer: React.FC<MessageRendererProps> = ({ content, type }) => {
-  const isUser = type === 'user';
-  
+  const [copiedStates, setCopiedStates] = useState<{ [key: string]: boolean }>({});
+
+  const handleCopy = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedStates(prev => ({ ...prev, [id]: true }));
+      setTimeout(() => {
+        setCopiedStates(prev => ({ ...prev, [id]: false }));
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleCopyMessage = async () => {
+    await handleCopy(content, 'message');
+  };
+
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        // Paragraphs
-        p: ({ children }) => {
-          // Check if children contains block-level elements
-          const hasBlockContent = React.Children.toArray(children).some(child => {
-            if (React.isValidElement(child)) {
-              const type = child.type;
-              // Check for block elements that shouldn't be in <p>
-              if (typeof type === 'string' && ['div', 'pre', 'table', 'blockquote', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(type)) {
-                return true;
-              }
-              // Check for custom components that render block elements
-              if (typeof type === 'function' && child.props?.className?.includes('my-3')) {
-                return true;
-              }
-            }
-            return false;
-          });
+    <div className="message-content-wrapper">
+      {/* Copy entire message button */}
+      {type === 'assistant' && (
+        <button
+          onClick={handleCopyMessage}
+          className="message-copy-button"
+          title="Copy entire message"
+        >
+          {copiedStates['message'] ? (
+            <Check className="w-4 h-4 text-green-400" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </button>
+      )}
 
-          // If block content is found, render as div instead of p
-          if (hasBlockContent) {
-            return (
-              <div className={isUser ? "text-white mb-2 text-sm" : "text-white mb-2 text-sm"}>
-                {children}
-              </div>
-            );
-          }
-
-          return (
-            <p className={isUser ? "text-white mb-2 text-sm" : "text-white mb-2 text-sm"}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Headers with styling
+          h1: ({ children }) => (
+            <h1 className="text-2xl font-bold mt-6 mb-4 text-blue-400 border-b border-gray-700 pb-2">
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-xl font-bold mt-5 mb-3 text-blue-300">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-lg font-semibold mt-4 mb-2 text-blue-200">
+              {children}
+            </h3>
+          ),
+          h4: ({ children }) => (
+            <h4 className="text-base font-semibold mt-3 mb-2 text-gray-300">
+              {children}
+            </h4>
+          ),
+          
+          // Paragraphs
+          p: ({ children }) => (
+            <p className="mb-4 leading-relaxed text-gray-100">
               {children}
             </p>
-          );
-        },
-        
-        // Headers
-        h1: ({ children }) => (
-          <h1 className={isUser ? "text-white text-xl font-bold mb-2 mt-3" : "text-white text-xl font-bold mb-2 mt-3 border-b border-gray-600 pb-2"}>
-            {children}
-          </h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className={isUser ? "text-white text-lg font-bold mb-2 mt-2" : "text-white text-lg font-bold mb-2 mt-2"}>
-            {children}
-          </h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className={isUser ? "text-white text-base font-semibold mb-2 mt-2" : "text-white text-base font-semibold mb-2 mt-2"}>
-            {children}
-          </h3>
-        ),
-        h4: ({ children }) => (
-          <h4 className={isUser ? "text-white text-sm font-semibold mb-1" : "text-gray-100 text-sm font-semibold mb-1"}>
-            {children}
-          </h4>
-        ),
-        
-        // Strong & Emphasis
-        strong: ({ children }) => (
-          <strong className={isUser ? "text-white font-bold" : "text-yellow-400 font-bold"}>
-            {children}
-          </strong>
-        ),
-        em: ({ children }) => (
-          <em className={isUser ? "text-white italic opacity-95" : "text-blue-300 italic"}>
-            {children}
-          </em>
-        ),
-        
-        // Links
-        a: ({ href, children }) => (
-          <a 
-            href={href} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className={isUser 
-              ? "text-white underline opacity-90 hover:opacity-100 transition-opacity" 
-              : "text-blue-400 underline hover:text-blue-300 transition-colors"
-            }
-          >
-            {children}
-          </a>
-        ),
-        
-        // Lists
-        ul: ({ children }) => (
-          <ul className={isUser ? "text-white list-disc list-inside mb-2 ml-2 text-sm" : "text-gray-100 list-disc list-inside mb-2 ml-2 text-sm"}>
-            {children}
-          </ul>
-        ),
-        ol: ({ children }) => (
-          <ol className={isUser ? "text-white list-decimal list-inside mb-2 ml-2 text-sm" : "text-gray-100 list-decimal list-inside mb-2 ml-2 text-sm"}>
-            {children}
-          </ol>
-        ),
-        li: ({ children }) => (
-          <li className={isUser ? "text-white mb-1 text-sm" : "text-gray-100 mb-1 text-sm"}>
-            {children}
-          </li>
-        ),
-        
-        // Code
-        code: ({ inline, children, className }) => {
-          const match = /language-(\w+)/.exec(className || '');
-          const lang = match ? match[1] : '';
+          ),
           
-          // For inline code or when explicitly marked as inline
-          if (inline !== false) {
+          // Lists
+          ul: ({ children }) => (
+            <ul className="list-disc list-inside mb-4 space-y-1 ml-4">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal list-inside mb-4 space-y-1 ml-4">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="text-gray-100">
+              {children}
+            </li>
+          ),
+          
+          // Links
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              {children}
+            </a>
+          ),
+          
+          // Blockquotes
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-blue-500 pl-4 py-1 my-4 italic text-gray-300 bg-gray-800/50 rounded-r">
+              {children}
+            </blockquote>
+          ),
+          
+          // Tables
+          table: ({ children }) => (
+            <div className="overflow-x-auto mb-4">
+              <table className="min-w-full divide-y divide-gray-700">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-gray-800">
+              {children}
+            </thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="divide-y divide-gray-700">
+              {children}
+            </tbody>
+          ),
+          tr: ({ children }) => (
+            <tr className="hover:bg-gray-800/50 transition-colors">
+              {children}
+            </tr>
+          ),
+          th: ({ children }) => (
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="px-4 py-2 text-sm text-gray-100">
+              {children}
+            </td>
+          ),
+          
+          // Inline code
+          code: ({ inline, className, children, ...props }: any) => {
+            const match = /language-(\w+)/.exec(className || '');
+            const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
+            const codeString = String(children).replace(/\n$/, '');
+            
+            if (!inline && match) {
+              return (
+                <div className="code-block-wrapper">
+                  <div className="code-block-header">
+                    <span className="code-language">{match[1]}</span>
+                    <button
+                      onClick={() => handleCopy(codeString, codeId)}
+                      className="code-copy-button"
+                      title="Copy code"
+                    >
+                      {copiedStates[codeId] ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  <SyntaxHighlighter
+                    style={oneDark}
+                    language={match[1]}
+                    PreTag="div"
+                    customStyle={{
+                      margin: 0,
+                      borderRadius: '0 0 0.5rem 0.5rem',
+                      fontSize: '0.875rem',
+                    }}
+                    {...props}
+                  >
+                    {codeString}
+                  </SyntaxHighlighter>
+                </div>
+              );
+            }
+            
+            if (!inline) {
+              return (
+                <div className="code-block-wrapper">
+                  <div className="code-block-header">
+                    <span className="code-language">text</span>
+                    <button
+                      onClick={() => handleCopy(codeString, codeId)}
+                      className="code-copy-button"
+                      title="Copy code"
+                    >
+                      {copiedStates[codeId] ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  <pre className="code-block-plain">
+                    <code>{children}</code>
+                  </pre>
+                </div>
+              );
+            }
+            
             return (
-              <code className={isUser 
-                ? "bg-white/20 text-white px-1.5 py-0.5 rounded text-sm font-mono" 
-                : "bg-blue-950 text-blue-200 px-1.5 py-0.5 rounded text-sm font-mono border border-blue-800"
-              }>
+              <code className="inline-code" {...props}>
                 {children}
               </code>
             );
-          }
+          },
           
-          // For code blocks, don't render here - let pre handle it
-          return null;
-        },
-        pre: ({ children, ...props }) => {
-          // Extract language from the code element
-          let lang = '';
-          let codeContent = children;
+          // Horizontal rule
+          hr: () => (
+            <hr className="my-6 border-gray-700" />
+          ),
           
-          if (React.isValidElement(children) && children.props?.className) {
-            const match = /language-(\w+)/.exec(children.props.className);
-            lang = match ? match[1] : '';
-            codeContent = children.props.children;
-          }
-          
-          return (
-            <div className="relative my-3">
-              {lang && (
-                <div className="absolute top-0 right-0 px-2 py-1 text-xs text-gray-400 bg-gray-900 rounded-tl rounded-br">
-                  {lang}
-                </div>
-              )}
-              <pre className="bg-gray-950 border border-gray-700 rounded-lg p-3 overflow-x-auto max-w-full">
-                <code className="text-gray-100 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words">
-                  {codeContent}
-                </code>
-              </pre>
-            </div>
-          );
-        },
-        
-        // Blockquotes
-        blockquote: ({ children }) => (
-          <blockquote className={isUser 
-            ? "border-l-4 border-white/50 pl-4 my-3 text-white/90 italic" 
-            : "border-l-4 border-blue-500 pl-4 my-3 bg-gray-800/50 py-2 pr-3 rounded-r text-gray-200 italic"
-          }>
-            {children}
-          </blockquote>
-        ),
-        
-        // Tables - GitHub Flavored Markdown
-        table: ({ children }) => (
-          <div className="overflow-x-auto my-3 max-w-full">
-            <table className="w-full border border-gray-600">
+          // Strong/Bold
+          strong: ({ children }) => (
+            <strong className="font-bold text-white">
               {children}
-            </table>
-          </div>
-        ),
-        thead: ({ children }) => (
-          <thead className="bg-gray-800">
-            {children}
-          </thead>
-        ),
-        tbody: ({ children }) => (
-          <tbody className="bg-gray-900">
-            {children}
-          </tbody>
-        ),
-        tr: ({ children }) => (
-          <tr className="border-b border-gray-700 hover:bg-gray-800/50 transition-colors">
-            {children}
-          </tr>
-        ),
-        th: ({ children }) => (
-          <th className="px-3 py-2 text-left text-white font-semibold border-r border-gray-700 last:border-r-0 text-sm">
-            {children}
-          </th>
-        ),
-        td: ({ children }) => (
-          <td className="px-3 py-2 text-gray-100 border-r border-gray-700 last:border-r-0 text-sm">
-            {children}
-          </td>
-        ),
-        
-        // Horizontal Rule
-        hr: () => (
-          <hr className="my-4 border-gray-600" />
-        ),
-        
-        // Images
-        img: ({ src, alt }) => (
-          <img 
-            src={src} 
-            alt={alt} 
-            className="rounded-lg my-3 max-w-full h-auto"
-          />
-        ),
-        
-        // Task Lists (GFM)
-        input: ({ type, checked, disabled }) => {
-          if (type === 'checkbox') {
-            return (
-              <input
-                type="checkbox"
-                checked={checked}
-                disabled={disabled}
-                className="mr-2"
-                readOnly
-              />
-            );
-          }
-          return null;
-        },
-        
-        // Definition Lists
-        dl: ({ children }) => (
-          <dl className="my-3">
-            {children}
-          </dl>
-        ),
-        dt: ({ children }) => (
-          <dt className={isUser ? "text-white font-semibold" : "text-yellow-400 font-semibold"}>
-            {children}
-          </dt>
-        ),
-        dd: ({ children }) => (
-          <dd className={isUser ? "text-white ml-4 mb-2" : "text-gray-200 ml-4 mb-2"}>
-            {children}
-          </dd>
-        ),
-        
-        // Keyboard
-        kbd: ({ children }) => (
-          <kbd className="bg-gray-800 text-gray-100 px-2 py-1 rounded text-xs font-mono border border-gray-600 shadow-sm">
-            {children}
-          </kbd>
-        ),
-        
-        // Abbreviation
-        abbr: ({ title, children }) => (
-          <abbr title={title} className="underline decoration-dotted cursor-help">
-            {children}
-          </abbr>
-        ),
-        
-        // Mark/Highlight
-        mark: ({ children }) => (
-          <mark className="bg-yellow-400/30 text-yellow-200 px-1 rounded">
-            {children}
-          </mark>
-        ),
-        
-        // Strikethrough
-        del: ({ children }) => (
-          <del className="line-through opacity-75">
-            {children}
-          </del>
-        ),
-        
-        // Subscript & Superscript
-        sub: ({ children }) => (
-          <sub className="text-xs">
-            {children}
-          </sub>
-        ),
-        sup: ({ children }) => (
-          <sup className="text-xs">
-            {children}
-          </sup>
-        ),
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+            </strong>
+          ),
+          
+          // Emphasis/Italic
+          em: ({ children }) => (
+            <em className="italic text-gray-200">
+              {children}
+            </em>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   );
-};
-
-// JSON Renderer Component
-export const JsonRenderer: React.FC<{ data: any }> = ({ data }) => {
-  return (
-    <pre className="bg-gray-950 border border-gray-700 rounded-lg p-3 overflow-x-auto my-2 max-w-full">
-      <code className="text-gray-100 text-xs font-mono whitespace-pre-wrap break-words">
-        {JSON.stringify(data, null, 2)}
-      </code>
-    </pre>
-  );
-};
-
-// Helper function to detect content type
-export const detectContentType = (content: string): 'json' | 'markdown' => {
-  // Try to parse as JSON
-  try {
-    JSON.parse(content);
-    return 'json';
-  } catch {
-    return 'markdown';
-  }
-};
-
-// Main Message Component
-export const MessageContent: React.FC<{ content: string; type: 'user' | 'assistant' }> = ({ content, type }) => {
-  const contentType = detectContentType(content);
-  
-  if (contentType === 'json') {
-    try {
-      const jsonData = JSON.parse(content);
-      return <JsonRenderer data={jsonData} />;
-    } catch {
-      // Fallback to markdown if JSON parsing fails
-    }
-  }
-  
-  return <MessageRenderer content={content} type={type} />;
 };
