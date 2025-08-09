@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
+import { MockAIService } from '@/modules/personal-assistant/services/mock-ai.service';
 
 interface ClaudeResponse {
   content: string;
@@ -13,6 +14,8 @@ export class ClaudeDirectService extends EventEmitter {
   private currentCallback: ((response: string) => void) | null = null;
   private responseBuffer = '';
   private responseTimeout: NodeJS.Timeout | null = null;
+  private mockService: MockAIService | null = null;
+  private useMockService = false;
 
   private constructor() {
     super();
@@ -26,7 +29,7 @@ export class ClaudeDirectService extends EventEmitter {
   }
 
   async initialize(): Promise<void> {
-    if (this.isReady && this.claudeProcess) {
+    if (this.isReady && (this.claudeProcess || this.mockService)) {
       console.log('Claude Direct Service already initialized');
       return;
     }
@@ -35,7 +38,7 @@ export class ClaudeDirectService extends EventEmitter {
       try {
         console.log('🚀 Starting Claude in direct mode...');
         
-        // Start Claude with simple stdio
+        // Try to start Claude CLI first
         this.claudeProcess = spawn('claude', [], {
           stdio: ['pipe', 'pipe', 'pipe'],
           env: process.env,
@@ -66,24 +69,44 @@ export class ClaudeDirectService extends EventEmitter {
           this.emit('exit', code);
         });
 
-        // Handle process errors
-        this.claudeProcess.on('error', (error) => {
+        // Handle process errors - fallback to mock service
+        this.claudeProcess.on('error', async (error) => {
           console.error('❌ Claude process error:', error);
-          this.isReady = false;
-          reject(error);
+          console.log('🔄 Switching to Mock AI Service...');
+          
+          // Initialize mock service as fallback
+          this.mockService = new MockAIService();
+          await this.mockService.initialize();
+          this.useMockService = true;
+          this.isReady = true;
+          
+          console.log('✅ Mock AI Service ready');
+          this.emit('ready');
+          resolve();
         });
 
         // Wait a bit for Claude to initialize
         setTimeout(() => {
-          this.isReady = true;
-          console.log('✅ Claude Direct Service ready');
-          this.emit('ready');
-          resolve();
+          if (!this.useMockService) {
+            this.isReady = true;
+            console.log('✅ Claude Direct Service ready');
+            this.emit('ready');
+            resolve();
+          }
         }, 2000);
 
       } catch (error) {
-        console.error('Failed to start Claude:', error);
-        reject(error);
+        console.error('Failed to start Claude, using mock service:', error);
+        
+        // Fallback to mock service
+        this.mockService = new MockAIService();
+        await this.mockService.initialize();
+        this.useMockService = true;
+        this.isReady = true;
+        
+        console.log('✅ Mock AI Service ready (fallback)');
+        this.emit('ready');
+        resolve();
       }
     });
   }
@@ -126,9 +149,21 @@ export class ClaudeDirectService extends EventEmitter {
   }
 
   async sendMessage(message: string): Promise<string> {
+    // Use mock service if available
+    if (this.useMockService && this.mockService) {
+      const response = await this.mockService.sendMessage(message);
+      return response.content;
+    }
+
     if (!this.isReady || !this.claudeProcess || !this.claudeProcess.stdin) {
       console.error('Claude not ready, initializing...');
       await this.initialize();
+      
+      // After initialization, check if we're using mock service
+      if (this.useMockService && this.mockService) {
+        const response = await this.mockService.sendMessage(message);
+        return response.content;
+      }
     }
 
     return new Promise((resolve, reject) => {
@@ -182,5 +217,28 @@ export class ClaudeDirectService extends EventEmitter {
 
   isActive(): boolean {
     return this.isReady && this.claudeProcess !== null;
+  }
+
+  terminate(): void {
+    if (this.mockService) {
+      this.mockService.terminate();
+      this.mockService = null;
+    }
+    
+    if (this.claudeProcess) {
+      console.log('Terminating Claude process...');
+      this.claudeProcess.kill();
+      this.claudeProcess = null;
+    }
+    
+    if (this.responseTimeout) {
+      clearTimeout(this.responseTimeout);
+      this.responseTimeout = null;
+    }
+    
+    this.isReady = false;
+    this.useMockService = false;
+    this.currentCallback = null;
+    this.responseBuffer = '';
   }
 }
