@@ -1,0 +1,535 @@
+/* ===================================================================
+   PERSONAL ASSISTANT CHAT INTERFACE - COMPLETE STYLES
+   =================================================================== */
+
+/* ===================================================================
+   1. CONTAINER & LAYOUT
+   =================================================================== */
+
+.assistant-container {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #0f172a, #1a1f2e);
+  display: flex;
+  overflow: hidden;
+}
+
+/* ===================================================================
+   2. SIDEBAR
+   =================================================================== */
+
+.chat-sidebar {
+  background: linear-gradient(180deg, #1a1f2e 0%, #0f172a 100%);
+  color: white;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  border-right: 1px solid rgba(71, 85, 105, 0.5);
+  position: relative;
+  z-index: 20;
+}
+
+.chat-sidebar.w-0,
+.chat-sidebar.closed {
+  width: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.new-chat-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.new-chat-button:hover {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Section Headers */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Chat Sessions & Cards */
+.chat-session-item {
+  padding: 0.5rem 0.75rem;
+  margin: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.chat-session-item:hover {
+  background: rgba(71, 85, 105, 0.3);
+}
+
+.chat-session-item.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-left: 2px solid #3b82f6;
+}
+
+.chat-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 4px 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: calc(100% - 12px);
+  text-align: left;
+  display: block;
+  overflow: hidden;
+}
+
+.chat-card:hover {
+  background: rgba(51, 65, 85, 0.6);
+  border-color: rgba(148, 163, 184, 0.3);
+  transform: translateX(2px);
+}
+
+.chat-card.active {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-color: #3b82f6;
+  border-left: 3px solid #3b82f6;
+  padding-left: 10px;
+}
+
+.chat-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #f1f5f9;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-message-preview {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===================================================================
+   3. MAIN CHAT AREA
+   =================================================================== */
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0f172a 0%, #1a1f2e 100%);
+  position: relative;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ===================================================================
+   4. MESSAGE AREA
+   =================================================================== */
+
+.message-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2rem;
+  padding-bottom: 140px; /* Space for fixed input area */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+}
+
+.message-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.message-area::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.message-area::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+
+.message-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* ===================================================================
+   5. MESSAGE WRAPPERS & BUBBLES
+   =================================================================== */
+
+.message-wrapper {
+  display: flex;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+/* User messages - Right aligned */
+.message-wrapper.user {
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+/* Assistant messages - Left aligned */
+.message-wrapper.assistant {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+/* Avatar Styles */
+.message-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.message-avatar.user {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  order: 2; /* Avatar after message for user */
+}
+
+.message-avatar.assistant {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
+  order: 0; /* Avatar before message for assistant */
+}
+
+/* Message Bubbles */
+.message-bubble {
+  max-width: 70%;
+  padding: 1rem 1.25rem;
+  border-radius: 1.25rem;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  position: relative;
+}
+
+.message-bubble-user,
+.message-bubble.user {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 1.5rem 1.5rem 0.25rem 1.5rem;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+  order: 1; /* Message before avatar for user */
+}
+
+.message-bubble-assistant,
+.message-bubble.assistant {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
+  color: #e0e7ff;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 1.5rem 1.5rem 1.5rem 0.25rem;
+  box-shadow: 0 8px 32px rgba(30, 58, 138, 0.3);
+  order: 1; /* Message after avatar for assistant */
+}
+
+/* Text colors in bubbles */
+.message-bubble-user *,
+.message-bubble.user * {
+  color: white !important;
+}
+
+.message-bubble-assistant *,
+.message-bubble.assistant * {
+  color: #e0e7ff !important;
+}
+
+/* Code blocks in messages */
+.message-bubble-assistant code,
+.message-bubble.assistant code {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: #22d3ee !important;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+.message-bubble-assistant pre,
+.message-bubble.assistant pre {
+  background: rgba(0, 0, 0, 0.4) !important;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.message-bubble-assistant pre code,
+.message-bubble.assistant pre code {
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  padding: 0;
+}
+
+/* ===================================================================
+   6. INPUT AREA
+   =================================================================== */
+
+.input-area {
+  position: fixed;
+  bottom: 0;
+  left: 260px; /* Offset for sidebar */
+  right: 0;
+  padding: 1.25rem;
+  background: rgba(30, 41, 59, 0.98);
+  border-top: 1px solid rgba(71, 85, 105, 0.5);
+  backdrop-filter: blur(10px);
+  z-index: 100;
+}
+
+/* Adjust when sidebar is closed */
+.chat-sidebar.closed ~ .chat-main .input-area,
+.chat-sidebar.w-0 ~ .chat-main .input-area {
+  left: 0;
+}
+
+.input-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+.input-textarea {
+  flex: 1;
+  padding: 0.875rem 1.125rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #f1f5f9;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  resize: none;
+  transition: all 0.2s;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 44px;
+  max-height: 200px;
+}
+
+.input-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.input-textarea::placeholder {
+  color: #64748b;
+}
+
+.send-button {
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  min-width: 100px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.send-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+}
+
+/* ===================================================================
+   7. TYPING INDICATOR
+   =================================================================== */
+
+.typing-indicator {
+  display: inline-flex;
+  gap: 6px;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-radius: 1.25rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.typing-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #60a5fa;
+  animation: typingAnimation 1.4s infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ===================================================================
+   8. ANIMATIONS
+   =================================================================== */
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typingAnimation {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  30% {
+    transform: translateY(-15px);
+    opacity: 1;
+  }
+}
+
+/* ===================================================================
+   9. RESPONSIVE & MOBILE
+   =================================================================== */
+
+@media (max-width: 768px) {
+  .chat-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    transform: translateX(-100%);
+  }
+  
+  .chat-sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .message-bubble {
+    max-width: 85%;
+  }
+  
+  .message-area {
+    padding: 1rem;
+  }
+  
+  .input-area {
+    left: 0 !important;
+    padding: 1rem;
+  }
+}
+
+/* ===================================================================
+   10. UTILITY CLASSES
+   =================================================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+}
+
+.empty-icon {
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #94a3b8;
+}
+
+.empty-description {
+  font-size: 0.875rem;
+  text-align: center;
+  max-width: 20rem;
+  line-height: 1.5;
+}
+
+/* Toggle Sidebar Button */
+.toggle-sidebar {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  padding: 0.5rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 0.5rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-sidebar:hover {
+  background: rgba(30, 41, 59, 0.95);
+  color: #e2e8f0;
+}

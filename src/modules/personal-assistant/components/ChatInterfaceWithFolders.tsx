@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Message } from '../types';
 import { MessageRenderer } from './MessageRenderer';
-import '../styles/chat-wrapper.scss';
+import '../styles/chat-interface.css';
 import '../styles/message-renderer.css';
 
 interface SessionInfo {
@@ -672,18 +672,35 @@ className="new-chat-button"
                   key={`${message.id}-${index}`}
                   className={`message-wrapper ${message.type}`}
                 >
-                  {/* Avatar */}
-                  <div className={`message-avatar ${message.type}`}>
-                    {message.type === 'user' ? '👤' : '🤖'}
-                  </div>
-                  
-                  {/* Message bubble */}
-                  <div className={`message-bubble message-bubble-${message.type}`}>
-                    <MessageRenderer 
-                      content={message.content} 
-                      type={message.type as 'user' | 'assistant' | 'system'}
-                    />
-                  </div>
+                  {message.type === 'user' ? (
+                    <>
+                      {/* Message bubble first for user */}
+                      <div className={`message-bubble message-bubble-${message.type}`}>
+                        <MessageRenderer 
+                          content={message.content} 
+                          type={message.type as 'user' | 'assistant' | 'system'}
+                        />
+                      </div>
+                      {/* Avatar after for user */}
+                      <div className={`message-avatar ${message.type}`}>
+                        👤
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Avatar first for assistant */}
+                      <div className={`message-avatar ${message.type}`}>
+                        🤖
+                      </div>
+                      {/* Message bubble after for assistant */}
+                      <div className={`message-bubble message-bubble-${message.type}`}>
+                        <MessageRenderer 
+                          content={message.content} 
+                          type={message.type as 'user' | 'assistant' | 'system'}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               ))
             )}
