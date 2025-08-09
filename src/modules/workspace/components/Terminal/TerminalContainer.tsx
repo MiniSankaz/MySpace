@@ -14,15 +14,20 @@ interface TerminalContainerProps {
 }
 
 const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
+  // Use stable session IDs based on project ID to maintain persistence
+  const systemSessionId = `system_${project.id}`;
+  const claudeSessionId = `claude_${project.id}`;
+  
   const [systemSessions, setSystemSessions] = useState<TerminalSession[]>([]);
   const [claudeSessions, setClaudeSessions] = useState<TerminalSession[]>([]);
   const [activeSystemTab, setActiveSystemTab] = useState<string | null>(null);
   const [activeClaudeTab, setActiveClaudeTab] = useState<string | null>(null);
 
   const handleCreateSystemSession = async (name: string) => {
-    // Create new system terminal session
+    // Create new system terminal session with stable ID
+    const sessionNum = systemSessions.length + 1;
     const newSession: TerminalSession = {
-      id: `session_${Date.now()}`,
+      id: `${systemSessionId}_tab${sessionNum}`,
       projectId: project.id,
       type: 'system',
       tabName: name,
@@ -37,9 +42,10 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
   };
 
   const handleCreateClaudeSession = async (name: string) => {
-    // Create new Claude terminal session
+    // Create new Claude terminal session with stable ID
+    const sessionNum = claudeSessions.length + 1;
     const newSession: TerminalSession = {
-      id: `session_${Date.now()}`,
+      id: `${claudeSessionId}_tab${sessionNum}`,
       projectId: project.id,
       type: 'claude',
       tabName: name,

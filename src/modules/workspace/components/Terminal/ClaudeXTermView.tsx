@@ -29,8 +29,8 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Generate a unique session ID for Claude terminal
-    const uniqueSessionId = `claude_${sessionId}_${projectId}_${Date.now()}`;
+    // Use stable session ID for Claude terminal based on provided sessionId and projectId
+    const uniqueSessionId = `${sessionId}_${projectId}`;
 
     // Create xterm.js instance with Claude theme
     const term = new Terminal({

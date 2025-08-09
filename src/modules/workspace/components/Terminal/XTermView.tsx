@@ -28,8 +28,8 @@ const XTermView: React.FC<XTermViewProps> = ({
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Generate a unique session ID that includes project ID to avoid conflicts
-    const uniqueSessionId = `${sessionId}_${projectId}_${Date.now()}`;
+    // Use stable session ID based on provided sessionId and projectId
+    const uniqueSessionId = `${sessionId}_${projectId}`;
 
     // Create xterm.js instance
     const term = new Terminal({

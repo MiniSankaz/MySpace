@@ -101,16 +101,25 @@ class TerminalWebSocketServer {
 
       console.log(`Starting terminal session in: ${workingDir}`);
 
-      // Check if session exists and has matching working directory
+      // Check if session exists
       let session = this.sessions.get(sessionId);
       
-      // Validate existing session
-      if (session && session.workingDir !== workingDir) {
-        console.log(`Session ${sessionId} exists but with different path. Creating new session.`);
-        // Remove old session if path doesn't match
-        if (session.process) {
-          session.process.kill();
+      // Reuse existing session if it exists and is still alive
+      if (session && session.process && !session.process.killed) {
+        console.log(`Reusing existing session: ${sessionId}`);
+        // Update WebSocket connection
+        session.ws = ws;
+        
+        // Send current buffer to reconnected client
+        if (session.outputBuffer) {
+          ws.send(JSON.stringify({
+            type: 'stream',
+            data: session.outputBuffer,
+          }));
         }
+      } else if (session) {
+        // Clean up dead session
+        console.log(`Session ${sessionId} exists but process is dead. Creating new session.`);
         this.sessions.delete(sessionId);
         session = null;
       }
