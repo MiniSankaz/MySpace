@@ -3,12 +3,14 @@ import { getAssistantInstance } from '@/modules/personal-assistant';
 import { verifyAuth } from '@/middleware/auth';
 import { withRateLimit } from '@/middleware/rate-limit';
 import { z } from 'zod';
+import { assistantLogger } from '@/services/assistant-logging.service';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(1000),
   userId: z.string().optional(),
   sessionId: z.string().optional(),
   directMode: z.boolean().optional(),
+  projectId: z.string().optional(),
 });
 
 export const POST = withRateLimit(async (request: NextRequest) => {
@@ -37,6 +39,31 @@ export const POST = withRateLimit(async (request: NextRequest) => {
     const userId = user.id;
     const sessionId = validation.data.sessionId || `session-${Date.now()}`;
     const directMode = validation.data.directMode ?? false;
+    const projectId = validation.data.projectId;
+    
+    // Create or get logging session
+    let loggingSessionId = sessionId;
+    try {
+      const loggingSession = await assistantLogger.createSession({
+        userId,
+        projectId,
+        sessionName: `Chat Session - ${new Date().toLocaleString()}`,
+        model: directMode ? 'claude-direct' : 'claude-assistant',
+      });
+      loggingSessionId = loggingSession.id;
+    } catch (error) {
+      console.error('Failed to create logging session:', error);
+    }
+    
+    // Log user message
+    const startTime = Date.now();
+    await assistantLogger.logMessage({
+      sessionId: loggingSessionId,
+      userId,
+      projectId,
+      role: 'user',
+      content: validation.data.message,
+    });
     
     const assistant = getAssistantInstance();
     
@@ -55,6 +82,27 @@ export const POST = withRateLimit(async (request: NextRequest) => {
         validation.data.message
       );
     }
+    
+    // Calculate response time and estimate tokens
+    const latency = Date.now() - startTime;
+    const estimatedTokens = Math.ceil((validation.data.message.length + response.length) / 4);
+    const estimatedCost = estimatedTokens * 0.00002; // Rough estimate
+    
+    // Log assistant response
+    await assistantLogger.logMessage({
+      sessionId: loggingSessionId,
+      userId,
+      projectId,
+      role: 'assistant',
+      content: response,
+      model: directMode ? 'claude-direct' : 'claude-assistant',
+      tokensUsed: estimatedTokens,
+      cost: estimatedCost,
+      latency,
+    });
+    
+    // Update daily analytics
+    await assistantLogger.updateDailyAnalytics(userId, projectId);
     
     // Generate a message ID for the response
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

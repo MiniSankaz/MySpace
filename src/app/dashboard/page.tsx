@@ -3,32 +3,36 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  UserIcon, 
-  ChatBubbleLeftRightIcon, 
-  Cog6ToothIcon,
-  ArrowRightOnRectangleIcon,
-  HomeIcon,
-  UsersIcon,
-  ChartBarIcon,
-  BellIcon,
+  ChatBubbleLeftRightIcon,
+  FolderOpenIcon,
   CommandLineIcon,
-  FolderOpenIcon
+  UserIcon,
+  ChartBarIcon,
+  ClockIcon,
+  DocumentTextIcon,
+  ServerIcon,
+  SparklesIcon,
+  BoltIcon,
+  ArrowTrendingUpIcon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline';
+import AppLayout from '@/components/layout/AppLayout';
 
 interface User {
   id: string;
   email: string;
   username: string;
   displayName?: string;
-  roles?: any[];
-  profile?: any;
+  roles?: string[];
 }
 
 interface DashboardStats {
   totalConversations: number;
   totalMessages: number;
-  activeUsers: number;
+  activeProjects: number;
+  terminalSessions: number;
   todayActivity: number;
+  weeklyGrowth: number;
 }
 
 export default function Dashboard() {
@@ -37,56 +41,42 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalConversations: 0,
     totalMessages: 0,
-    activeUsers: 0,
-    todayActivity: 0
+    activeProjects: 0,
+    terminalSessions: 0,
+    todayActivity: 0,
+    weeklyGrowth: 0
   });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   useEffect(() => {
-    checkAuth();
     loadDashboardData();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      const storedUser = localStorage.getItem('user');
-      
-      if (!token || !storedUser) {
-        router.push('/login');
-        return;
-      }
-
-      setUser(JSON.parse(storedUser));
-    } catch (error) {
-      console.error('Auth check error:', error);
-      router.push('/login');
-    }
-  };
-
   const loadDashboardData = async () => {
     try {
-      // Load user profile
-      const token = localStorage.getItem('accessToken');
-      const userResponse = await fetch('/api/ums/users/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        setUser(userData.user);
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
       }
 
-      // Load stats (mock data for now)
+      // Load stats (using mock data for now, replace with actual API calls)
       setStats({
-        totalConversations: 12,
-        totalMessages: 156,
-        activeUsers: 3,
-        todayActivity: 28
+        totalConversations: 24,
+        totalMessages: 342,
+        activeProjects: 5,
+        terminalSessions: 18,
+        todayActivity: 47,
+        weeklyGrowth: 12.5
       });
+
+      // Load recent activity
+      setRecentActivity([
+        { id: 1, type: 'chat', message: 'AI Assistant conversation about React hooks', time: '2 hours ago', icon: ChatBubbleLeftRightIcon },
+        { id: 2, type: 'terminal', message: 'Terminal session: npm install completed', time: '3 hours ago', icon: CommandLineIcon },
+        { id: 3, type: 'project', message: 'New project created: E-commerce Platform', time: '5 hours ago', icon: FolderOpenIcon },
+        { id: 4, type: 'chat', message: 'Code review with Claude AI', time: '1 day ago', icon: SparklesIcon },
+      ]);
     } catch (error) {
       console.error('Load dashboard data error:', error);
     } finally {
@@ -94,422 +84,233 @@ export default function Dashboard() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-      await fetch('/api/ums/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
-      router.push('/login');
+  const quickActions = [
+    {
+      title: 'AI Assistant',
+      description: 'Start a conversation with Claude',
+      icon: ChatBubbleLeftRightIcon,
+      color: 'bg-blue-500',
+      href: '/assistant'
+    },
+    {
+      title: 'Workspace',
+      description: 'Manage your projects',
+      icon: FolderOpenIcon,
+      color: 'bg-green-500',
+      href: '/workspace'
+    },
+    {
+      title: 'Terminal',
+      description: 'Access command line',
+      icon: CommandLineIcon,
+      color: 'bg-purple-500',
+      href: '/terminal'
+    },
+    {
+      title: 'Analytics',
+      description: 'View your statistics',
+      icon: ChartBarIcon,
+      color: 'bg-orange-500',
+      href: '/analytics'
     }
-  };
+  ];
+
+  const statsCards = [
+    {
+      name: 'Total Conversations',
+      value: stats.totalConversations,
+      icon: ChatBubbleLeftRightIcon,
+      change: '+12%',
+      changeType: 'positive'
+    },
+    {
+      name: 'Active Projects',
+      value: stats.activeProjects,
+      icon: FolderOpenIcon,
+      change: '+2',
+      changeType: 'positive'
+    },
+    {
+      name: 'Terminal Sessions',
+      value: stats.terminalSessions,
+      icon: CommandLineIcon,
+      change: '+5',
+      changeType: 'positive'
+    },
+    {
+      name: "Today's Activity",
+      value: stats.todayActivity,
+      icon: BoltIcon,
+      change: `+${stats.weeklyGrowth}%`,
+      changeType: 'positive'
+    }
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-gray-500">Loading dashboard...</div>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-400 hover:text-gray-500">
-                <BellIcon className="h-6 w-6" />
-              </button>
-              <div className="flex items-center space-x-3">
-                <div className="text-sm text-right">
-                  <p className="text-gray-900 font-medium">
-                    {user?.displayName || user?.username}
-                  </p>
-                  <p className="text-gray-500">{user?.email}</p>
+    <AppLayout>
+      <div className="space-y-6">
+        {/* Welcome Section */}
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+          <h1 className="text-3xl font-bold">
+            Welcome back, {user?.displayName || user?.username}!
+          </h1>
+          <p className="mt-2 text-indigo-100">
+            Here's what's happening with your projects today.
+          </p>
+          <div className="mt-4 flex items-center space-x-2 text-sm">
+            <CalendarDaysIcon className="h-5 w-5" />
+            <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {statsCards.map((stat) => (
+            <div key={stat.name} className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <stat.icon className="h-6 w-6 text-gray-400" aria-hidden="true" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">{stat.name}</dt>
+                      <dd className="flex items-baseline">
+                        <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
+                        <div className={`ml-2 flex items-baseline text-sm font-semibold ${
+                          stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {stat.change}
+                        </div>
+                      </dd>
+                    </dl>
+                  </div>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 text-gray-400 hover:text-gray-500"
-                  title="Logout"
-                >
-                  <ArrowRightOnRectangleIcon className="h-6 w-6" />
-                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Actions and Recent Activity */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Quick Actions */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4">
+                {quickActions.map((action) => (
+                  <button
+                    key={action.title}
+                    onClick={() => router.push(action.href)}
+                    className="relative rounded-lg p-4 text-left hover:bg-gray-50 border border-gray-200 transition-colors"
+                  >
+                    <div className={`inline-flex p-3 rounded-lg ${action.color} text-white`}>
+                      <action.icon className="h-6 w-6" aria-hidden="true" />
+                    </div>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">{action.title}</h3>
+                    <p className="mt-1 text-xs text-gray-500">{action.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+            </div>
+            <div className="p-6">
+              <div className="flow-root">
+                <ul role="list" className="-mb-8">
+                  {recentActivity.map((activity, activityIdx) => (
+                    <li key={activity.id}>
+                      <div className="relative pb-8">
+                        {activityIdx !== recentActivity.length - 1 ? (
+                          <span
+                            className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <div className="relative flex space-x-3">
+                          <div>
+                            <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                              <activity.icon className="h-5 w-5 text-gray-500" aria-hidden="true" />
+                            </span>
+                          </div>
+                          <div className="flex min-w-0 flex-1 justify-between space-x-4">
+                            <div>
+                              <p className="text-sm text-gray-900">{activity.message}</p>
+                            </div>
+                            <div className="whitespace-nowrap text-right text-sm text-gray-500">
+                              <time>{activity.time}</time>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <nav className="space-y-1">
+        {/* Project Overview */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900">Active Projects</h2>
               <button
-                onClick={() => setActiveTab('overview')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeTab === 'overview'
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                onClick={() => router.push('/workspace')}
+                className="text-sm text-indigo-600 hover:text-indigo-500"
               >
-                <HomeIcon className="mr-3 h-5 w-5" />
-                Overview
+                View all
               </button>
-              <button
-                onClick={() => setActiveTab('assistant')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeTab === 'assistant'
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <ChatBubbleLeftRightIcon className="mr-3 h-5 w-5" />
-                AI Assistant
-              </button>
-              <button
-                onClick={() => setActiveTab('workspace')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeTab === 'workspace'
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <FolderOpenIcon className="mr-3 h-5 w-5" />
-                Workspace
-              </button>
-              <button
-                onClick={() => setActiveTab('terminal')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeTab === 'terminal'
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <CommandLineIcon className="mr-3 h-5 w-5" />
-                Terminal
-              </button>
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeTab === 'profile'
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <UserIcon className="mr-3 h-5 w-5" />
-                Profile
-              </button>
-              {user?.roles?.includes('admin') && (
-                <>
-                  <button
-                    onClick={() => setActiveTab('users')}
-                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeTab === 'users'
-                        ? 'bg-gray-900 text-white'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <UsersIcon className="mr-3 h-5 w-5" />
-                    Users
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('analytics')}
-                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeTab === 'analytics'
-                        ? 'bg-gray-900 text-white'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <ChartBarIcon className="mr-3 h-5 w-5" />
-                    Analytics
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeTab === 'settings'
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Cog6ToothIcon className="mr-3 h-5 w-5" />
-                Settings
-              </button>
-            </nav>
+            </div>
           </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {activeTab === 'overview' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Overview</h2>
-                
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <p className="text-sm font-medium text-gray-600">Total Conversations</p>
-                    <p className="mt-2 text-3xl font-semibold text-gray-900">
-                      {stats.totalConversations}
-                    </p>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <p className="text-sm font-medium text-gray-600">Total Messages</p>
-                    <p className="mt-2 text-3xl font-semibold text-gray-900">
-                      {stats.totalMessages}
-                    </p>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <p className="text-sm font-medium text-gray-600">Active Users</p>
-                    <p className="mt-2 text-3xl font-semibold text-gray-900">
-                      {stats.activeUsers}
-                    </p>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <p className="text-sm font-medium text-gray-600">Today's Activity</p>
-                    <p className="mt-2 text-3xl font-semibold text-gray-900">
-                      {stats.todayActivity}
-                    </p>
+          <div className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <ServerIcon className="h-6 w-6 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">E-commerce Platform</p>
+                    <p className="text-xs text-gray-500">Last updated 2 hours ago</p>
                   </div>
                 </div>
-
-                {/* Quick Actions */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                    <button
-                      onClick={() => router.push('/assistant')}
-                      className="p-4 text-left border rounded-lg hover:bg-gray-50"
-                    >
-                      <ChatBubbleLeftRightIcon className="h-6 w-6 text-indigo-600 mb-2" />
-                      <p className="font-medium">Open AI Assistant</p>
-                      <p className="text-sm text-gray-500">Start a conversation</p>
-                    </button>
-                    <button
-                      onClick={() => router.push('/workspace')}
-                      className="p-4 text-left border rounded-lg hover:bg-gray-50"
-                    >
-                      <FolderOpenIcon className="h-6 w-6 text-indigo-600 mb-2" />
-                      <p className="font-medium">Project Workspace</p>
-                      <p className="text-sm text-gray-500">Manage development projects</p>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('profile')}
-                      className="p-4 text-left border rounded-lg hover:bg-gray-50"
-                    >
-                      <UserIcon className="h-6 w-6 text-indigo-600 mb-2" />
-                      <p className="font-medium">Update Profile</p>
-                      <p className="text-sm text-gray-500">Manage your information</p>
-                    </button>
-                  </div>
-                </div>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Active
+                </span>
               </div>
-            )}
-
-            {activeTab === 'assistant' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">AI Assistant</h2>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <p className="text-gray-600 mb-4">
-                    Access your personal AI assistant to help with various tasks.
-                  </p>
-                  <button
-                    onClick={() => router.push('/assistant')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Open Assistant
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'profile' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile Settings</h2>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <form className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        value={user?.username || ''}
-                        readOnly
-                        disabled
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={user?.email || ''}
-                        readOnly
-                        disabled
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Display Name
-                      </label>
-                      <input
-                        type="text"
-                        defaultValue={user?.displayName || ''}
-                        onChange={(e) => setUser(prev => prev ? {...prev, displayName: e.target.value} : null)}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Roles
-                      </label>
-                      <div className="mt-1">
-                        {user?.roles?.map((role, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 mr-2"
-                          >
-                            {typeof role === 'string' ? role : role?.name || role?.code || 'Unknown'}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <button
-                        type="submit"
-                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'workspace' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Project Workspace</h2>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <p className="text-gray-600 mb-4">
-                    Manage your development projects with dual terminal system for OS commands and Claude Code.
-                  </p>
-                  <div className="space-y-4 mb-6">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 text-sm font-medium">1</span>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Project Management</h4>
-                        <p className="text-sm text-gray-600">Create and manage multiple projects with configurations</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 text-sm font-medium">2</span>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Dual Terminal System</h4>
-                        <p className="text-sm text-gray-600">System terminal for OS commands, Claude terminal for AI assistance</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 text-sm font-medium">3</span>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">File Structure Visualization</h4>
-                        <p className="text-sm text-gray-600">View and navigate project structure with auto-scan</p>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => router.push('/workspace')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    <FolderOpenIcon className="mr-2 h-5 w-5" />
-                    Open Workspace
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'terminal' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Web Terminal</h2>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <p className="text-gray-600 mb-4">
-                    Access a secure terminal session directly from your browser.
-                  </p>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Warning:</strong> Terminal access provides direct command execution on the server. 
-                      Use with caution.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => router.push('/terminal')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-900 hover:bg-gray-800"
-                  >
-                    <CommandLineIcon className="mr-2 h-5 w-5" />
-                    Open Terminal
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'settings' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Settings</h2>
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Account Settings</h3>
-                  <div className="space-y-4">
-                    <button className="text-indigo-600 hover:text-indigo-500">
-                      Change Password
-                    </button>
-                    <br />
-                    <button className="text-indigo-600 hover:text-indigo-500">
-                      Two-Factor Authentication
-                    </button>
-                    <br />
-                    <button className="text-indigo-600 hover:text-indigo-500">
-                      API Keys
-                    </button>
-                    <br />
-                    <button className="text-red-600 hover:text-red-500">
-                      Delete Account
-                    </button>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <DocumentTextIcon className="h-6 w-6 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Blog Application</p>
+                    <p className="text-xs text-gray-500">Last updated 1 day ago</p>
                   </div>
                 </div>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  In Progress
+                </span>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

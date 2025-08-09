@@ -1,0 +1,461 @@
+{
+  "title": "การตั้งค่า",
+  "subtitle": "จัดการการตั้งค่าบัญชีและการกำหนดค่าต่างๆ",
+  
+  "categories": {
+    "user": "การตั้งค่าผู้ใช้",
+    "api": "การกำหนดค่า API",
+    "system": "การจัดการระบบ"
+  },
+  
+  "tabs": {
+    "profile": {
+      "name": "โปรไฟล์",
+      "description": "จัดการข้อมูลส่วนตัวและการตั้งค่าทั่วไป"
+    },
+    "appearance": {
+      "name": "รูปลักษณ์",
+      "description": "ปรับแต่งหน้าตาและการแสดงผลของแอปพลิเคชัน"
+    },
+    "notifications": {
+      "name": "การแจ้งเตือน",
+      "description": "กำหนดค่าวิธีการรับการแจ้งเตือน"
+    },
+    "security": {
+      "name": "ความปลอดภัย",
+      "description": "จัดการการตั้งค่าความปลอดภัยและการยืนยันตัวตนสองขั้นตอน"
+    },
+    "apiTokens": {
+      "name": "API Tokens",
+      "description": "จัดการ Token และ Access Keys สำหรับ API"
+    },
+    "apiLimits": {
+      "name": "ขีดจำกัด API",
+      "description": "กำหนดค่า Rate Limits และโควต้าการใช้งาน"
+    },
+    "webhooks": {
+      "name": "Webhooks",
+      "description": "ตั้งค่า Webhook endpoints สำหรับ Events"
+    },
+    "integrations": {
+      "name": "การเชื่อมต่อ",
+      "description": "เชื่อมต่อกับบริการภายนอก"
+    },
+    "system": {
+      "name": "ระบบ",
+      "description": "การกำหนดค่าและการตั้งค่าทั้งระบบ"
+    },
+    "database": {
+      "name": "ฐานข้อมูล",
+      "description": "การกำหนดค่าและการบำรุงรักษาฐานข้อมูล"
+    },
+    "logs": {
+      "name": "บันทึก",
+      "description": "ดูและจัดการบันทึกของระบบ"
+    }
+  },
+  
+  "userSettings": {
+    "profileInfo": {
+      "title": "ข้อมูลโปรไฟล์",
+      "firstName": "ชื่อ",
+      "lastName": "นามสกุล",
+      "displayName": "ชื่อที่แสดง",
+      "email": "อีเมล",
+      "phone": "เบอร์โทรศัพท์",
+      "bio": "ประวัติย่อ",
+      "bioPlaceholder": "เล่าเกี่ยวกับตัวคุณ..."
+    },
+    "regionalSettings": {
+      "title": "การตั้งค่าภูมิภาค",
+      "language": "ภาษา",
+      "timezone": "เขตเวลา",
+      "dateFormat": "รูปแบบวันที่",
+      "timeFormat": "รูปแบบเวลา",
+      "firstDayOfWeek": "วันแรกของสัปดาห์",
+      "languages": {
+        "en": "อังกฤษ",
+        "th": "ไทย",
+        "zh": "จีน",
+        "ja": "ญี่ปุ่น",
+        "ko": "เกาหลี"
+      },
+      "timezones": {
+        "utc": "UTC",
+        "bangkok": "กรุงเทพฯ (UTC+7)",
+        "singapore": "สิงคโปร์ (UTC+8)",
+        "newyork": "นิวยอร์ก (EST)",
+        "losangeles": "ลอสแอนเจลิส (PST)",
+        "london": "ลอนดอน (GMT)"
+      },
+      "timeFormats": {
+        "12h": "12 ชั่วโมง",
+        "24h": "24 ชั่วโมง"
+      }
+    },
+    "privacySettings": {
+      "title": "การตั้งค่าความเป็นส่วนตัว",
+      "profileVisibility": "การมองเห็นโปรไฟล์",
+      "visibilityOptions": {
+        "public": "สาธารณะ",
+        "private": "ส่วนตัว",
+        "friends": "เฉพาะเพื่อน"
+      },
+      "showEmail": "แสดงอีเมลบนโปรไฟล์",
+      "showPhone": "แสดงเบอร์โทรบนโปรไฟล์",
+      "showLocation": "แสดงตำแหน่งบนโปรไฟล์",
+      "allowMessages": "อนุญาตให้ส่งข้อความโดยตรง",
+      "allowInvites": "อนุญาตให้เชิญเข้าโปรเจค"
+    }
+  },
+  
+  "apiSettings": {
+    "rateLimits": {
+      "title": "การจำกัดอัตรา",
+      "warning": "กำหนดค่าการจำกัดอัตราสำหรับ API เพื่อป้องกันการใช้งานมากเกินไปและรับประกันการใช้งานที่เป็นธรรม",
+      "maxRequestsPerHour": "คำขอสูงสุดต่อชั่วโมง",
+      "maxRequestsPerDay": "คำขอสูงสุดต่อวัน",
+      "maxTokensPerRequest": "Token สูงสุดต่อคำขอ",
+      "maxConcurrentRequests": "คำขอพร้อมกันสูงสุด",
+      "requestTimeout": "หมดเวลาคำขอ (มิลลิวินาที)",
+      "enableRateLimiting": "เปิดใช้งานการจำกัดอัตรา"
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "enable": "เปิดใช้งาน Webhooks",
+      "url": "Webhook URL",
+      "urlPlaceholder": "https://your-domain.com/webhook",
+      "secret": "Webhook Secret",
+      "secretPlaceholder": "Secret สำหรับการยืนยัน",
+      "events": "Events ที่ต้องการรับการแจ้งเตือน",
+      "retryAttempts": "จำนวนครั้งที่ลองใหม่",
+      "timeout": "หมดเวลา (มิลลิวินาที)",
+      "verifySSL": "ตรวจสอบใบรับรอง SSL"
+    },
+    "tokenManagement": {
+      "title": "การจัดการ API Token",
+      "description": "จัดการ API tokens และ access keys จากหน้า API Keys",
+      "goToApiKeys": "ไปที่ API Keys"
+    }
+  },
+  
+  "systemSettings": {
+    "maintenance": {
+      "title": "โหมดบำรุงรักษา",
+      "enable": "เปิดใช้งานโหมดบำรุงรักษา",
+      "message": "ข้อความบำรุงรักษา",
+      "messagePlaceholder": "เรากำลังดำเนินการบำรุงรักษาตามกำหนด..."
+    },
+    "performance": {
+      "title": "ประสิทธิภาพ",
+      "enableCaching": "เปิดใช้งาน Cache",
+      "enableCompression": "เปิดใช้งานการบีบอัด",
+      "minifyAssets": "ย่อไฟล์ Assets",
+      "debugMode": "โหมด Debug",
+      "cacheTTL": "Cache TTL (วินาที)",
+      "clearCache": "ล้าง Cache"
+    },
+    "storage": {
+      "title": "พื้นที่เก็บข้อมูล",
+      "maxUploadSize": "ขนาดอัพโหลดสูงสุด (MB)",
+      "dataRetention": "การเก็บรักษาข้อมูล (วัน)",
+      "provider": "ผู้ให้บริการ Storage",
+      "providers": {
+        "local": "Local Storage",
+        "s3": "Amazon S3",
+        "gcs": "Google Cloud Storage",
+        "azure": "Azure Blob Storage"
+      },
+      "localPath": "Path สำหรับ Local Storage",
+      "s3Bucket": "S3 Bucket",
+      "s3Region": "S3 Region",
+      "accessKey": "Access Key",
+      "secretKey": "Secret Key"
+    },
+    "database": {
+      "title": "การกำหนดค่าฐานข้อมูล",
+      "warning": "การเปลี่ยนแปลงการตั้งค่าฐานข้อมูลอาจต้องรีสตาร์ทเซิร์ฟเวอร์",
+      "connectionPoolSize": "ขนาด Connection Pool",
+      "queryTimeout": "Query Timeout (มิลลิวินาที)",
+      "backupSchedule": "ตารางการสำรองข้อมูล",
+      "schedules": {
+        "hourly": "ทุกชั่วโมง",
+        "daily": "ทุกวัน",
+        "weekly": "ทุกสัปดาห์",
+        "monthly": "ทุกเดือน"
+      },
+      "backupRetention": "เก็บข้อมูลสำรอง (วัน)",
+      "enableQueryLogging": "เปิดใช้งาน Query Logging (กระทบประสิทธิภาพ)"
+    },
+    "logs": {
+      "title": "บันทึกระบบ",
+      "description": "ดูและจัดการบันทึกของระบบ บันทึกจะถูกหมุนเวียนอัตโนมัติตามการตั้งค่าการเก็บรักษา",
+      "logLevel": "ระดับการบันทึก",
+      "levels": {
+        "debug": "Debug",
+        "info": "Info",
+        "warning": "Warning",
+        "error": "Error"
+      },
+      "refresh": "รีเฟรช",
+      "download": "ดาวน์โหลดบันทึก",
+      "clear": "ล้างบันทึก"
+    }
+  },
+  
+  "securitySettings": {
+    "changePassword": {
+      "title": "เปลี่ยนรหัสผ่าน",
+      "currentPassword": "รหัสผ่านปัจจุบัน",
+      "newPassword": "รหัสผ่านใหม่",
+      "confirmPassword": "ยืนยันรหัสผ่านใหม่",
+      "passwordStrength": "ความแข็งแรงของรหัสผ่าน",
+      "passwordMismatch": "รหัสผ่านไม่ตรงกัน",
+      "strength": {
+        "weak": "อ่อน",
+        "fair": "พอใช้",
+        "good": "ดี",
+        "strong": "แข็งแรง"
+      }
+    },
+    "twoFactor": {
+      "title": "การยืนยันตัวตนสองขั้นตอน",
+      "enhanceSecurity": "เพิ่มความปลอดภัยให้บัญชีของคุณ",
+      "description": "การยืนยันตัวตนสองขั้นตอนเพิ่มชั้นความปลอดภัยให้กับบัญชีของคุณ",
+      "enable": "เปิดใช้งานการยืนยันตัวตนสองขั้นตอน",
+      "disable": "ปิดการยืนยันตัวตนสองขั้นตอน",
+      "enabled": "การยืนยันตัวตนสองขั้นตอนถูกเปิดใช้งาน",
+      "protected": "บัญชีของคุณได้รับการปกป้องด้วยการยืนยันตัวตนสองขั้นตอน",
+      "scanQR": "สแกน QR Code นี้ด้วยแอปยืนยันตัวตนของคุณ",
+      "enterCode": "ใส่รหัสยืนยัน",
+      "verify": "ยืนยัน"
+    },
+    "activeSessions": {
+      "title": "เซสชันที่ใช้งานอยู่",
+      "revokeAll": "ยกเลิกเซสชันอื่นทั้งหมด",
+      "current": "ปัจจุบัน",
+      "revoke": "ยกเลิก",
+      "confirmRevokeAll": "การดำเนินการนี้จะออกจากระบบทุกอุปกรณ์ยกเว้นอุปกรณ์นี้ ดำเนินการต่อหรือไม่?"
+    },
+    "securityAlerts": {
+      "title": "การแจ้งเตือนความปลอดภัย",
+      "emailLogin": "ส่งอีเมลเมื่อมีอุปกรณ์ใหม่เข้าสู่ระบบ",
+      "suspiciousActivity": "แจ้งเตือนเกี่ยวกับกิจกรรมที่น่าสงสัยในบัญชี",
+      "monthlyReport": "ส่งรายงานความปลอดภัยรายเดือน"
+    }
+  },
+  
+  "notificationSettings": {
+    "channels": {
+      "title": "ช่องทางการแจ้งเตือน",
+      "email": "อีเมล",
+      "push": "Push",
+      "sms": "SMS",
+      "inApp": "ในแอป"
+    },
+    "types": {
+      "title": "ประเภทการแจ้งเตือน",
+      "disableAll": "ปิดทั้งหมด",
+      "enableAll": "เปิดทั้งหมด",
+      "messages": {
+        "name": "ข้อความ",
+        "description": "ข้อความโดยตรงจากผู้ใช้อื่น"
+      },
+      "mentions": {
+        "name": "การกล่าวถึง",
+        "description": "เมื่อมีคนกล่าวถึงคุณในความคิดเห็นหรือโพสต์"
+      },
+      "comments": {
+        "name": "ความคิดเห็น",
+        "description": "ความคิดเห็นในโพสต์หรือโปรเจคของคุณ"
+      },
+      "updates": {
+        "name": "อัปเดตโปรเจค",
+        "description": "อัปเดตเกี่ยวกับโปรเจคที่คุณติดตามหรือมีส่วนร่วม"
+      },
+      "reminders": {
+        "name": "การเตือนความจำ",
+        "description": "การเตือนงานและการแจ้งเตือนกำหนดเวลา"
+      },
+      "billing": {
+        "name": "การเรียกเก็บเงิน",
+        "description": "การยืนยันการชำระเงินและอัปเดตการเรียกเก็บเงิน"
+      },
+      "security": {
+        "name": "ความปลอดภัย",
+        "description": "การแจ้งเตือนความปลอดภัยและการเข้าสู่ระบบ"
+      },
+      "marketing": {
+        "name": "การตลาด",
+        "description": "อัปเดตผลิตภัณฑ์ เคล็ดลับ และข้อเสนอโปรโมชัน"
+      }
+    },
+    "doNotDisturb": {
+      "title": "ห้ามรบกวน",
+      "enable": "เปิดใช้งานโหมดห้ามรบกวน",
+      "startTime": "เวลาเริ่มต้น",
+      "endTime": "เวลาสิ้นสุด",
+      "weekends": "รับการแจ้งเตือนในวันหยุดสุดสัปดาห์"
+    },
+    "emailPreferences": {
+      "title": "การตั้งค่าอีเมล",
+      "digest": "สรุปอีเมล",
+      "format": "รูปแบบอีเมล",
+      "digestOptions": {
+        "instant": "ทันที",
+        "hourly": "สรุปรายชั่วโมง",
+        "daily": "สรุปรายวัน",
+        "weekly": "สรุปรายสัปดาห์"
+      },
+      "formatOptions": {
+        "html": "HTML (พร้อมการจัดรูปแบบ)",
+        "text": "ข้อความธรรมดา"
+      },
+      "includeImages": "รวมรูปภาพในอีเมล",
+      "replyTo": "อนุญาตให้ตอบกลับอีเมลแจ้งเตือน"
+    },
+    "pushSettings": {
+      "title": "การตั้งค่า Push Notification",
+      "playSound": "เล่นเสียง",
+      "vibrate": "สั่นอุปกรณ์",
+      "sound": "เสียงแจ้งเตือน",
+      "sounds": {
+        "default": "ค่าเริ่มต้น",
+        "chime": "กริ่ง",
+        "bell": "ระฆัง",
+        "ping": "ปิ๊ง",
+        "none": "ไม่มี"
+      }
+    },
+    "test": {
+      "title": "ทดสอบการแจ้งเตือน",
+      "description": "ส่งการแจ้งเตือนทดสอบเพื่อตรวจสอบว่าการตั้งค่าของคุณทำงานถูกต้อง",
+      "send": "ส่งการแจ้งเตือนทดสอบ",
+      "sent": "ส่งการแจ้งเตือนทดสอบแล้ว!"
+    }
+  },
+  
+  "appearanceSettings": {
+    "theme": {
+      "title": "ธีม",
+      "light": "สว่าง",
+      "dark": "มืด",
+      "system": "ระบบ",
+      "schedule": "ตั้งเวลาโหมดมืด",
+      "startTime": "เวลาเริ่มต้น",
+      "endTime": "เวลาสิ้นสุด"
+    },
+    "colorScheme": {
+      "title": "โทนสี",
+      "presets": "ชุดสีสำเร็จรูป",
+      "primaryColor": "สีหลัก",
+      "accentColor": "สีเน้น",
+      "borderColor": "สีขอบ"
+    },
+    "typography": {
+      "title": "ตัวอักษร",
+      "fontSize": "ขนาดตัวอักษร",
+      "fontFamily": "แบบอักษร",
+      "lineHeight": "ความสูงบรรทัด",
+      "sizes": {
+        "small": "เล็ก",
+        "medium": "กลาง",
+        "large": "ใหญ่",
+        "xlarge": "ใหญ่พิเศษ"
+      },
+      "fonts": {
+        "inter": "Inter",
+        "system": "ค่าเริ่มต้นของระบบ",
+        "roboto": "Roboto",
+        "opensans": "Open Sans",
+        "montserrat": "Montserrat",
+        "mono": "Monospace"
+      },
+      "lineHeights": {
+        "tight": "แน่น",
+        "normal": "ปกติ",
+        "relaxed": "หลวม",
+        "loose": "หลวมมาก"
+      }
+    },
+    "layout": {
+      "title": "เลย์เอาต์",
+      "density": "ความหนาแน่นการแสดงผล",
+      "roundedCorners": "มุมโค้ง",
+      "densities": {
+        "compact": "กะทัดรัด",
+        "comfortable": "สบาย",
+        "spacious": "กว้างขวาง"
+      },
+      "corners": {
+        "none": "ไม่มี",
+        "small": "เล็ก",
+        "medium": "กลาง",
+        "large": "ใหญ่",
+        "full": "เต็ม"
+      },
+      "showBreadcrumbs": "แสดง Breadcrumbs",
+      "showFooter": "แสดง Footer",
+      "compactCards": "การ์ดแบบกะทัดรัด"
+    },
+    "visualEffects": {
+      "title": "เอฟเฟกต์ภาพ",
+      "animations": "เปิดใช้งานภาพเคลื่อนไหว",
+      "transparency": "เอฟเฟกต์โปร่งใส",
+      "blur": "เอฟเฟกต์เบลอ",
+      "shadows": "เงา"
+    },
+    "accessibility": {
+      "title": "การเข้าถึง",
+      "reduceMotion": "ลดการเคลื่อนไหว",
+      "highContrast": "โหมดคอนทราสต์สูง",
+      "focusIndicators": "แสดงตัวบ่งชี้โฟกัส",
+      "underlineLinks": "ขีดเส้นใต้ลิงก์",
+      "colorBlindMode": "โหมดตาบอดสี",
+      "colorBlindModes": {
+        "none": "ไม่มี",
+        "protanopia": "Protanopia (ตาบอดสีแดง)",
+        "deuteranopia": "Deuteranopia (ตาบอดสีเขียว)",
+        "tritanopia": "Tritanopia (ตาบอดสีน้ำเงิน)",
+        "monochrome": "ขาวดำ"
+      }
+    },
+    "actions": {
+      "preview": "ดูตัวอย่าง",
+      "stopPreview": "หยุดดูตัวอย่าง",
+      "resetDefaults": "รีเซ็ตเป็นค่าเริ่มต้น"
+    }
+  },
+  
+  "common": {
+    "save": "บันทึก",
+    "saving": "กำลังบันทึก...",
+    "saveChanges": "บันทึกการเปลี่ยนแปลง",
+    "cancel": "ยกเลิก",
+    "delete": "ลบ",
+    "edit": "แก้ไข",
+    "add": "เพิ่ม",
+    "remove": "ลบ",
+    "enable": "เปิดใช้งาน",
+    "disable": "ปิดใช้งาน",
+    "success": "สำเร็จ",
+    "error": "ข้อผิดพลาด",
+    "warning": "คำเตือน",
+    "info": "ข้อมูล",
+    "loading": "กำลังโหลด...",
+    "confirmDelete": "คุณแน่ใจหรือไม่ที่จะลบรายการนี้?",
+    "noData": "ไม่มีข้อมูล",
+    "required": "จำเป็น",
+    "optional": "ไม่บังคับ"
+  },
+  
+  "messages": {
+    "saveSuccess": "บันทึกการตั้งค่าเรียบร้อยแล้ว!",
+    "saveError": "ไม่สามารถบันทึกการตั้งค่าได้ กรุณาลองใหม่อีกครั้ง",
+    "loadError": "ไม่สามารถโหลดการตั้งค่าได้",
+    "deleteSuccess": "ลบเรียบร้อยแล้ว",
+    "deleteError": "ไม่สามารถลบได้",
+    "unauthorized": "คุณไม่มีสิทธิ์เข้าถึงการตั้งค่านี้",
+    "adminRequired": "ต้องการสิทธิ์ผู้ดูแลระบบ"
+  }
+}

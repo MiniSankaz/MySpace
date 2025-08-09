@@ -24,6 +24,7 @@ interface LoginCredentials {
   password: string;
   ipAddress?: string;
   userAgent?: string;
+  rememberMe?: boolean;
 }
 
 interface TokenPayload {
@@ -36,10 +37,13 @@ interface TokenPayload {
 export class AuthService {
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
   private readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
-  private readonly ACCESS_TOKEN_EXPIRY = '15m';
-  private readonly REFRESH_TOKEN_EXPIRY = '7d';
-  private readonly MAX_LOGIN_ATTEMPTS = 5;
-  private readonly LOCKOUT_DURATION = 30; // minutes
+  private readonly ACCESS_TOKEN_EXPIRY = this.getTokenExpiry(process.env.AUTH_ACCESS_TOKEN_EXPIRY, '15m');
+  private readonly REFRESH_TOKEN_EXPIRY = this.getTokenExpiry(process.env.AUTH_REFRESH_TOKEN_EXPIRY, '7d');
+  private readonly SESSION_EXPIRY = this.getSessionExpiry(process.env.AUTH_SESSION_EXPIRY, 7);
+  private readonly MAX_LOGIN_ATTEMPTS = parseInt(process.env.AUTH_MAX_LOGIN_ATTEMPTS || '5');
+  private readonly LOCKOUT_DURATION = parseInt(process.env.AUTH_LOCKOUT_DURATION || '30'); // minutes
+  private readonly REMEMBER_ME_ENABLED = process.env.AUTH_REMEMBER_ME_ENABLED === 'true';
+  private readonly REMEMBER_ME_DURATION = this.getSessionExpiry(process.env.AUTH_REMEMBER_ME_DURATION, 365);
 
   async register(data: UserRegistrationData) {
     try {
@@ -204,10 +208,10 @@ export class AuthService {
       });
 
       // Generate tokens
-      const tokens = await this.generateTokens(user.id);
+      const tokens = await this.generateTokens(user.id, credentials.rememberMe);
 
       // Create session
-      await this.createSession(user.id, tokens.refreshToken, credentials.ipAddress, credentials.userAgent);
+      await this.createSession(user.id, tokens.refreshToken, credentials.ipAddress, credentials.userAgent, credentials.rememberMe);
 
       return {
         user: {
@@ -430,7 +434,7 @@ export class AuthService {
     }
   }
 
-  private async generateTokens(userId: string): Promise<AuthTokens> {
+  private async generateTokens(userId: string, rememberMe?: boolean): Promise<AuthTokens> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -454,28 +458,42 @@ export class AuthService {
       roles: user.UserRole.map(ur => ur.Role.code)
     };
 
-    const accessToken = jwt.sign(payload, this.JWT_SECRET, {
-      expiresIn: this.ACCESS_TOKEN_EXPIRY
-    });
+    const accessTokenExpiry = rememberMe && this.REMEMBER_ME_ENABLED ? 'never' : this.ACCESS_TOKEN_EXPIRY;
+    const refreshTokenExpiry = rememberMe && this.REMEMBER_ME_ENABLED ? 'never' : this.REFRESH_TOKEN_EXPIRY;
 
-    const refreshToken = jwt.sign(payload, this.JWT_REFRESH_SECRET, {
-      expiresIn: this.REFRESH_TOKEN_EXPIRY
-    });
+    const accessToken = accessTokenExpiry === 'never' 
+      ? jwt.sign(payload, this.JWT_SECRET)
+      : jwt.sign(payload, this.JWT_SECRET, { expiresIn: accessTokenExpiry });
+
+    const refreshToken = refreshTokenExpiry === 'never'
+      ? jwt.sign(payload, this.JWT_REFRESH_SECRET)
+      : jwt.sign(payload, this.JWT_REFRESH_SECRET, { expiresIn: refreshTokenExpiry });
+
+    // Calculate expiry in seconds
+    const expiresIn = accessTokenExpiry === 'never' ? -1 : this.parseExpiryToSeconds(accessTokenExpiry);
 
     return {
       accessToken,
       refreshToken,
-      expiresIn: 900 // 15 minutes in seconds
+      expiresIn
     };
   }
 
-  private async createSession(userId: string, refreshToken: string, ipAddress?: string, userAgent?: string) {
+  private async createSession(userId: string, refreshToken: string, ipAddress?: string, userAgent?: string, rememberMe?: boolean) {
+    const sessionDays = rememberMe && this.REMEMBER_ME_ENABLED 
+      ? this.REMEMBER_ME_DURATION 
+      : this.SESSION_EXPIRY;
+    
+    const expires = sessionDays === -1 
+      ? new Date('2099-12-31') // Effectively never expires
+      : addDays(new Date(), sessionDays);
+
     await prisma.session.create({
       data: {
         id: `session_${Date.now()}_${randomBytes(8).toString('hex')}`,
         userId,
         sessionToken: refreshToken,
-        expires: addDays(new Date(), 7),
+        expires,
         ipAddress,
         userAgent,
         createdAt: new Date(),
@@ -517,9 +535,58 @@ export class AuthService {
       }
     });
   }
+
+  private getTokenExpiry(envValue: string | undefined, defaultValue: string): string {
+    if (!envValue) return defaultValue;
+    if (envValue === 'never') return 'never';
+    // Validate format (e.g., '15m', '1h', '7d', '1y')
+    if (/^\d+[smhdy]$/.test(envValue)) return envValue;
+    console.warn(`Invalid token expiry format: ${envValue}, using default: ${defaultValue}`);
+    return defaultValue;
+  }
+
+  private getSessionExpiry(envValue: string | undefined, defaultDays: number): number {
+    if (!envValue) return defaultDays;
+    if (envValue === 'never') return -1; // Special value for never expires
+    
+    // Parse duration strings like '7d', '30d', '365d'
+    const match = envValue.match(/^(\d+)([dhmy])$/);
+    if (match) {
+      const [, num, unit] = match;
+      const value = parseInt(num);
+      switch (unit) {
+        case 'd': return value;
+        case 'h': return value / 24;
+        case 'm': return value / (24 * 60);
+        case 'y': return value * 365;
+      }
+    }
+    
+    console.warn(`Invalid session expiry format: ${envValue}, using default: ${defaultDays} days`);
+    return defaultDays;
+  }
+
+  private parseExpiryToSeconds(expiry: string): number {
+    if (expiry === 'never') return -1;
+    
+    const match = expiry.match(/^(\d+)([smhdy])$/);
+    if (!match) return 900; // Default to 15 minutes
+    
+    const [, num, unit] = match;
+    const value = parseInt(num);
+    
+    switch (unit) {
+      case 's': return value;
+      case 'm': return value * 60;
+      case 'h': return value * 3600;
+      case 'd': return value * 86400;
+      case 'y': return value * 31536000;
+      default: return 900;
+    }
+  }
 }
 
-// Helper function - add this if not already imported
+// Helper function
 function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60000);
 }

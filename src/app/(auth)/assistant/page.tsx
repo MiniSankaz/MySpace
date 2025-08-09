@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChatInterfaceEnhanced } from '@/modules/personal-assistant/components/ChatInterfaceEnhanced';
+import { ChatInterfaceWithFolders } from '@/modules/personal-assistant/components/ChatInterfaceWithFolders';
 import './assistant.module.scss';
 
 export default function AssistantPage() {
   const [sessionId, setSessionId] = useState<string>('');
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
-      <ChatInterfaceEnhanced
+    <div className="assistant-page">
+      <ChatInterfaceWithFolders
         sessionId={sessionId}
         onSessionIdChange={setSessionId}
       />

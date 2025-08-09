@@ -240,4 +240,143 @@ export class ConversationStorage {
   async disconnect(): Promise<void> {
     await this.prisma.$disconnect();
   }
+
+  // API methods for external usage
+  async getSession(sessionId: string, userId: string): Promise<any> {
+    try {
+      const conversation = await this.prisma.assistantConversation.findUnique({
+        where: {
+          userId_sessionId: {
+            userId,
+            sessionId
+          }
+        },
+        include: {
+          messages: {
+            orderBy: {
+              createdAt: 'asc'
+            }
+          }
+        }
+      });
+
+      if (!conversation) {
+        return null;
+      }
+
+      return {
+        id: conversation.id,
+        sessionId: conversation.sessionId,
+        title: conversation.title,
+        createdAt: conversation.startedAt,
+        updatedAt: conversation.endedAt || conversation.startedAt,
+        messages: conversation.messages.map(msg => ({
+          role: msg.type,
+          content: msg.content,
+          timestamp: msg.createdAt
+        }))
+      };
+    } catch (error) {
+      console.error('Failed to get session:', error);
+      return null;
+    }
+  }
+
+  async saveMessage(sessionId: string, userId: string, role: string, content: string): Promise<void> {
+    try {
+      let conversation = await this.prisma.assistantConversation.findUnique({
+        where: {
+          userId_sessionId: {
+            userId,
+            sessionId
+          }
+        }
+      });
+
+      if (!conversation) {
+        // Ensure user exists
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId }
+        });
+        
+        if (!user) {
+          await this.prisma.user.create({
+            data: {
+              id: userId,
+              email: `${userId}@api.local`,
+              username: userId,
+              passwordHash: 'API_USER',
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          });
+        }
+
+        conversation = await this.prisma.assistantConversation.create({
+          data: {
+            id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            userId,
+            sessionId,
+            title: content.substring(0, 50)
+          }
+        });
+      }
+
+      await this.prisma.assistantMessage.create({
+        data: {
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          conversationId: conversation.id,
+          content,
+          type: role,
+          metadata: {},
+          createdAt: new Date()
+        }
+      });
+    } catch (error) {
+      console.error('Failed to save message:', error);
+    }
+  }
+
+  async getAllSessions(userId: string): Promise<any[]> {
+    try {
+      const conversations = await this.prisma.assistantConversation.findMany({
+        where: {
+          userId,
+          isActive: true
+        },
+        include: {
+          messages: {
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 1
+          }
+        },
+        orderBy: {
+          startedAt: 'desc'
+        }
+      });
+
+      return conversations.map(conv => ({
+        id: conv.id,
+        sessionId: conv.sessionId,
+        title: conv.title,
+        createdAt: conv.startedAt,
+        updatedAt: conv.endedAt || conv.startedAt,
+        messages: conv.messages.map(msg => ({
+          role: msg.type,
+          content: msg.content,
+          timestamp: msg.createdAt
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to get all sessions:', error);
+      return [];
+    }
+  }
+
+  async deleteSession(sessionId: string, userId: string): Promise<void> {
+    await this.deleteConversation(userId, sessionId);
+  }
 }

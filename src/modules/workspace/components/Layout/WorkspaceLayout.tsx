@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export const WorkspaceLayout: React.FC = () => {
   const {
+    projects,
     currentProject,
     sidebarCollapsed,
     toggleSidebar,
@@ -155,9 +156,19 @@ export const WorkspaceLayout: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="h-full"
+              className="h-full relative"
             >
-              {currentProject && <TerminalContainer project={currentProject} />}
+              {/* Render all project terminals but only show the active one */}
+              {projects.map(project => (
+                <div
+                  key={project.id}
+                  className={`absolute inset-0 ${
+                    currentProject && project.id === currentProject.id ? 'block' : 'hidden'
+                  }`}
+                >
+                  <TerminalContainer project={project} />
+                </div>
+              ))}
             </motion.div>
           ) : (
             <PanelGroup direction="horizontal" className="h-full">
@@ -276,9 +287,19 @@ export const WorkspaceLayout: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3 }}
-                    className="h-full"
+                    className="h-full relative"
                   >
-                    <TerminalContainer project={currentProject} />
+                    {/* Render all project terminals but only show the active one */}
+                    {projects.map(project => (
+                      <div
+                        key={project.id}
+                        className={`absolute inset-0 ${
+                          project.id === currentProject.id ? 'block' : 'hidden'
+                        }`}
+                      >
+                        <TerminalContainer project={project} />
+                      </div>
+                    ))}
                   </motion.div>
                 ) : (
                   <div className="h-full flex items-center justify-center">

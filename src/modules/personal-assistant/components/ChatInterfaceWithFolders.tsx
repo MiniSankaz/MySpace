@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Message } from '../types';
+import '../styles/chat-wrapper.scss';
 
 interface SessionInfo {
   sessionId: string;
@@ -441,12 +442,30 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
   };
 
   const formatMessage = (content: string) => {
-    return content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code class="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm">$1</code>')
+    // First handle code blocks to preserve their formatting
+    let formatted = content
       .replace(/```([\s\S]*?)```/g, '<pre class="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto my-2"><code>$1</code></pre>')
-      .replace(/\n/g, '<br />');
+      .replace(/`(.*?)`/g, '<code class="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm">$1</code>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Split by double newlines for paragraphs
+    const paragraphs = formatted.split(/\n\n+/);
+    
+    // Wrap each paragraph in <p> tags and handle single line breaks
+    formatted = paragraphs
+      .map(p => {
+        // Don't wrap if it's already a block element (pre, ul, ol)
+        if (p.trim().startsWith('<pre') || p.trim().startsWith('<ul') || p.trim().startsWith('<ol')) {
+          return p;
+        }
+        // Replace single newlines with <br> within paragraphs
+        return `<p>${p.replace(/\n/g, '<br />')}</p>`;
+      })
+      .filter(p => p.trim()) // Remove empty paragraphs
+      .join('');
+    
+    return formatted;
   };
 
   const renderSessionCard = (session: SessionInfo, isInFolder: boolean = false) => (
@@ -458,16 +477,14 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
     >
       <button
         onClick={() => selectSession(session.sessionId)}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-          sessionId === session.sessionId
-            ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-600'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+className={`chat-card ${
+          sessionId === session.sessionId ? 'active' : ''
         } ${isInFolder ? 'ml-4' : ''}`}
       >
-        <div className="font-medium text-sm text-gray-800 dark:text-gray-200 truncate pr-12">
+        <div className="chat-title">
           {session.title?.substring(0, 30) || 'Untitled Chat'}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+        <div className="chat-message-preview">
           {session.lastMessage?.substring(0, 40) || 'No messages'}...
         </div>
       </button>
@@ -544,16 +561,16 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
   );
 
   return (
-    <div className="flex h-full relative z-50">
+    <div className="assistant-container">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 assistant-sidebar flex flex-col overflow-hidden flex-shrink-0`}>
+      <div className={`chat-sidebar ${sidebarOpen ? 'w-80' : 'w-0'} overflow-hidden`}>
         {sidebarOpen && (
           <>
             {/* Sidebar Header */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="sidebar-header">
               <button
                 onClick={createNewSession}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+className="new-chat-button"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -651,11 +668,11 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative message-area">
+      <div className="chat-main">
         {/* Toggle Sidebar Button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute left-4 top-4 z-10 p-2 bg-gray-800/80 backdrop-blur rounded-lg shadow-md hover:shadow-lg transition-all hover:bg-gray-700/80"
+          className="absolute left-4 top-4 z-40 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md hover:shadow-lg transition-all"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sidebarOpen ? "M11 19l-7-7 7-7m8 14l-7-7 7-7" : "M13 5l7 7-7 7M5 5l7 7-7 7"} />
@@ -663,7 +680,7 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
         </button>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-custom">
+        <div className="message-area scrollbar-custom">
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.length === 0 ? (
               <div className="text-center py-12">
@@ -678,11 +695,15 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
               messages.map((message, index) => (
                 <div
                   key={`${message.id}-${index}`}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`message-wrapper ${message.type}`}
                 >
-                  <div
-                    className={`message-bubble ${message.type}`}
-                  >
+                  {/* Avatar */}
+                  <div className={`message-avatar ${message.type}`}>
+                    {message.type === 'user' ? '👤' : '🤖'}
+                  </div>
+                  
+                  {/* Message bubble */}
+                  <div className={`message-bubble ${message.type}`}>
                     <div
                       className="prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
@@ -693,7 +714,8 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
             )}
             
             {isTyping && (
-              <div className="flex justify-start">
+              <div className="message-wrapper assistant">
+                <div className="message-avatar assistant">🤖</div>
                 <div className="typing-indicator">
                   <div className="typing-dot" />
                   <div className="typing-dot" />
@@ -746,7 +768,7 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
                   }
                 }}
                 placeholder="Type your message..."
-                className="flex-1 input-textarea"
+className="flex-1 input-textarea"
                 rows={1}
               />
               <button

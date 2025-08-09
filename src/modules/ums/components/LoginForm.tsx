@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { authClient } from '@/core/auth/auth-client';
 
 export function LoginForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     emailOrUsername: '',
-    password: ''
+    password: '',
+    rememberMe: false
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,12 +31,19 @@ export function LoginForm() {
       const data = await response.json();
 
       if (data.success) {
-        // Store token in localStorage and cookie
-        localStorage.setItem('accessToken', data.tokens.accessToken);
+        // Store tokens using auth client
+        authClient.storeTokens(data.tokens);
+        
+        // Store user info
         localStorage.setItem('user', JSON.stringify(data.user));
         
         // Set cookie for server-side auth
-        document.cookie = `accessToken=${data.tokens.accessToken}; path=/; max-age=${data.tokens.expiresIn}`;
+        // If expiresIn is -1 (never expire), set max-age to 10 years
+        const maxAge = data.tokens.expiresIn === -1 ? 315360000 : data.tokens.expiresIn;
+        document.cookie = `accessToken=${data.tokens.accessToken}; path=/; max-age=${maxAge}`;
+        
+        // Initialize auth client for auto-refresh
+        authClient.init();
         
         // Redirect to dashboard
         router.push('/dashboard');
@@ -109,6 +118,10 @@ export function LoginForm() {
                 name="remember-me"
                 type="checkbox"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                checked={formData.rememberMe}
+                onChange={(e) =>
+                  setFormData({ ...formData, rememberMe: e.target.checked })
+                }
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                 Remember me

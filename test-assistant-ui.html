@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบ UI หน้า AI Assistant</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .test-item {
+            margin: 8px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #10b981;
+            color: white;
+        }
+        .status.warning {
+            background: #f59e0b;
+            color: white;
+        }
+        .status.error {
+            background: #ef4444;
+            color: white;
+        }
+        .status.checking {
+            background: #3b82f6;
+            color: white;
+        }
+        .iframe-container {
+            margin: 20px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 600px;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .log-area {
+            background: #1e293b;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 4px 0;
+        }
+        .log-entry.error {
+            color: #ef4444;
+        }
+        .log-entry.success {
+            color: #10b981;
+        }
+        .log-entry.info {
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 ทดสอบ UI หน้า AI Assistant</h1>
+        
+        <div class="test-section">
+            <div class="test-title">📋 รายการตรวจสอบ:</div>
+            
+            <div class="test-item">
+                <span>1. การแสดงผลหน้า Assistant</span>
+                <span id="status-page" class="status checking">กำลังตรวจสอบ...</span>
+            </div>
+            
+            <div class="test-item">
+                <span>2. Navigation Bar ไม่ทับซ้อน</span>
+                <span id="status-nav" class="status checking">กำลังตรวจสอบ...</span>
+            </div>
+            
+            <div class="test-item">
+                <span>3. Sidebar ของ Assistant ทำงานปกติ</span>
+                <span id="status-sidebar" class="status checking">กำลังตรวจสอบ...</span>
+            </div>
+            
+            <div class="test-item">
+                <span>4. Chat Interface แสดงผลถูกต้อง</span>
+                <span id="status-chat" class="status checking">กำลังตรวจสอบ...</span>
+            </div>
+            
+            <div class="test-item">
+                <span>5. ไม่มี Sidebar พิเศษที่ไม่จำเป็น</span>
+                <span id="status-extra" class="status checking">กำลังตรวจสอบ...</span>
+            </div>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button onclick="runTests()">🔄 ทดสอบใหม่</button>
+            <button onclick="openInNewTab()">🔗 เปิดในแท็บใหม่</button>
+            <button onclick="clearLogs()">🧹 ล้าง Logs</button>
+        </div>
+
+        <div class="iframe-container">
+            <iframe id="testFrame" src="http://127.0.0.1:4000/assistant"></iframe>
+        </div>
+
+        <div class="log-area" id="logArea">
+            <div class="log-entry info">🚀 เริ่มการทดสอบ UI...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:4000';
+        let accessToken = null;
+
+        function addLog(message, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString('th-TH');
+            entry.textContent = `[${timestamp}] ${message}`;
+            logArea.appendChild(entry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        async function login() {
+            try {
+                addLog('กำลัง login...', 'info');
+                
+                const response = await fetch(`${API_URL}/api/ums/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        emailOrUsername: 'test@example.com',
+                        password: 'Test123456!'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    accessToken = data.accessToken;
+                    addLog('✅ Login สำเร็จ', 'success');
+                    return true;
+                } else {
+                    addLog(`❌ Login ล้มเหลว: ${data.error}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function checkPageLoad() {
+            try {
+                const iframe = document.getElementById('testFrame');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                // Check if redirected to login
+                if (iframe.contentWindow.location.href.includes('/login')) {
+                    addLog('⚠️ ถูก redirect ไปหน้า login', 'error');
+                    document.getElementById('status-page').className = 'status warning';
+                    document.getElementById('status-page').textContent = 'ต้อง Login';
+                    
+                    // Try to login
+                    if (await login()) {
+                        // Reload iframe
+                        iframe.src = `${API_URL}/assistant`;
+                        setTimeout(() => checkPageLoad(), 2000);
+                    }
+                    return;
+                }
+                
+                // Check if page loaded
+                if (iframeDoc.readyState === 'complete') {
+                    document.getElementById('status-page').className = 'status success';
+                    document.getElementById('status-page').textContent = 'โหลดสำเร็จ';
+                    addLog('✅ หน้า Assistant โหลดสำเร็จ', 'success');
+                    
+                    // Continue with other checks
+                    checkNavigation(iframeDoc);
+                    checkSidebar(iframeDoc);
+                    checkChatInterface(iframeDoc);
+                    checkExtraSidebar(iframeDoc);
+                } else {
+                    setTimeout(() => checkPageLoad(), 1000);
+                }
+            } catch (error) {
+                addLog(`⚠️ ไม่สามารถเข้าถึง iframe: ${error.message}`, 'error');
+                document.getElementById('status-page').className = 'status error';
+                document.getElementById('status-page').textContent = 'Cross-origin';
+            }
+        }
+
+        function checkNavigation(doc) {
+            try {
+                const navElements = doc.querySelectorAll('nav');
+                const overlapping = [];
+                
+                navElements.forEach((nav, index) => {
+                    const rect = nav.getBoundingClientRect();
+                    navElements.forEach((otherNav, otherIndex) => {
+                        if (index !== otherIndex) {
+                            const otherRect = otherNav.getBoundingClientRect();
+                            if (rectsOverlap(rect, otherRect)) {
+                                overlapping.push(`Nav ${index} & ${otherIndex}`);
+                            }
+                        }
+                    });
+                });
+                
+                if (overlapping.length > 0) {
+                    document.getElementById('status-nav').className = 'status error';
+                    document.getElementById('status-nav').textContent = 'มีการทับซ้อน';
+                    addLog(`❌ พบ Navigation ทับซ้อน: ${overlapping.join(', ')}`, 'error');
+                } else {
+                    document.getElementById('status-nav').className = 'status success';
+                    document.getElementById('status-nav').textContent = 'ไม่ทับซ้อน';
+                    addLog(`✅ Navigation ไม่ทับซ้อน (พบ ${navElements.length} nav)`, 'success');
+                }
+            } catch (error) {
+                addLog(`⚠️ ไม่สามารถตรวจสอบ Navigation: ${error.message}`, 'error');
+            }
+        }
+
+        function checkSidebar(doc) {
+            try {
+                // Check for assistant's own sidebar
+                const sidebarToggle = doc.querySelector('button[class*="left-4"][class*="top-4"]');
+                const chatSidebar = doc.querySelector('div[class*="w-80"]');
+                
+                if (sidebarToggle || chatSidebar) {
+                    document.getElementById('status-sidebar').className = 'status success';
+                    document.getElementById('status-sidebar').textContent = 'พบ Sidebar';
+                    addLog('✅ พบ Sidebar ของ Assistant', 'success');
+                } else {
+                    document.getElementById('status-sidebar').className = 'status warning';
+                    document.getElementById('status-sidebar').textContent = 'ไม่พบ Sidebar';
+                    addLog('⚠️ ไม่พบ Sidebar ของ Assistant', 'error');
+                }
+            } catch (error) {
+                addLog(`⚠️ ไม่สามารถตรวจสอบ Sidebar: ${error.message}`, 'error');
+            }
+        }
+
+        function checkChatInterface(doc) {
+            try {
+                // Check for chat elements
+                const inputArea = doc.querySelector('textarea[placeholder*="Type"]');
+                const sendButton = doc.querySelector('button[class*="send"]');
+                const messageArea = doc.querySelector('div[class*="message"]');
+                
+                if (inputArea || sendButton || messageArea) {
+                    document.getElementById('status-chat').className = 'status success';
+                    document.getElementById('status-chat').textContent = 'พบ Chat UI';
+                    addLog('✅ พบ Chat Interface', 'success');
+                } else {
+                    document.getElementById('status-chat').className = 'status error';
+                    document.getElementById('status-chat').textContent = 'ไม่พบ Chat UI';
+                    addLog('❌ ไม่พบ Chat Interface', 'error');
+                }
+            } catch (error) {
+                addLog(`⚠️ ไม่สามารถตรวจสอบ Chat Interface: ${error.message}`, 'error');
+            }
+        }
+
+        function checkExtraSidebar(doc) {
+            try {
+                // Check for unwanted sidebar with non-working menu items
+                const unwantedItems = [
+                    'Projects', 'Code Editor', 'API Testing', 
+                    'Database', 'Deployments', 'Task Automation',
+                    'Workflows', 'AI Models', 'Pages', 
+                    'Media Library', 'Forms'
+                ];
+                
+                let foundUnwanted = false;
+                unwantedItems.forEach(item => {
+                    if (doc.body.textContent.includes(item)) {
+                        foundUnwanted = true;
+                        addLog(`⚠️ พบเมนูที่ไม่ได้ใช้งาน: ${item}`, 'error');
+                    }
+                });
+                
+                if (foundUnwanted) {
+                    document.getElementById('status-extra').className = 'status error';
+                    document.getElementById('status-extra').textContent = 'พบเมนูพิเศษ';
+                } else {
+                    document.getElementById('status-extra').className = 'status success';
+                    document.getElementById('status-extra').textContent = 'ไม่พบเมนูพิเศษ';
+                    addLog('✅ ไม่พบ Sidebar พิเศษที่ไม่จำเป็น', 'success');
+                }
+            } catch (error) {
+                addLog(`⚠️ ไม่สามารถตรวจสอบ Extra Sidebar: ${error.message}`, 'error');
+            }
+        }
+
+        function rectsOverlap(rect1, rect2) {
+            return !(rect1.right < rect2.left || 
+                     rect2.right < rect1.left || 
+                     rect1.bottom < rect2.top || 
+                     rect2.bottom < rect1.top);
+        }
+
+        function runTests() {
+            // Reset statuses
+            document.querySelectorAll('.status').forEach(el => {
+                el.className = 'status checking';
+                el.textContent = 'กำลังตรวจสอบ...';
+            });
+            
+            addLog('🔄 เริ่มทดสอบใหม่...', 'info');
+            checkPageLoad();
+        }
+
+        function openInNewTab() {
+            window.open(`${API_URL}/assistant`, '_blank');
+        }
+
+        function clearLogs() {
+            const logArea = document.getElementById('logArea');
+            logArea.innerHTML = '<div class="log-entry info">🧹 ล้าง logs แล้ว</div>';
+        }
+
+        // Start tests when page loads
+        window.onload = () => {
+            setTimeout(() => checkPageLoad(), 1000);
+        };
+    </script>
+</body>
+</html>

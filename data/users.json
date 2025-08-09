@@ -1,0 +1,13 @@
+[
+  {
+    "id": "ofbwlg",
+    "email": "sankaz@example.com",
+    "username": "sankaz",
+    "passwordHash": "$2b$10$YVBhkyBG/JCY6ONEku26d.inGOTs99t9FO4IZUmsQZzcpuAvJVnDy",
+    "firstName": "Sankaz",
+    "lastName": "User",
+    "displayName": "Sankaz",
+    "isActive": true,
+    "createdAt": "2025-08-09T00:35:00.684Z"
+  }
+]
