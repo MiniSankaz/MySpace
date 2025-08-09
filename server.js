@@ -4,15 +4,20 @@ require('tsconfig-paths/register');
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || '127.0.0.1';
 const port = process.env.PORT || 4000;
 
+// Next.js will handle its own internal port
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
+  // In development, Next.js HMR is already handled internally
+  // We don't need a separate proxy for HTTP since Next.js is handling it
+  
   const server = createServer(async (req, res) => {
     try {
       // Handle localhost redirect for development
@@ -63,21 +68,8 @@ app.prepare().then(() => {
     claudeWS = new ClaudeWebSocketServer(server);
     console.log('✓ Claude WebSocket server initialized');
     
-    // No need for manual upgrade handling for terminal anymore
-    // Only handle other WebSocket paths
-    server.on('upgrade', (request, socket, head) => {
-      try {
-        const url = new URL(request.url, `http://${request.headers.host}`);
-        
-        if (url.pathname === '/ws/claude') {
-          console.log('Claude WebSocket upgrade handled by ClaudeWebSocketServer');
-        } else if (url.pathname !== '/_next/webpack-hmr') {
-          console.log(`Unknown WebSocket path: ${url.pathname}`);
-        }
-      } catch (error) {
-        console.error('Error in upgrade handler:', error);
-      }
-    });
+    // Only handle custom WebSocket upgrades, not HMR
+    // Next.js will handle HMR WebSocket internally
     
     // Graceful shutdown
     process.on('SIGTERM', () => {
