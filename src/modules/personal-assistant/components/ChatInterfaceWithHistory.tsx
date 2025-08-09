@@ -408,7 +408,7 @@ export const ChatInterfaceWithHistory: React.FC<ChatInterfaceProps> = ({
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto px-4 py-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-          <div style={{ maxWidth: '55rem' }} className="mx-auto space-y-4">
+          <div className="space-y-4">
             {messages.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">💬</div>
