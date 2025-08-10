@@ -8,11 +8,15 @@ export class ConversationStorage {
     // Use singleton prisma instance from core
   }
 
+  // DEPRECATED: Use assistant-logging.service.ts instead
   async saveConversation(
     userId: string,
     sessionId: string,
     messages: Message[]
   ): Promise<void> {
+    console.log('[ConversationStorage] DEPRECATED - Use assistant-logging.service.ts instead');
+    return; // Skip saving - handled by assistant-logging.service.ts
+    /*
     console.log('[ConversationStorage] Saving:', { userId, sessionId, messageCount: messages.length });
     try {
       // Find or create conversation
@@ -85,6 +89,7 @@ export class ConversationStorage {
       // Fallback to file storage if database fails
       await this.saveToFile(userId, sessionId, messages);
     }
+    */
   }
 
   async loadConversation(

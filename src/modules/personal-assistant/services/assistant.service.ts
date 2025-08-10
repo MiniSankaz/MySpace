@@ -7,21 +7,21 @@ import {
 import { CommandRegistry } from './command-registry';
 import { ContextManager } from './context-manager';
 import { NLPProcessor } from './nlp-processor';
-import { ClaudeAIService } from './claude-ai.service';
+import { ClaudeDirectService } from '@/services/claude-direct.service';
 import { assistantLogger } from '@/services/assistant-logging.service';
 
 export class AssistantService {
   private commandRegistry: CommandRegistry;
   private contextManager: ContextManager;
   private nlpProcessor: NLPProcessor;
-  private claudeAI: ClaudeAIService;
+  private claudeService: ClaudeDirectService;
   private aiEnabled: boolean = false;
 
   constructor() {
     this.commandRegistry = new CommandRegistry();
     this.contextManager = new ContextManager();
     this.nlpProcessor = new NLPProcessor();
-    this.claudeAI = ClaudeAIService.getInstance();
+    this.claudeService = ClaudeDirectService.getInstance();
     
     // Initialize Claude AI in background
     this.initializeAI();
@@ -29,11 +29,11 @@ export class AssistantService {
   
   private async initializeAI(): Promise<void> {
     try {
-      await this.claudeAI.initialize();
+      await this.claudeService.initialize();
       this.aiEnabled = true;
-      console.log('Claude AI initialized successfully');
+      console.log('Claude Direct Service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Claude AI:', error);
+      console.error('Failed to initialize Claude Direct Service:', error);
       this.aiEnabled = false;
     }
   }
@@ -127,13 +127,13 @@ export class AssistantService {
           content: msg.content
         }));
         
-        const aiResponse = await this.claudeAI.sendMessage(message, [
+        const aiResponse = await this.claudeService.sendMessage(message, [
           {
             role: 'system',
             content: 'You are a helpful AI assistant integrated into a personal assistant system. Help users with coding, technical questions, and general tasks. Respond in Thai if the user writes in Thai. You have access to the conversation history to maintain context.'
           },
           ...conversationHistory
-        ]);
+        ], userId);
         
         return {
           message: aiResponse.content,
@@ -246,7 +246,7 @@ export class AssistantService {
       }
       
       // Send directly to Claude with session and full context
-      const claudeResponse = await this.claudeAI.sendMessageWithSession(message, sessionId, [
+      const claudeResponse = await this.claudeService.sendMessageWithSession(sessionId, message, [
         {
           role: 'system',
           content: 'You are Claude, a helpful AI assistant. Respond naturally in the same language as the user. If they write in Thai, respond in Thai. If they write in English, respond in English. Be conversational and helpful. You have access to the conversation history to maintain context.'
