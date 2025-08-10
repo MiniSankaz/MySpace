@@ -92,10 +92,10 @@ export class ConversationStorage {
     sessionId: string
   ): Promise<Message[]> {
     try {
-      // Load messages from NEW AssistantChatMessage table only
+      // Load messages directly from AssistantChatMessage table
       const messages = await this.prisma.assistantChatMessage.findMany({
         where: {
-          sessionId: sessionId,
+          sessionId: sessionId,  // Direct sessionId match (e.g., "session-1754819725323")
           userId: userId
         },
         orderBy: {
@@ -112,7 +112,7 @@ export class ConversationStorage {
         metadata: msg.metadata as any
       }));
 
-      console.log(`[ConversationStorage] Loaded ${convertedMessages.length} messages from AssistantChatMessage table`);
+      console.log(`[ConversationStorage] Loaded ${convertedMessages.length} messages from AssistantChatMessage for session ${sessionId}`);
       return convertedMessages;
     } catch (error) {
       console.error('Failed to load conversation from database:', error);

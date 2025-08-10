@@ -21,17 +21,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
     
-    // Get recent conversations for authenticated user only
-    const conversations = await prisma.assistantConversation.findMany({
+    // Get recent chat sessions for authenticated user only
+    const conversations = await prisma.assistantChatSession.findMany({
       where: {
-        userId: user.id,  // Filter by authenticated user
-        isActive: true,
-        folderId: null  // Only get conversations not in folders
+        userId: user.id  // Filter by authenticated user
       },
       include: {
         messages: {
           orderBy: {
-            createdAt: 'desc'
+            timestamp: 'desc'
           },
           take: 1
         },
@@ -42,32 +40,19 @@ export async function GET(request: NextRequest) {
         }
       },
       orderBy: {
-        startedAt: 'desc'
+        lastActiveAt: 'desc'
       },
-      take: limit * 2 // Get more to filter duplicates
+      take: limit
     });
-    
-    // Remove duplicate sessions (keep only the latest one for each sessionId)
-    const uniqueSessions = new Map();
-    conversations.forEach(conv => {
-      if (!uniqueSessions.has(conv.sessionId) || 
-          conv.startedAt > uniqueSessions.get(conv.sessionId).startedAt) {
-        uniqueSessions.set(conv.sessionId, conv);
-      }
-    });
-    
-    const filteredConversations = Array.from(uniqueSessions.values())
-      .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
-      .slice(0, limit);
     
     // Format sessions for response (remove userId from response for security)
-    const sessions = filteredConversations.map(conv => ({
-      sessionId: conv.sessionId,
-      title: conv.title || conv.messages[0]?.content?.substring(0, 50) || 'New Chat',
-      lastMessage: conv.messages[0]?.content || '',
-      messageCount: conv._count.messages,
-      createdAt: conv.startedAt,
-      folderId: conv.folderId
+    const sessions = conversations.map(session => ({
+      sessionId: session.id, // Use the session UUID as sessionId for frontend
+      title: session.sessionName || session.messages[0]?.content?.substring(0, 50) || 'New Chat',
+      lastMessage: session.messages[0]?.content || '',
+      messageCount: session._count.messages,
+      createdAt: session.startedAt,
+      folderId: null // Assistant chat sessions don't have folders yet
     }));
     
     return NextResponse.json({
