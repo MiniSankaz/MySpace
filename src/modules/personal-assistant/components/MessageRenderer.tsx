@@ -75,7 +75,7 @@ export const MessageRenderer: React.FC<MessageRendererProps> = ({ content, type 
           
           // Paragraphs
           p: ({ children }) => (
-            <p className="mb-4 leading-relaxed text-gray-100">
+            <p className="leading-relaxed text-gray-100" style={{ marginBottom: '0.1rem' }}>
               {children}
             </p>
           ),

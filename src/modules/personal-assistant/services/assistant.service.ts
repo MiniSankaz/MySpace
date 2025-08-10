@@ -8,6 +8,7 @@ import { CommandRegistry } from './command-registry';
 import { ContextManager } from './context-manager';
 import { NLPProcessor } from './nlp-processor';
 import { ClaudeAIService } from './claude-ai.service';
+import { assistantLogger } from '@/services/assistant-logging.service';
 
 export class AssistantService {
   private commandRegistry: CommandRegistry;
@@ -82,7 +83,33 @@ export class AssistantService {
       timestamp: new Date()
     };
     
+    // Add to in-memory context
     context.conversation.push(assistantMessage);
+    
+    // Also save to database via AssistantLogger
+    try {
+      // Ensure session exists (defensive programming)
+      await assistantLogger.createSession({
+        sessionId: context.sessionId,
+        userId: context.userId,
+        sessionName: `Chat - ${new Date().toLocaleString()}`,
+        model: 'claude-assistant'
+      }).catch(() => {
+        // Session likely already exists
+      });
+      
+      await assistantLogger.logMessage({
+        sessionId: context.sessionId,
+        role: 'assistant',
+        content: message,
+        userId: context.userId,
+        projectId: null
+      });
+    } catch (error) {
+      console.error('Failed to log assistant message:', error);
+    }
+    
+    // Keep the context save for in-memory management
     await this.contextManager.saveContext(context);
   }
 
@@ -193,14 +220,38 @@ export class AssistantService {
         content: msg.content
       }));
       
-      // Send directly to Claude with full context
-      const claudeResponse = await this.claudeAI.sendMessage(message, [
+      // Ensure session exists before logging message
+      try {
+        // Create or verify session first
+        await assistantLogger.createSession({
+          sessionId: sessionId,
+          userId: userId,
+          sessionName: `Direct Chat - ${new Date().toLocaleString()}`,
+          model: 'claude-direct'
+        }).catch(() => {
+          // Session might already exist, that's fine
+        });
+        
+        // Now log the message
+        await assistantLogger.logMessage({
+          sessionId: sessionId,
+          role: 'user',
+          content: message,
+          userId: userId,
+          projectId: null
+        });
+      } catch (error) {
+        console.error('Failed to log user message:', error);
+      }
+      
+      // Send directly to Claude with session and full context
+      const claudeResponse = await this.claudeAI.sendMessageWithSession(message, sessionId, [
         {
           role: 'system',
           content: 'You are Claude, a helpful AI assistant. Respond naturally in the same language as the user. If they write in Thai, respond in Thai. If they write in English, respond in English. Be conversational and helpful. You have access to the conversation history to maintain context.'
         },
         ...conversationHistory
-      ]);
+      ], userId);
       
       // Now add both messages to context
       context.conversation.push(userMessage);

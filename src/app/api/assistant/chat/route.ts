@@ -41,36 +41,35 @@ export const POST = withRateLimit(async (request: NextRequest) => {
     const directMode = validation.data.directMode ?? false;
     const projectId = validation.data.projectId;
     
-    // Create or get logging session
-    let loggingSessionId = sessionId;
+    // Streamlined session and logging setup
+    const startTime = Date.now();
+    
+    // Create session first (MUST complete before any message operations)
     try {
-      // Create or get session in database
-      const loggingSession = await assistantLogger.createSession({
+      await assistantLogger.createSession({
         sessionId,
         userId,
         projectId,
         sessionName: `Chat Session - ${new Date().toLocaleString()}`,
         model: directMode ? 'claude-direct' : 'claude-assistant',
       });
-      if (loggingSession) {
-        loggingSessionId = loggingSession.sessionId;
-      }
     } catch (error) {
-      console.error('Failed to create/get logging session:', error);
-      // Continue without logging if it fails
+      console.error('Session creation failed:', error);
+      // Continue - the logMessage method will handle session creation if needed
     }
     
-    // Log user message
-    const startTime = Date.now();
-    try {
-      await assistantLogger.logMessage({
-        sessionId: loggingSessionId,
-        role: 'user',
-        content: validation.data.message,
-      });
-    } catch (error) {
-      console.error('Failed to log user message:', error);
-    }
+    // Log user message in background (session now guaranteed to exist or will be created)
+    const userMessageLogging = assistantLogger.logMessage({
+      sessionId,
+      role: 'user',
+      content: validation.data.message,
+      userId,
+      projectId
+    }).catch(error => {
+      console.error('User message logging failed:', error);
+    });
+    
+    // Don't await user message logging - let it run in background
     
     const assistant = getAssistantInstance();
     
@@ -90,38 +89,48 @@ export const POST = withRateLimit(async (request: NextRequest) => {
       );
     }
     
-    // Calculate response time and estimate tokens
+    // Calculate response metrics and log in background
     const latency = Date.now() - startTime;
-    const estimatedTokens = Math.ceil((validation.data.message.length + response.length) / 4);
-    const estimatedCost = estimatedTokens * 0.00002; // Rough estimate
+    const estimatedTokens = Math.ceil((validation.data.message.length + (typeof response === 'string' ? response.length : 500)) / 4);
+    const estimatedCost = estimatedTokens * 0.00002;
     
-    // Log assistant response
-    try {
-      // Extract text content if response is an object
-      const responseContent = typeof response === 'string' ? response : 
-        (response?.message || response?.content || JSON.stringify(response));
-      
-      await assistantLogger.logMessage({
-        sessionId: loggingSessionId,
-        role: 'assistant',
-        content: responseContent,
-        tokens: estimatedTokens,
-        cost: estimatedCost,
-      });
-    } catch (error) {
-      console.error('Failed to log assistant message:', error);
-    }
+    // Log assistant response in background (don't block response)
+    const responseLogging = (async () => {
+      try {
+        const responseContent = typeof response === 'string' ? response : 
+          (response?.message || response?.content || JSON.stringify(response));
+        
+        await assistantLogger.logMessage({
+          sessionId,
+          role: 'assistant',
+          content: responseContent,
+          tokens: estimatedTokens,
+          cost: estimatedCost,
+          userId,
+          projectId
+        });
+      } catch (error) {
+        console.error('Failed to log assistant response:', error);
+      }
+    })();
     
     // Generate a message ID for the response
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    return NextResponse.json({
+    // Send response immediately, let background logging continue
+    const result = NextResponse.json({
       success: true,
       sessionId,
       messageId,
       response,
-      user: user ? { id: user.id, username: user.username } : null
+      user: user ? { id: user.id, username: user.username } : null,
+      latency, // Include performance metrics
     });
+    
+    // Ensure all logging completes (fire and forget)
+    Promise.allSettled([userMessageLogging, responseLogging]).catch(() => {});
+    
+    return result;
   } catch (error) {
     console.error('Assistant chat error:', error);
     return NextResponse.json(
