@@ -21,7 +21,7 @@ export class AssistantService {
     this.commandRegistry = new CommandRegistry();
     this.contextManager = new ContextManager();
     this.nlpProcessor = new NLPProcessor();
-    this.claudeAI = new ClaudeAIService();
+    this.claudeAI = ClaudeAIService.getInstance();
     
     // Initialize Claude AI in background
     this.initializeAI();
@@ -109,8 +109,9 @@ export class AssistantService {
       console.error('Failed to log assistant message:', error);
     }
     
-    // Keep the context save for in-memory management
-    await this.contextManager.saveContext(context);
+    // Keep the context save for in-memory management - DISABLED
+    // Context is saved through assistant-logging.service.ts now
+    // await this.contextManager.saveContext(context);
   }
 
   private async generateFallbackResponse(
@@ -265,8 +266,9 @@ export class AssistantService {
         }
       };
 
-      // Save assistant message
-      await this.saveAssistantMessage(context, response.message);
+      // Save assistant message - DISABLED to prevent duplicate logging
+      // Message is already saved in assistant-logging.service.ts
+      // await this.saveAssistantMessage(context, response.message);
       
       return response;
     } catch (error) {
@@ -278,7 +280,8 @@ export class AssistantService {
         suggestions: ['help', 'task list', 'note create']
       };
       
-      await this.saveAssistantMessage(context, fallbackResponse.message);
+      // DISABLED - already logged in assistant-logging.service.ts
+      // await this.saveAssistantMessage(context, fallbackResponse.message);
       return fallbackResponse;
     }
   }

@@ -30,6 +30,7 @@ import SecuritySettings from '@/components/settings/SecuritySettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import AIAssistantSettings from '@/components/settings/AIAssistantSettings';
+import { authClient } from '@/core/auth/auth-client';
 
 interface SettingsTab {
   id: string;
@@ -184,13 +185,12 @@ export default function SettingsPage() {
       // Convert ai-assistant to ai_assistant for backend consistency
       const categoryForBackend = activeTab === 'ai-assistant' ? 'ai_assistant' : activeTab;
       
-      const response = await fetch('/api/settings/user', {
+      const response = await authClient.fetch('/api/settings/user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user?.id || 'default_user',
           category: categoryForBackend,
           settings: data
         })

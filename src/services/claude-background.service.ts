@@ -33,10 +33,15 @@ export class ClaudeBackgroundService extends EventEmitter {
     try {
       console.log('🚀 Starting Claude background service...');
       
-      // Start Claude CLI in interactive mode
-      this.claudeProcess = spawn('claude', ['--continue'], {
+      // Start Claude CLI in interactive mode (using logged-in session)
+      // Remove any API key from environment to use logged-in session
+      const env = { ...process.env };
+      delete env.ANTHROPIC_API_KEY;
+      
+      // Use claude without --continue for interactive mode
+      this.claudeProcess = spawn('claude', [], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env },
+        env,
         shell: true
       });
 
@@ -122,8 +127,8 @@ export class ClaudeBackgroundService extends EventEmitter {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.messageQueue.delete(messageId);
-        reject(new Error('Claude response timeout'));
-      }, 30000); // 30 second timeout
+        reject(new Error('Claude response timeout - try shorter messages or check system status'));
+      }, 120000); // 120 second timeout (2 minutes)
 
       const checkResponse = setInterval(() => {
         const msg = this.messageQueue.get(messageId);

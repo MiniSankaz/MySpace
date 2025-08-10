@@ -234,7 +234,30 @@ export class SettingsService {
         reducedMotion: false,
         highContrast: false,
         colorBlindMode: 'none'
+      },
+      ai_assistant: {
+        responseTimeout: 60,
+        maxContextMessages: 10,
+        modelSelection: 'claude-3-sonnet',
+        temperature: 0.7,
+        maxTokens: 4096,
+        languagePreference: 'en',
+        autoSaveConversations: true,
+        debugMode: false
       }
+    };
+  }
+
+  getDefaultAIAssistantSettings() {
+    return {
+      responseTimeout: 60,
+      maxContextMessages: 10,
+      modelSelection: 'claude-3-sonnet',
+      temperature: 0.7,
+      maxTokens: 4096,
+      languagePreference: 'en',
+      autoSaveConversations: true,
+      debugMode: false
     };
   }
 

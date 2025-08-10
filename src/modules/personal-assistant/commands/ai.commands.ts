@@ -1,8 +1,9 @@
 import { Command, AssistantContext, AssistantResponse } from '../types';
 import { ClaudeAIService } from '../services/claude-ai.service';
 
-const claudeAI = new ClaudeAIService();
-claudeAI.initialize();
+const claudeAI = ClaudeAIService.getInstance();
+// Initialize once on module load
+claudeAI.initialize().catch(console.error);
 
 export const aiCodeCommand: Command = {
   name: 'ai.code',

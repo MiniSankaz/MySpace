@@ -1,0 +1,68 @@
+{
+  "welcome": {
+    "greeting": "ยินดีต้อนรับกลับมา",
+    "description": "นี่คือสิ่งที่เกิดขึ้นในพื้นที่ทำงานของคุณวันนี้"
+  },
+  "kpi": {
+    "aiConversations": "การสนทนา AI",
+    "aiConversationsDesc": "เซสชันแชททั้งหมด",
+    "tokensUsed": "โทเค็นที่ใช้",
+    "terminalSessions": "เซสชัน Terminal",
+    "todayActivity": "กิจกรรมวันนี้",
+    "todayActivityDesc": "การดำเนินการที่ทำวันนี้",
+    "systemUptime": "ระยะเวลาทำงานของระบบ",
+    "systemUptimeDesc": "เวลาที่เซิร์ฟเวอร์ทำงาน",
+    "databaseHealth": "สุขภาพฐานข้อมูล",
+    "memoryUsage": "การใช้หน่วยความจำ",
+    "memoryUsageDesc": "การใช้งาน Heap memory",
+    "activeProjects": "โปรเจคที่ใช้งานอยู่",
+    "avgResponseTime": "เวลาตอบสนองเฉลี่ย",
+    "avgExecutionTime": "เวลาประมวลผลเฉลี่ย",
+    "totalCost": "ค่าใช้จ่าย AI ทั้งหมด"
+  },
+  "activity": {
+    "title": "กิจกรรมล่าสุด",
+    "noActivity": "ไม่มีกิจกรรมล่าสุด",
+    "loadMore": "โหลดกิจกรรมเพิ่มเติม",
+    "justNow": "เมื่อสักครู่",
+    "minutesAgo": "{{count}} นาทีที่แล้ว",
+    "hoursAgo": "{{count}} ชั่วโมงที่แล้ว",
+    "daysAgo": "{{count}} วันที่แล้ว",
+    "types": {
+      "ai_chat": "ข้อความ AI",
+      "terminal": "คำสั่ง Terminal",
+      "file_change": "เปลี่ยนแปลงไฟล์",
+      "git_commit": "Git Commit",
+      "system": "ระบบ"
+    }
+  },
+  "commands": {
+    "title": "คำสั่งยอดนิยม",
+    "uses": "ครั้ง",
+    "noCommands": "ยังไม่มีการติดตามคำสั่ง"
+  },
+  "quickActions": {
+    "title": "การดำเนินการด่วน",
+    "newChat": "แชทใหม่",
+    "terminal": "Terminal",
+    "settings": "การตั้งค่า",
+    "refresh": "รีเฟรช"
+  },
+  "status": {
+    "healthy": "ปกติ",
+    "warning": "เฝ้าระวัง",
+    "critical": "วิกฤติ",
+    "active": "ใช้งานอยู่",
+    "connections": "การเชื่อมต่อ",
+    "errors": "ข้อผิดพลาด",
+    "commands": "คำสั่ง",
+    "cost": "ค่าใช้จ่าย"
+  },
+  "time": {
+    "updated": "อัปเดต",
+    "days": "วัน",
+    "hours": "ชั่วโมง",
+    "minutes": "นาที",
+    "seconds": "วินาที"
+  }
+}

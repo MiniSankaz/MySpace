@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SettingsService } from '@/services/settings.service';
-import { verifyAuth } from '@/middleware/auth';
+import { requireAuth } from '@/modules/ums/middleware/auth';
 import { z } from 'zod';
 
 const settingsService = new SettingsService();
@@ -38,14 +38,17 @@ const aiAssistantSettingsSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const user = await verifyAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await requireAuth(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const userId = user.id;
+    const userId = authResult.userId!;
     const category = searchParams.get('category');
 
     const settings = await settingsService.getUserConfig(userId, undefined, category);
@@ -77,12 +80,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    const user = await verifyAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await requireAuth(request);
+    if (!authResult.authenticated) {
+      return NextResponse.json(
+        { error: authResult.error || 'Unauthorized' },
+        { status: 401 }
+      );
     }
     
-    const userId = user.id;
+    const userId = authResult.userId!;
 
     const body = await request.json();
     const { category, settings } = body;

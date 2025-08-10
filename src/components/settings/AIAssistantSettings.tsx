@@ -11,6 +11,7 @@ import {
   BugAntIcon,
   FireIcon
 } from '@heroicons/react/24/outline';
+import { authClient } from '@/core/auth/auth-client';
 
 interface AIAssistantSettingsProps {
   user: any;
@@ -69,17 +70,15 @@ export default function AIAssistantSettings({ user, tabId, onSave, saving }: AIA
   const loadSettings = async () => {
     setLoading(true);
     try {
-      if (user?.id) {
-        const response = await fetch(`/api/settings/user?category=ai_assistant&userId=${user.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          const userSettings = data.reduce((acc: any, config: any) => {
-            acc[config.key] = config.value;
-            return acc;
-          }, {});
-          
-          setSettings({ ...defaultSettings, ...userSettings });
-        }
+      const response = await authClient.fetch(`/api/settings/user?category=ai_assistant`);
+      if (response.ok) {
+        const data = await response.json();
+        const userSettings = data.reduce((acc: any, config: any) => {
+          acc[config.key] = config.value;
+          return acc;
+        }, {});
+        
+        setSettings({ ...defaultSettings, ...userSettings });
       }
     } catch (error) {
       console.error('Failed to load AI Assistant settings:', error);

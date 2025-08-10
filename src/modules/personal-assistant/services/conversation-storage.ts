@@ -92,34 +92,28 @@ export class ConversationStorage {
     sessionId: string
   ): Promise<Message[]> {
     try {
-      const conversation = await this.prisma.assistantConversation.findUnique({
+      // Load messages from NEW AssistantChatMessage table only
+      const messages = await this.prisma.assistantChatMessage.findMany({
         where: {
-          userId_sessionId: {
-            userId,
-            sessionId
-          }
+          sessionId: sessionId,
+          userId: userId
         },
-        include: {
-          messages: {
-            orderBy: {
-              createdAt: 'asc'
-            }
-          }
+        orderBy: {
+          timestamp: 'asc'
         }
       });
 
-      if (!conversation) {
-        return [];
-      }
-
-      return conversation.messages.map(msg => ({
+      const convertedMessages = messages.map(msg => ({
         id: msg.id,
-        userId,
+        userId: msg.userId || userId,
         content: msg.content,
-        type: msg.type as 'user' | 'assistant' | 'system',
-        timestamp: msg.createdAt,
+        type: msg.role as 'user' | 'assistant' | 'system',
+        timestamp: msg.timestamp,
         metadata: msg.metadata as any
       }));
+
+      console.log(`[ConversationStorage] Loaded ${convertedMessages.length} messages from AssistantChatMessage table`);
+      return convertedMessages;
     } catch (error) {
       console.error('Failed to load conversation from database:', error);
       // Fallback to file storage if database fails
@@ -129,20 +123,20 @@ export class ConversationStorage {
 
   async listSessions(userId: string): Promise<string[]> {
     try {
-      const conversations = await this.prisma.assistantConversation.findMany({
+      // Use AssistantChatSession instead
+      const sessions = await this.prisma.assistantChatSession.findMany({
         where: {
-          userId,
-          isActive: true
+          userId
         },
         select: {
-          sessionId: true
+          id: true
         },
         orderBy: {
           startedAt: 'desc'
         }
       });
 
-      return conversations.map(c => c.sessionId);
+      return sessions.map(session => session.id);
     } catch (error) {
       console.error('Failed to list sessions from database:', error);
       return [];
