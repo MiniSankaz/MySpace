@@ -42,6 +42,11 @@ export interface DashboardStats {
 class DashboardService {
   private db: PrismaClient;
   private static instance: DashboardService;
+  private healthCheckCache: { 
+    status: 'healthy' | 'warning' | 'critical'; 
+    timestamp: number;
+  } | null = null;
+  private readonly HEALTH_CHECK_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
   private constructor() {
     this.db = prisma;
@@ -283,17 +288,33 @@ class DashboardService {
       // Get system uptime (time since server started)
       const uptime = process.uptime();
 
-      // Check database health
+      // Check database health with caching
       let databaseHealth: 'healthy' | 'warning' | 'critical' = 'healthy';
-      try {
-        if (!this.db) {
+      
+      // Check if we have a valid cached health check
+      const now = Date.now();
+      if (this.healthCheckCache && 
+          (now - this.healthCheckCache.timestamp) < this.HEALTH_CHECK_CACHE_TTL) {
+        databaseHealth = this.healthCheckCache.status;
+      } else {
+        // Perform actual health check
+        try {
+          if (!this.db) {
+            databaseHealth = 'critical';
+          } else {
+            await this.db.$queryRaw`SELECT 1`;
+            databaseHealth = 'healthy';
+          }
+        } catch (error) {
+          console.error('Database health check failed:', error);
           databaseHealth = 'critical';
-        } else {
-          await this.db.$queryRaw`SELECT 1`;
         }
-      } catch (error) {
-        console.error('Database health check failed:', error);
-        databaseHealth = 'critical';
+        
+        // Update cache
+        this.healthCheckCache = {
+          status: databaseHealth,
+          timestamp: now
+        };
       }
 
       // Get memory usage

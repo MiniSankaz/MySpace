@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Project, WorkspaceState, CreateProjectDTO, UpdateProjectDTO } from '../types';
+import { authClient } from '@/core/auth/auth-client';
 
 interface WorkspaceContextType extends WorkspaceState {
   selectProject: (projectId: string) => Promise<void>;
@@ -45,11 +46,9 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
   const fetchProjects = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const token = localStorage.getItem('accessToken');
-      
-      // Check if user is logged in
-      if (!token) {
-        console.log('No access token found, user needs to login');
+      // Check if user is authenticated
+      if (!authClient.isAuthenticated()) {
+        console.log('User not authenticated, redirecting to login');
         setState(prev => ({ 
           ...prev, 
           loading: false, 
@@ -61,19 +60,7 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
         return;
       }
       
-      const response = await fetch('/api/workspace/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      // Handle different response codes
-      if (response.status === 401) {
-        console.log('Token expired or invalid');
-        localStorage.removeItem('accessToken');
-        window.location.href = '/login';
-        return;
-      }
+      const response = await authClient.fetch('/api/workspace/projects');
       
       if (!response.ok) {
         // If 404, no projects exist yet - that's ok
@@ -115,12 +102,7 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
     
     // Fetch terminal sessions for this project
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/workspace/projects/${projectId}/terminals`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await authClient.fetch(`/api/workspace/projects/${projectId}/terminals`);
       if (response.ok) {
         const sessions = await response.json();
         setState(prev => ({
@@ -141,12 +123,10 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
   const createProject = useCallback(async (data: CreateProjectDTO) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/workspace/projects', {
+      const response = await authClient.fetch('/api/workspace/projects', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(data),
       });
@@ -179,12 +159,10 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
   const updateProject = useCallback(async (projectId: string, data: UpdateProjectDTO) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/workspace/projects/${projectId}`, {
+      const response = await authClient.fetch(`/api/workspace/projects/${projectId}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(data),
       });
@@ -214,12 +192,8 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
   const deleteProject = useCallback(async (projectId: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/workspace/projects/${projectId}`, {
+      const response = await authClient.fetch(`/api/workspace/projects/${projectId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
       });
       
       if (!response.ok) throw new Error('Failed to delete project');
@@ -243,12 +217,8 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
   // Refresh project structure
   const refreshProjectStructure = useCallback(async (projectId: string) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/workspace/projects/${projectId}/structure`, {
+      const response = await authClient.fetch(`/api/workspace/projects/${projectId}/structure`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
       });
       
       if (!response.ok) throw new Error('Failed to refresh structure');
@@ -281,10 +251,15 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
     setState(prev => ({ ...prev, activeClaudeTab: tabId }));
   }, []);
 
+  // Track if we're already creating a default project
+  const [isCreatingDefault, setIsCreatingDefault] = useState(false);
+  
   // Auto-create default project if none exist
   const initializeDefaultProject = useCallback(async () => {
-    if (state.projects.length === 0 && !state.loading && !state.error) {
+    // Prevent duplicate creation
+    if (state.projects.length === 0 && !state.loading && !state.error && !isCreatingDefault) {
       try {
+        setIsCreatingDefault(true);
         console.log('No projects found, creating default project...');
         const defaultProject = await createProject({
           name: 'Current Workspace',
@@ -294,18 +269,24 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
         await selectProject(defaultProject.id);
       } catch (error) {
         console.error('Failed to create default project:', error);
+      } finally {
+        setIsCreatingDefault(false);
       }
     }
-  }, [state.projects.length, state.loading, state.error, createProject, selectProject]);
+  }, [state.projects.length, state.loading, state.error, isCreatingDefault, createProject, selectProject]);
 
   // Load projects on mount
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
 
-  // Initialize default project if needed
+  // Initialize default project if needed (with delay to ensure fetchProjects completes)
   useEffect(() => {
-    initializeDefaultProject();
+    const timer = setTimeout(() => {
+      initializeDefaultProject();
+    }, 1000); // Small delay to ensure projects are loaded
+    
+    return () => clearTimeout(timer);
   }, [initializeDefaultProject]);
 
   const value: WorkspaceContextType = {
