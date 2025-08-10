@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     // Verify authentication
@@ -21,7 +21,7 @@ export async function DELETE(
       );
     }
 
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     // First check if the session belongs to the user
     const session = await prisma.assistantConversation.findFirst({
@@ -68,7 +68,7 @@ export async function DELETE(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     // Verify authentication
@@ -83,7 +83,7 @@ export async function GET(
       );
     }
 
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     // Get the session with messages
     const session = await prisma.assistantConversation.findFirst({

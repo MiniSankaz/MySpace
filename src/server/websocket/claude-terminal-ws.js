@@ -4,8 +4,19 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
-// Logging will be added later when the service is compiled
-// const { workspaceTerminalLogger } = require('../../services/workspace-terminal-logging.service');
+
+// Import logging service - handle both ES6 and CommonJS
+let workspaceTerminalLogger;
+try {
+  // Try to use the workspace terminal logging service
+  const loggingModule = require('../../../dist/services/workspace-terminal-logging.service');
+  workspaceTerminalLogger = loggingModule.workspaceTerminalLogger || loggingModule.default;
+  console.log('Claude Terminal: Workspace logging service loaded successfully');
+} catch (error) {
+  // Logging is optional - continue without it if not available
+  console.warn('Claude Terminal: Workspace logging service not available (optional):', error.message);
+  workspaceTerminalLogger = null;
+}
 
 class ClaudeTerminalWebSocketServer {
   constructor(port = 4002) {
@@ -166,26 +177,23 @@ class ClaudeTerminalWebSocketServer {
         
         this.sessions.set(sessionId, session);
         
-        // Create logging session - disabled for now
-        // try {
-        //   const loggingSession = await workspaceTerminalLogger.createSession({
-        //     projectId,
-        //     userId,
-        //     type: shell.includes('zsh') ? 'zsh' : shell.includes('bash') ? 'bash' : 'sh',
-        //     tabName: `Claude Terminal - ${sessionId}`,
-        //     currentPath: workingDir,
-        //     environment: projectEnv,
-        //     pid: shellProcess.pid,
-        //     metadata: {
-        //       claudeSession: sessionId,
-        //       shell: shell
-        //     }
-        //   });
-        //   session.loggingSessionId = loggingSession.id;
-        //   console.log(`Created logging session: ${loggingSession.id} for Claude terminal`);
-        // } catch (error) {
-        //   console.error('Failed to create logging session:', error);
-        // }
+        // Create logging session if service is available
+        if (workspaceTerminalLogger) {
+          try {
+            const loggingSession = await workspaceTerminalLogger.createSession({
+              tabId: sessionId,
+              tabName: `Claude Terminal`,
+              type: 'claude',
+              projectId: projectId,
+              userId: userId || 'anonymous',
+              currentPath: workingDir
+            });
+            session.loggingSessionId = loggingSession.id;
+            console.log(`Created logging session: ${loggingSession.id} for Claude terminal`);
+          } catch (error) {
+            console.error('Failed to create logging session:', error);
+          }
+        }
 
         // Handle PTY data with streaming
         shellProcess.onData(async (data) => {
@@ -197,20 +205,25 @@ class ClaudeTerminalWebSocketServer {
             }));
           }
           
-          // Log output to database - disabled for now
-          // if (session.loggingSessionId) {
-          //   try {
-          //     await workspaceTerminalLogger.streamOutput(
-          //       session.loggingSessionId,
-          //       session.projectId,
-          //       session.userId,
-          //       data,
-          //       'stdout'
-          //     );
-          //   } catch (error) {
-          //     console.error('Failed to log terminal output:', error);
-          //   }
-          // }
+          // Log output to database if logging is available
+          if (workspaceTerminalLogger && session.loggingSessionId) {
+            try {
+              // Clean ANSI codes for database storage
+              const cleanContent = data.replace(/\x1b\[[0-9;]*m/g, '');
+              
+              // Detect if this is error output
+              const isError = data.includes('error') || data.includes('Error') || 
+                            data.includes('failed') || data.includes('Failed');
+              
+              await workspaceTerminalLogger.logOutput({
+                sessionId: session.loggingSessionId,
+                type: isError ? 'stderr' : 'stdout',
+                content: cleanContent
+              });
+            } catch (error) {
+              console.error('Failed to log terminal output:', error);
+            }
+          }
           
           // Check if Claude is ready
           if (!session.isClaudeReady && data.includes('Claude>')) {
@@ -231,15 +244,15 @@ class ClaudeTerminalWebSocketServer {
         shellProcess.onExit(async ({ exitCode, signal }) => {
           console.log(`Claude shell process exited with code ${exitCode}, signal ${signal}`);
           
-          // End logging session - disabled for now
-          // if (session.loggingSessionId) {
-          //   try {
-          //     await workspaceTerminalLogger.endSession(session.loggingSessionId);
-          //     console.log(`Ended logging session: ${session.loggingSessionId}`);
-          //   } catch (error) {
-          //     console.error('Failed to end logging session:', error);
-          //   }
-          // }
+          // End logging session if available
+          if (workspaceTerminalLogger && session.loggingSessionId) {
+            try {
+              await workspaceTerminalLogger.endSession(session.loggingSessionId);
+              console.log(`Ended logging session: ${session.loggingSessionId}`);
+            } catch (error) {
+              console.error('Failed to end logging session:', error);
+            }
+          }
           
           if (session.ws && session.ws.readyState === ws.OPEN) {
             session.ws.send(JSON.stringify({
@@ -301,20 +314,38 @@ class ClaudeTerminalWebSocketServer {
           switch (data.type) {
             case 'input':
               if (session.process) {
-                // Log input command - disabled for now
-                // if (session.loggingSessionId && data.data) {
-                //   try {
-                //     await workspaceTerminalLogger.logEntry({
-                //       sessionId: session.loggingSessionId,
-                //       projectId: session.projectId,
-                //       userId: session.userId,
-                //       type: 'stdin',
-                //       content: data.data
-                //     });
-                //   } catch (error) {
-                //     console.error('Failed to log terminal input:', error);
-                //   }
-                // }
+                // Log input command if logging is available
+                if (workspaceTerminalLogger && session.loggingSessionId && data.data) {
+                  try {
+                    // Track command building for Claude
+                    if (!session.currentCommand) {
+                      session.currentCommand = '';
+                    }
+                    
+                    if (data.data === '\r' || data.data === '\n') {
+                      // Command execution - log the complete command
+                      if (session.currentCommand.trim()) {
+                        await workspaceTerminalLogger.logCommand({
+                          sessionId: session.loggingSessionId,
+                          command: session.currentCommand.trim(),
+                          workingDir: session.workingDir
+                        });
+                      }
+                      session.currentCommand = '';
+                    } else if (data.data === '\x7f' || data.data === '\b') {
+                      // Backspace
+                      session.currentCommand = session.currentCommand.slice(0, -1);
+                    } else if (data.data === '\x03') {
+                      // Ctrl+C - cancel current command
+                      session.currentCommand = '';
+                    } else if (data.data.match(/^[\x20-\x7e]+$/)) {
+                      // Regular printable characters
+                      session.currentCommand += data.data;
+                    }
+                  } catch (error) {
+                    console.error('Failed to log terminal input:', error);
+                  }
+                }
                 
                 // For PTY with xterm.js, write data exactly as received
                 session.process.write(data.data);

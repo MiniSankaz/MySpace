@@ -46,14 +46,14 @@ model Category {
 }
 
 model Translation {
-  id         String   @id @default(cuid())
-  key        String   @unique
-  namespace  String   @default("common")
-  locale     String
-  value      String   @db.Text
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  
+  id        String   @id @default(cuid())
+  key       String   @unique
+  namespace String   @default("common")
+  locale    String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([key, locale, namespace])
   @@index([namespace])
   @@index([locale])
@@ -282,8 +282,8 @@ model Media {
   GalleryMedia GalleryMedia[]
   MediaFolder  MediaFolder?   @relation(fields: [folderId], references: [id])
   User         User           @relation(fields: [uploadedBy], references: [id])
-  PostMedia    PostMedia[]
   MediaTag     MediaTag[]
+  PostMedia    PostMedia[]
 
   @@index([createdAt])
   @@index([folderId])
@@ -594,20 +594,20 @@ model ThemeConfig {
 }
 
 model Tag {
-  id             String             @id
-  name           String             @unique
-  slug           String             @unique
-  description    String?
-  color          String?
-  icon           String?
-  usageCount     Int                @default(0)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime
-  createdBy      String?
-  User           User?              @relation(fields: [createdBy], references: [id])
-  PostTag        PostTag[]
-  MediaTag       MediaTag[]
-  SubscriberTag  SubscriberTag[]
+  id            String          @id
+  name          String          @unique
+  slug          String          @unique
+  description   String?
+  color         String?
+  icon          String?
+  usageCount    Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  createdBy     String?
+  MediaTag      MediaTag[]
+  PostTag       PostTag[]
+  SubscriberTag SubscriberTag[]
+  User          User?           @relation(fields: [createdBy], references: [id])
 
   @@index([name])
   @@index([slug])
@@ -650,99 +650,94 @@ model SubscriberTag {
   @@index([tagId])
 }
 
-
-
 model User {
-  id                              String             @id
-  email                           String             @unique
-  username                        String             @unique
-  passwordHash                    String
-  firstName                       String?
-  lastName                        String?
-  displayName                     String?
-  avatar                          String?
-  bio                             String?
-  phone                           String?
-  isActive                        Boolean            @default(true)
-  emailVerified                   DateTime?
-  phoneVerified                   DateTime?
-  mfaEnabled                      Boolean            @default(false)
-  mfaSecret                       String?
-  failedLoginAttempts             Int                @default(0)
-  lastLoginAt                     DateTime?
-  lastLoginIp                     String?
-  accountLockedUntil              DateTime?
-  passwordChangedAt               DateTime           @default(now())
-  mustChangePassword              Boolean            @default(false)
-  createdAt                       DateTime           @default(now())
-  updatedAt                       DateTime
-  createdBy                       String?
-  updatedBy                       String?
-  deletedAt                       DateTime?
-  deletedBy                       String?
-  version                         Int                @default(1)
-  AuditLog                        AuditLog[]
-  ChatConversation                ChatConversation[]
-  EmailCampaign                   EmailCampaign[]
-  Form                            Form[]
-  FormSubmission                  FormSubmission[]
-  LoginHistory                    LoginHistory[]
-  Media                           Media[]
-  Page_Page_authorIdToUser        Page[]             @relation("Page_authorIdToUser")
-  Page_Page_createdByToUser       Page[]             @relation("Page_createdByToUser")
-  PasswordReset                   PasswordReset[]
-  Post                            Post[]
-  Session                         Session[]
-  Survey                          Survey[]
-  Tag                             Tag[]
-  ThemeConfig                     ThemeConfig[]
-  User_User_createdByToUser       User?              @relation("User_createdByToUser", fields: [createdBy], references: [id])
-  other_User_User_createdByToUser User[]             @relation("User_createdByToUser")
-  User_User_deletedByToUser       User?              @relation("User_deletedByToUser", fields: [deletedBy], references: [id])
-  other_User_User_deletedByToUser User[]             @relation("User_deletedByToUser")
-  User_User_updatedByToUser       User?              @relation("User_updatedByToUser", fields: [updatedBy], references: [id])
-  other_User_User_updatedByToUser User[]             @relation("User_updatedByToUser")
-  UserInvitation                  UserInvitation[]
-  UserRole                        UserRole[]
-  BackupExport                    BackupExport[]
-  BackupSchedule                  BackupSchedule[]
-  MenuItem_MenuItem_createdByToUser MenuItem[] @relation("MenuItem_createdByToUser")
-  MenuItem_MenuItem_updatedByToUser MenuItem[] @relation("MenuItem_updatedByToUser")
-  MenuItem_MenuItem_deletedByToUser MenuItem[] @relation("MenuItem_deletedByToUser")
-  AssistantConversation              AssistantConversation[]
-  AssistantTask                      AssistantTask[]
-  AssistantReminder                  AssistantReminder[]
-  AssistantNote                      AssistantNote[]
-  AssistantFolder                    AssistantFolder[]
-  UserProfile                        UserProfile?
-  UserDevice                         UserDevice[]
-  UserActivity                       UserActivity[]
-  UserApiKey                         UserApiKey[]
-  UserNotification                   UserNotification[]
-  UserPreference                     UserPreference[]
-  UserDepartment                     UserDepartment[]
-  TeamMember                         TeamMember[]
-  DepartmentManager                  Department[] @relation("DepartmentManager")
-  TeamLeader                         Team[] @relation("TeamLeader")
-  TerminalSession                    TerminalSession[]
-  TerminalLog                        TerminalLog[]
-  TerminalAnalytics                  TerminalAnalytics[]
-  TerminalShortcut                   TerminalShortcut[]
-  TerminalSOPCreator                 TerminalSOP[] @relation("TerminalSOPCreator")
-  ApiToken                           ApiToken[]
-  ApiUsageLog                        ApiUsageLog[]
-  
-  // AI Assistant Relations
-  AssistantChatSessions              AssistantChatSession[]
-  AssistantChatMessages              AssistantChatMessage[]
-  AssistantAnalytics                 AssistantAnalytics[]
-  
-  // Workspace Terminal Relations
-  WorkspaceTerminalSessions          WorkspaceTerminalSession[]
-  WorkspaceTerminalCommands          WorkspaceTerminalCommand[]
-  WorkspaceTerminalLogs              WorkspaceTerminalLog[]
-  ApiWebhook                         ApiWebhook[]
-  UserConfig                         UserConfig[]
+  id                                String                     @id
+  email                             String                     @unique
+  username                          String                     @unique
+  passwordHash                      String
+  firstName                         String?
+  lastName                          String?
+  displayName                       String?
+  avatar                            String?
+  bio                               String?
+  phone                             String?
+  isActive                          Boolean                    @default(true)
+  emailVerified                     DateTime?
+  phoneVerified                     DateTime?
+  mfaEnabled                        Boolean                    @default(false)
+  mfaSecret                         String?
+  failedLoginAttempts               Int                        @default(0)
+  lastLoginAt                       DateTime?
+  lastLoginIp                       String?
+  accountLockedUntil                DateTime?
+  passwordChangedAt                 DateTime                   @default(now())
+  mustChangePassword                Boolean                    @default(false)
+  createdAt                         DateTime                   @default(now())
+  updatedAt                         DateTime
+  createdBy                         String?
+  updatedBy                         String?
+  deletedAt                         DateTime?
+  deletedBy                         String?
+  version                           Int                        @default(1)
+  ApiToken                          ApiToken[]
+  ApiUsageLog                       ApiUsageLog[]
+  ApiWebhook                        ApiWebhook[]
+  AssistantAnalytics                AssistantAnalytics[]
+  AssistantChatMessages             AssistantChatMessage[]
+  AssistantChatSessions             AssistantChatSession[]
+  AssistantConversation             AssistantConversation[]
+  AssistantFolder                   AssistantFolder[]
+  AssistantNote                     AssistantNote[]
+  AssistantReminder                 AssistantReminder[]
+  AssistantTask                     AssistantTask[]
+  AuditLog                          AuditLog[]
+  BackupExport                      BackupExport[]
+  BackupSchedule                    BackupSchedule[]
+  ChatConversation                  ChatConversation[]
+  DepartmentManager                 Department[]               @relation("DepartmentManager")
+  EmailCampaign                     EmailCampaign[]
+  Form                              Form[]
+  FormSubmission                    FormSubmission[]
+  GitConfigHistory                  GitConfigHistory[]
+  LoginHistory                      LoginHistory[]
+  Media                             Media[]
+  MenuItem_MenuItem_createdByToUser MenuItem[]                 @relation("MenuItem_createdByToUser")
+  MenuItem_MenuItem_deletedByToUser MenuItem[]                 @relation("MenuItem_deletedByToUser")
+  MenuItem_MenuItem_updatedByToUser MenuItem[]                 @relation("MenuItem_updatedByToUser")
+  Page_Page_authorIdToUser          Page[]                     @relation("Page_authorIdToUser")
+  Page_Page_createdByToUser         Page[]                     @relation("Page_createdByToUser")
+  PasswordReset                     PasswordReset[]
+  Post                              Post[]
+  Session                           Session[]
+  Survey                            Survey[]
+  Tag                               Tag[]
+  TeamLeader                        Team[]                     @relation("TeamLeader")
+  TeamMember                        TeamMember[]
+  TerminalAnalytics                 TerminalAnalytics[]
+  TerminalLog                       TerminalLog[]
+  TerminalSOPCreator                TerminalSOP[]              @relation("TerminalSOPCreator")
+  TerminalSession                   TerminalSession[]
+  TerminalShortcut                  TerminalShortcut[]
+  ThemeConfig                       ThemeConfig[]
+  User_User_createdByToUser         User?                      @relation("User_createdByToUser", fields: [createdBy], references: [id])
+  other_User_User_createdByToUser   User[]                     @relation("User_createdByToUser")
+  User_User_deletedByToUser         User?                      @relation("User_deletedByToUser", fields: [deletedBy], references: [id])
+  other_User_User_deletedByToUser   User[]                     @relation("User_deletedByToUser")
+  User_User_updatedByToUser         User?                      @relation("User_updatedByToUser", fields: [updatedBy], references: [id])
+  other_User_User_updatedByToUser   User[]                     @relation("User_updatedByToUser")
+  UserActivity                      UserActivity[]
+  UserApiKey                        UserApiKey[]
+  UserConfig                        UserConfig[]
+  UserDepartment                    UserDepartment[]
+  UserDevice                        UserDevice[]
+  UserInvitation                    UserInvitation[]
+  UserNotification                  UserNotification[]
+  UserPreference                    UserPreference[]
+  UserProfile                       UserProfile?
+  UserRole                          UserRole[]
+  WorkspaceTerminalCommands         WorkspaceTerminalCommand[]
+  WorkspaceTerminalLogs             WorkspaceTerminalLog[]
+  WorkspaceTerminalSessions         WorkspaceTerminalSession[]
 
   @@index([createdAt])
   @@index([email])
@@ -790,20 +785,20 @@ model UserRole {
 model BackupExport {
   id             String    @id
   name           String
-  type           String    // 'full', 'posts', 'pages', 'users', 'media', 'database', 'csv'
-  format         String    // 'json', 'csv', 'sql', 'zip'
-  status         String    @default("pending") // 'pending', 'processing', 'completed', 'failed'
-  filters        Json?     // Export filters (date range, status, etc.)
-  fileUrl        String?   // URL to download the exported file
-  fileName       String?   // Original filename
-  fileSize       Int?      // File size in bytes
-  recordCount    Int?      // Number of records exported
+  type           String
+  format         String
+  status         String    @default("pending")
+  filters        Json?
+  fileUrl        String?
+  fileName       String?
+  fileSize       Int?
+  recordCount    Int?
   compression    Boolean   @default(false)
   encrypted      Boolean   @default(false)
-  progress       Int       @default(0) // Progress percentage
-  error          String?   // Error message if failed
-  metadata       Json?     // Additional metadata
-  expiresAt      DateTime? // When the export file expires
+  progress       Int       @default(0)
+  error          String?
+  metadata       Json?
+  expiresAt      DateTime?
   downloadCount  Int       @default(0)
   lastDownloadAt DateTime?
   createdBy      String
@@ -820,22 +815,22 @@ model BackupExport {
 }
 
 model BackupSchedule {
-  id          String   @id
+  id          String    @id
   name        String
-  type        String   // 'full', 'posts', 'pages', 'users', 'media', 'database'
-  frequency   String   // 'daily', 'weekly', 'monthly'
-  cronPattern String?  // Custom cron pattern
-  isActive    Boolean  @default(true)
-  filters     Json?    // Export filters
-  settings    Json?    // Additional settings (compression, retention, etc.)
+  type        String
+  frequency   String
+  cronPattern String?
+  isActive    Boolean   @default(true)
+  filters     Json?
+  settings    Json?
   lastRunAt   DateTime?
   nextRunAt   DateTime?
-  runCount    Int      @default(0)
-  failCount   Int      @default(0)
+  runCount    Int       @default(0)
+  failCount   Int       @default(0)
   createdBy   String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   updatedAt   DateTime
-  User        User     @relation(fields: [createdBy], references: [id])
+  User        User      @relation(fields: [createdBy], references: [id])
 
   @@index([createdBy])
   @@index([isActive])
@@ -843,27 +838,25 @@ model BackupSchedule {
 }
 
 model MenuItem {
-  id          String    @id @default(uuid())
-  menuId      String    // Location identifier (main, footer, etc)
-  label       String
-  url         String
-  type        String    // internal, external, page, category, custom
-  target      String    @default("_self") // _self, _blank
-  icon        String?
-  order       Int       @default(0)
-  parentId    String?
-  isActive    Boolean   @default(true)
-  
-  createdAt   DateTime  @default(now())
-  createdBy   String
-  updatedAt   DateTime  @updatedAt
-  updatedBy   String?
-  deletedAt   DateTime?
-  deletedBy   String?
-  
-  User_MenuItem_createdByToUser User @relation("MenuItem_createdByToUser", fields: [createdBy], references: [id])
-  User_MenuItem_updatedByToUser User? @relation("MenuItem_updatedByToUser", fields: [updatedBy], references: [id])
-  User_MenuItem_deletedByToUser User? @relation("MenuItem_deletedByToUser", fields: [deletedBy], references: [id])
+  id                            String    @id @default(uuid())
+  menuId                        String
+  label                         String
+  url                           String
+  type                          String
+  target                        String    @default("_self")
+  icon                          String?
+  order                         Int       @default(0)
+  parentId                      String?
+  isActive                      Boolean   @default(true)
+  createdAt                     DateTime  @default(now())
+  createdBy                     String
+  updatedAt                     DateTime  @updatedAt
+  updatedBy                     String?
+  deletedAt                     DateTime?
+  deletedBy                     String?
+  User_MenuItem_createdByToUser User      @relation("MenuItem_createdByToUser", fields: [createdBy], references: [id])
+  User_MenuItem_deletedByToUser User?     @relation("MenuItem_deletedByToUser", fields: [deletedBy], references: [id])
+  User_MenuItem_updatedByToUser User?     @relation("MenuItem_updatedByToUser", fields: [updatedBy], references: [id])
 
   @@index([menuId])
   @@index([parentId])
@@ -871,37 +864,36 @@ model MenuItem {
   @@index([order])
 }
 
-// Personal Assistant Models
 model AssistantFolder {
-  id          String                  @id @default(uuid())
-  userId      String
-  name        String
-  color       String?                 @default("#3B82F6") // Default blue color
-  icon        String?                 @default("folder") // Icon identifier
-  order       Int                     @default(0)
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
-  User        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String                  @id @default(uuid())
+  userId        String
+  name          String
+  color         String?                 @default("#3B82F6")
+  icon          String?                 @default("folder")
+  order         Int                     @default(0)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
   conversations AssistantConversation[]
-  
+  User          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, name])
   @@index([userId])
 }
 
 model AssistantConversation {
-  id          String                @id @default(uuid())
-  userId      String
-  sessionId   String
-  title       String?
-  folderId    String?               // Optional folder association
-  isActive    Boolean               @default(true)
-  startedAt   DateTime              @default(now())
-  endedAt     DateTime?
-  metadata    Json?
-  User        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Folder      AssistantFolder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  messages    AssistantMessage[]
-  
+  id        String             @id @default(uuid())
+  userId    String
+  sessionId String
+  title     String?
+  folderId  String?
+  isActive  Boolean            @default(true)
+  startedAt DateTime           @default(now())
+  endedAt   DateTime?
+  metadata  Json?
+  Folder    AssistantFolder?   @relation(fields: [folderId], references: [id])
+  User      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AssistantMessage[]
+
   @@unique([userId, sessionId])
   @@index([userId])
   @@index([sessionId])
@@ -912,12 +904,12 @@ model AssistantConversation {
 model AssistantMessage {
   id             String                @id @default(uuid())
   conversationId String
-  content        String                @db.Text
-  type           String                // user, assistant, system
+  content        String
+  type           String
   metadata       Json?
   createdAt      DateTime              @default(now())
   conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
+
   @@index([conversationId])
   @@index([createdAt])
 }
@@ -927,32 +919,32 @@ model AssistantTask {
   userId      String
   title       String
   description String?
-  status      String    @default("pending") // pending, in_progress, completed
-  priority    String    @default("medium") // low, medium, high
+  status      String    @default("pending")
+  priority    String    @default("medium")
   dueDate     DateTime?
   completedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([status])
   @@index([dueDate])
 }
 
 model AssistantReminder {
-  id          String    @id @default(uuid())
-  userId      String
-  title       String
-  description String?
-  time        DateTime
-  recurring   Json?     // recurrence pattern
-  enabled     Boolean   @default(true)
+  id            String    @id @default(uuid())
+  userId        String
+  title         String
+  description   String?
+  time          DateTime
+  recurring     Json?
+  enabled       Boolean   @default(true)
   lastTriggered DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([time])
   @@index([enabled])
@@ -962,255 +954,251 @@ model AssistantNote {
   id        String   @id @default(uuid())
   userId    String
   title     String
-  content   String   @db.Text
+  content   String
   tags      String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([createdAt])
 }
 
-// Enhanced UMS Models
 model UserProfile {
-  id                String    @id @default(uuid())
-  userId            String    @unique
-  dateOfBirth       DateTime?
-  gender            String?
-  address           String?
-  city              String?
-  state             String?
-  country           String?
-  postalCode        String?
-  timezone          String    @default("UTC")
-  language          String    @default("en")
-  currency          String    @default("USD")
-  newsletter        Boolean   @default(false)
-  notifications     Json?     // notification preferences
-  preferences       Json?     // user preferences
-  socialLinks       Json?     // social media links
-  occupation        String?
-  company           String?
-  website           String?
-  interests         String[]
-  skills            String[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  User              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  dateOfBirth   DateTime?
+  gender        String?
+  address       String?
+  city          String?
+  state         String?
+  country       String?
+  postalCode    String?
+  timezone      String    @default("UTC")
+  language      String    @default("en")
+  currency      String    @default("USD")
+  newsletter    Boolean   @default(false)
+  notifications Json?
+  preferences   Json?
+  socialLinks   Json?
+  occupation    String?
+  company       String?
+  website       String?
+  interests     String[]
+  skills        String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
 model UserDevice {
-  id            String    @id @default(uuid())
-  userId        String
-  deviceId      String    @unique
-  deviceType    String    // mobile, tablet, desktop
-  deviceName    String?
-  platform      String?   // iOS, Android, Windows, etc.
-  pushToken     String?   // for push notifications
-  lastActive    DateTime  @default(now())
-  isActive      Boolean   @default(true)
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  userId     String
+  deviceId   String   @unique
+  deviceType String
+  deviceName String?
+  platform   String?
+  pushToken  String?
+  lastActive DateTime @default(now())
+  isActive   Boolean  @default(true)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  User       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([deviceId])
   @@index([lastActive])
 }
 
 model UserActivity {
-  id          String    @id @default(uuid())
-  userId      String
-  action      String    // login, logout, view_page, etc.
-  resource    String?   // resource being accessed
-  resourceId  String?
-  metadata    Json?     // additional activity data
-  ipAddress   String?
-  userAgent   String?
-  duration    Int?      // activity duration in seconds
-  createdAt   DateTime  @default(now())
-  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  resource   String?
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  duration   Int?
+  createdAt  DateTime @default(now())
+  User       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([action])
   @@index([createdAt])
 }
 
 model UserApiKey {
-  id          String    @id @default(uuid())
-  userId      String
-  name        String
-  key         String    @unique
-  scopes      String[]  // API scopes/permissions
-  lastUsed    DateTime?
-  usageCount  Int       @default(0)
-  rateLimit   Int       @default(1000) // requests per hour
-  expiresAt   DateTime?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id         String    @id @default(uuid())
+  userId     String
+  name       String
+  key        String    @unique
+  scopes     String[]
+  lastUsed   DateTime?
+  usageCount Int       @default(0)
+  rateLimit  Int       @default(1000)
+  expiresAt  DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([key])
   @@index([isActive])
 }
 
 model UserNotification {
-  id          String    @id @default(uuid())
-  userId      String
-  type        String    // email, push, in-app
-  title       String
-  message     String
-  data        Json?     // notification payload
-  isRead      Boolean   @default(false)
-  readAt      DateTime?
-  sentAt      DateTime  @default(now())
-  expiresAt   DateTime?
-  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String    @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  sentAt    DateTime  @default(now())
+  expiresAt DateTime?
+  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([isRead])
   @@index([sentAt])
 }
 
 model UserPreference {
-  id          String    @id @default(uuid())
-  userId      String
-  category    String    // theme, layout, notifications, etc.
-  key         String
-  value       Json
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(uuid())
+  userId    String
+  category  String
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, category, key])
   @@index([userId])
   @@index([category])
 }
 
 model Department {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  code        String    @unique
-  description String?
-  managerId   String?
-  parentId    String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  Manager     User?     @relation("DepartmentManager", fields: [managerId], references: [id])
-  Parent      Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
-  Children    Department[] @relation("DepartmentHierarchy")
+  id              String           @id @default(uuid())
+  name            String           @unique
+  code            String           @unique
+  description     String?
+  managerId       String?
+  parentId        String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  Manager         User?            @relation("DepartmentManager", fields: [managerId], references: [id])
+  Parent          Department?      @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  Children        Department[]     @relation("DepartmentHierarchy")
   UserDepartments UserDepartment[]
-  
+
   @@index([managerId])
   @@index([parentId])
   @@index([code])
 }
 
 model UserDepartment {
-  id           String      @id @default(uuid())
+  id           String     @id @default(uuid())
   userId       String
   departmentId String
-  position     String?     // job title/position
-  isPrimary    Boolean     @default(false)
-  startDate    DateTime    @default(now())
+  position     String?
+  isPrimary    Boolean    @default(false)
+  startDate    DateTime   @default(now())
   endDate      DateTime?
-  User         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Department   Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  
+  Department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  User         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, departmentId])
   @@index([userId])
   @@index([departmentId])
 }
 
 model Team {
-  id          String    @id @default(uuid())
+  id          String       @id @default(uuid())
   name        String
-  code        String    @unique
+  code        String       @unique
   description String?
   leaderId    String?
-  isActive    Boolean   @default(true)
+  isActive    Boolean      @default(true)
   metadata    Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  Leader      User?     @relation("TeamLeader", fields: [leaderId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  Leader      User?        @relation("TeamLeader", fields: [leaderId], references: [id])
   TeamMembers TeamMember[]
-  
+
   @@index([leaderId])
   @@index([code])
 }
 
 model TeamMember {
-  id        String    @id @default(uuid())
-  teamId    String
-  userId    String
-  role      String    @default("member") // leader, member, viewer
-  joinedAt  DateTime  @default(now())
-  leftAt    DateTime?
-  Team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id       String    @id @default(uuid())
+  teamId   String
+  userId   String
+  role     String    @default("member")
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+  Team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  User     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([teamId, userId])
   @@index([teamId])
   @@index([userId])
 }
 
-// Workspace Module Models
 model Project {
-  id            String    @id @default(uuid())
-  name          String
-  description   String
-  path          String
-  structure     Json      // FileNode[] stored as JSON
-  envVariables  Json      @default("{}") // Record<string, string>
-  scripts       Json      @default("[]") // Script[] stored as JSON
-  settings      Json?     // ProjectSettings
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  terminals     TerminalSession[]
-  commands      TerminalCommand[]
-  
-  // AI Assistant Relations
-  assistantSessions         AssistantChatSession[]
+  id                        String                     @id @default(uuid())
+  name                      String
+  description               String
+  path                      String
+  structure                 Json
+  envVariables              Json                       @default("{}")
+  scripts                   Json                       @default("[]")
+  settings                  Json?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  assistantAnalytics        AssistantAnalytics[]
   assistantChatMessages     AssistantChatMessage[]
+  assistantSessions         AssistantChatSession[]
   assistantCommands         AssistantCommand[]
   assistantFiles            AssistantFile[]
-  assistantAnalytics        AssistantAnalytics[]
-  
-  // Workspace Terminal Relations
-  workspaceTerminalSessions WorkspaceTerminalSession[]
+  gitConfig                 GitConfig?
+  gitConfigHistory          GitConfigHistory[]
+  commands                  TerminalCommand[]
+  terminals                 TerminalSession[]
   workspaceTerminalCommands WorkspaceTerminalCommand[]
   workspaceTerminalLogs     WorkspaceTerminalLog[]
-  
+  workspaceTerminalSessions WorkspaceTerminalSession[]
+
   @@index([name])
   @@index([createdAt])
 }
 
 model TerminalSession {
-  id          String    @id @default(uuid())
+  id          String            @id @default(uuid())
   projectId   String
-  userId      String?   // Optional user association
-  type        String    // 'system' or 'claude'
+  userId      String?
+  type        String
   tabName     String
-  active      Boolean   @default(true)
-  output      Json      @default("[]") // string[] stored as JSON
+  active      Boolean           @default(true)
+  output      Json              @default("[]")
   currentPath String
   pid         Int?
-  metadata    Json?     // Additional session metadata
-  startedAt   DateTime  @default(now())
+  metadata    Json?
+  startedAt   DateTime          @default(now())
   endedAt     DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  Project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   commands    TerminalCommand[]
   logs        TerminalLog[]
-  
+  Project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  User        User?             @relation(fields: [userId], references: [id])
+
   @@index([projectId])
   @@index([userId])
   @@index([type])
@@ -1219,36 +1207,35 @@ model TerminalSession {
 }
 
 model TerminalCommand {
-  id          String          @id @default(uuid())
-  sessionId   String
-  projectId   String
-  command     String
-  output      String          @db.Text
-  exitCode    Int?
-  timestamp   DateTime        @default(now())
-  Session     TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  Project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+  id        String          @id @default(uuid())
+  sessionId String
+  projectId String
+  command   String
+  output    String
+  exitCode  Int?
+  timestamp DateTime        @default(now())
+  Project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  Session   TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   @@index([sessionId])
   @@index([projectId])
   @@index([timestamp])
 }
 
-// New comprehensive terminal logging models
 model TerminalLog {
-  id            String          @id @default(uuid())
-  sessionId     String
-  userId        String?
-  type          String          // 'command', 'output', 'error', 'system'
-  direction     String?         // 'input', 'output'
-  content       String          @db.Text
-  rawContent    String?         @db.Text // Raw content with ANSI codes
-  timestamp     DateTime        @default(now())
-  sequence      Int             // Order within session
-  metadata      Json?           // Additional log metadata
-  Session       TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  User          User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
+  id         String          @id @default(uuid())
+  sessionId  String
+  userId     String?
+  type       String
+  direction  String?
+  content    String
+  rawContent String?
+  timestamp  DateTime        @default(now())
+  sequence   Int
+  metadata   Json?
+  Session    TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  User       User?           @relation(fields: [userId], references: [id])
+
   @@index([sessionId, sequence])
   @@index([userId])
   @@index([type])
@@ -1256,106 +1243,105 @@ model TerminalLog {
 }
 
 model TerminalAnalytics {
-  id                String    @id @default(uuid())
-  userId            String?
-  date              DateTime  @db.Date
-  commandCount      Int       @default(0)
-  errorCount        Int       @default(0)
-  sessionCount      Int       @default(0)
-  totalDuration     Int       @default(0) // in seconds
-  uniqueCommands    Json      // Array of unique commands
-  commonPatterns    Json      // Detected command patterns
-  errorPatterns     Json      // Common error patterns
-  workflowPatterns  Json      // Detected workflow patterns
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  User              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
+  id               String   @id @default(uuid())
+  userId           String?
+  date             DateTime @db.Date
+  commandCount     Int      @default(0)
+  errorCount       Int      @default(0)
+  sessionCount     Int      @default(0)
+  totalDuration    Int      @default(0)
+  uniqueCommands   Json
+  commonPatterns   Json
+  errorPatterns    Json
+  workflowPatterns Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  User             User?    @relation(fields: [userId], references: [id])
+
   @@unique([userId, date])
   @@index([userId])
   @@index([date])
 }
 
 model TerminalCommandPattern {
-  id            String    @id @default(uuid())
-  pattern       String    @unique // Regular expression or pattern
-  name          String
-  description   String?
-  category      String    // 'navigation', 'git', 'npm', 'docker', etc.
-  frequency     Int       @default(0)
-  avgDuration   Int?      // Average execution time in ms
-  successRate   Float?    // Success percentage
-  suggestedSop  Json?     // Suggested SOP based on pattern
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  id           String   @id @default(uuid())
+  pattern      String   @unique
+  name         String
+  description  String?
+  category     String
+  frequency    Int      @default(0)
+  avgDuration  Int?
+  successRate  Float?
+  suggestedSop Json?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   @@index([category])
   @@index([frequency])
 }
 
 model TerminalShortcut {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   userId      String?
   alias       String
-  command     String    @db.Text
+  command     String
   description String?
   category    String?
-  usageCount  Int       @default(0)
-  isGlobal    Boolean   @default(false) // Available to all users
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  User        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  usageCount  Int      @default(0)
+  isGlobal    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  User        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, alias])
   @@index([userId])
   @@index([isGlobal])
 }
 
 model TerminalSOP {
-  id            String    @id @default(uuid())
-  title         String
-  description   String?
-  workflow      Json      // Array of steps
-  triggers      Json      // Conditions that trigger this SOP
-  category      String
-  tags          String[]
-  usageCount    Int       @default(0)
-  successRate   Float?
-  avgDuration   Int?      // in seconds
-  isActive      Boolean   @default(true)
-  createdBy     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  User          User?     @relation("TerminalSOPCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  workflow    Json
+  triggers    Json
+  category    String
+  tags        String[]
+  usageCount  Int      @default(0)
+  successRate Float?
+  avgDuration Int?
+  isActive    Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  User        User?    @relation("TerminalSOPCreator", fields: [createdBy], references: [id])
+
   @@index([category])
   @@index([isActive])
   @@index([createdBy])
 }
 
-// API Token Management Models
 model ApiToken {
-  id                String       @id @default(uuid())
-  userId            String
-  name              String       // Token name/description
-  token             String       @unique // The actual API token (hashed)
-  tokenPrefix       String       // First 8 chars for identification
-  scopes            String[]     // Permissions: ["assistant:read", "assistant:write", "projects:read", etc.]
-  expiresAt         DateTime?    // Optional expiration
-  lastUsedAt        DateTime?
-  lastUsedIp        String?
-  usageCount        Int          @default(0)
-  rateLimit         Int          @default(1000) // Requests per hour
-  isActive          Boolean      @default(true)
-  metadata          Json?        // Additional settings
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  revokedAt         DateTime?
-  revokedReason     String?
-  User              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ApiUsageLog       ApiUsageLog[]
-  
+  id            String        @id @default(uuid())
+  userId        String
+  name          String
+  token         String        @unique
+  tokenPrefix   String
+  scopes        String[]
+  expiresAt     DateTime?
+  lastUsedAt    DateTime?
+  lastUsedIp    String?
+  usageCount    Int           @default(0)
+  rateLimit     Int           @default(1000)
+  isActive      Boolean       @default(true)
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  revokedAt     DateTime?
+  revokedReason String?
+  User          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ApiUsageLog   ApiUsageLog[]
+
   @@index([userId])
   @@index([token])
   @@index([isActive])
@@ -1363,23 +1349,23 @@ model ApiToken {
 }
 
 model ApiUsageLog {
-  id                String       @id @default(uuid())
-  tokenId           String
-  userId            String
-  endpoint          String       // API endpoint called
-  method            String       // HTTP method
-  statusCode        Int          // Response status
-  requestBody       Json?        // Request payload (sanitized)
-  responseBody      Json?        // Response payload (sanitized)
-  responseTime      Int          // Response time in ms
-  ipAddress         String
-  userAgent         String?
-  errorMessage      String?
-  metadata          Json?        // Additional context
-  createdAt         DateTime     @default(now())
-  ApiToken          ApiToken     @relation(fields: [tokenId], references: [id], onDelete: Cascade)
-  User              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id           String   @id @default(uuid())
+  tokenId      String
+  userId       String
+  endpoint     String
+  method       String
+  statusCode   Int
+  requestBody  Json?
+  responseBody Json?
+  responseTime Int
+  ipAddress    String
+  userAgent    String?
+  errorMessage String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  ApiToken     ApiToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([tokenId])
   @@index([userId])
   @@index([endpoint])
@@ -1388,208 +1374,191 @@ model ApiUsageLog {
 }
 
 model ApiRateLimit {
-  id                String       @id @default(uuid())
-  tokenId           String       @unique
-  windowStart       DateTime
-  requestCount      Int          @default(0)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  
+  id           String   @id @default(uuid())
+  tokenId      String   @unique
+  windowStart  DateTime
+  requestCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   @@index([tokenId])
   @@index([windowStart])
 }
 
 model ApiWebhook {
-  id                String       @id @default(uuid())
-  userId            String
-  name              String
-  url               String       // Webhook URL
-  events            String[]     // Events to trigger: ["assistant.message", "task.completed", etc.]
-  secret            String       // Webhook secret for verification
-  isActive          Boolean      @default(true)
-  failureCount      Int          @default(0)
-  lastTriggeredAt   DateTime?
-  lastStatus        Int?         // Last HTTP status code
-  metadata          Json?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  User              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id              String    @id @default(uuid())
+  userId          String
+  name            String
+  url             String
+  events          String[]
+  secret          String
+  isActive        Boolean   @default(true)
+  failureCount    Int       @default(0)
+  lastTriggeredAt DateTime?
+  lastStatus      Int?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  User            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([isActive])
 }
 
-// Configuration Management Models (UserConfig and ApiConfig only - SystemConfig already exists above)
 model UserConfig {
-  id          String    @id @default(uuid())
-  userId      String
-  key         String
-  value       Json
-  category    String    // 'preferences', 'notifications', 'privacy', 'display'
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  value     Json
+  category  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, key])
   @@index([userId])
   @@index([category])
 }
 
-// ============================================
-// NEW MODELS TO ADD (ที่ยังไม่มีใน schema)
-// ============================================
-
-// AI Assistant Chat Sessions (for Claude AI Chat)
 model AssistantChatSession {
-  id              String    @id @default(uuid())
+  id              String                 @id @default(uuid())
   userId          String
-  projectId       String?   // Optional - ถ้าใช้ใน context ของ project
-  sessionName     String?   // ชื่อ conversation
-  model           String    // claude-3-opus, claude-3-sonnet, etc.
-  temperature     Float     @default(0.7)
-  maxTokens       Int       @default(4096)
-  totalTokensUsed Int       @default(0)
-  totalCost       Float     @default(0)
-  metadata        Json?     // เก็บ settings และข้อมูลอื่นๆ
-  startedAt       DateTime  @default(now())
-  lastActiveAt    DateTime  @updatedAt
+  projectId       String?
+  sessionName     String?
+  model           String
+  temperature     Float                  @default(0.7)
+  maxTokens       Int                    @default(4096)
+  totalTokensUsed Int                    @default(0)
+  totalCost       Float                  @default(0)
+  metadata        Json?
+  startedAt       DateTime               @default(now())
+  lastActiveAt    DateTime               @updatedAt
   endedAt         DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  User            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Project         Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  messages        AssistantChatMessage[]
-  commands        AssistantCommand[]   // คำสั่งที่ AI สร้าง
-  files           AssistantFile[]      // ไฟล์ที่เกี่ยวข้อง
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
   analytics       AssistantAnalytics[]
-  
+  messages        AssistantChatMessage[]
+  Project         Project?               @relation(fields: [projectId], references: [id])
+  User            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commands        AssistantCommand[]
+  files           AssistantFile[]
+
   @@index([userId])
   @@index([projectId])
   @@index([lastActiveAt])
 }
 
-// Messages in AI Assistant Chat
 model AssistantChatMessage {
-  id            String                @id @default(uuid())
-  sessionId     String
-  userId        String?
-  projectId     String?
-  role          String                // 'user', 'assistant', 'system'
-  content       String                @db.Text
-  model         String?               // Model ที่ใช้ (สำหรับ assistant messages)
-  tokensUsed    Int?                  // จำนวน tokens ที่ใช้
-  cost          Float?                // ค่าใช้จ่าย
-  latency       Int?                  // Response time in ms
-  metadata      Json?                 // Additional data (tools used, etc.)
-  timestamp     DateTime              @default(now())
-  
-  Session       AssistantChatSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  User          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
-  Project       Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
+  id         String               @id @default(uuid())
+  sessionId  String
+  userId     String?
+  projectId  String?
+  role       String
+  content    String
+  model      String?
+  tokensUsed Int?
+  cost       Float?
+  latency    Int?
+  metadata   Json?
+  timestamp  DateTime             @default(now())
+  Project    Project?             @relation(fields: [projectId], references: [id])
+  Session    AssistantChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  User       User?                @relation(fields: [userId], references: [id])
+
   @@index([sessionId, timestamp])
   @@index([userId])
   @@index([projectId])
   @@index([role])
 }
 
-// Commands generated by AI Assistant
 model AssistantCommand {
-  id            String                @id @default(uuid())
-  sessionId     String
-  messageId     String?               // Link to message that generated this
-  projectId     String?
-  command       String                @db.Text
-  type          String                // 'terminal', 'file_edit', 'file_create', etc.
-  status        String                // 'pending', 'executed', 'failed', 'skipped'
-  output        String?               @db.Text
-  error         String?               @db.Text
-  executedAt    DateTime?
-  executedBy    String?               // User who approved/executed
-  metadata      Json?
-  createdAt     DateTime              @default(now())
-  
-  Session       AssistantChatSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  Project       Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
+  id         String               @id @default(uuid())
+  sessionId  String
+  messageId  String?
+  projectId  String?
+  command    String
+  type       String
+  status     String
+  output     String?
+  error      String?
+  executedAt DateTime?
+  executedBy String?
+  metadata   Json?
+  createdAt  DateTime             @default(now())
+  Project    Project?             @relation(fields: [projectId], references: [id])
+  Session    AssistantChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   @@index([sessionId])
   @@index([projectId])
   @@index([status])
   @@index([type])
 }
 
-// Files created/modified by AI Assistant
 model AssistantFile {
-  id            String                @id @default(uuid())
-  sessionId     String
-  projectId     String?
-  filePath      String
-  action        String                // 'created', 'modified', 'deleted', 'read'
-  content       String?               @db.Text  // File content snapshot
-  diff          String?               @db.Text  // Changes made
-  metadata      Json?
-  timestamp     DateTime              @default(now())
-  
-  Session       AssistantChatSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  Project       Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
+  id        String               @id @default(uuid())
+  sessionId String
+  projectId String?
+  filePath  String
+  action    String
+  content   String?
+  diff      String?
+  metadata  Json?
+  timestamp DateTime             @default(now())
+  Project   Project?             @relation(fields: [projectId], references: [id])
+  Session   AssistantChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   @@index([sessionId])
   @@index([projectId])
   @@index([action])
   @@index([timestamp])
 }
 
-// Analytics for AI Assistant usage
 model AssistantAnalytics {
-  id              String                @id @default(uuid())
-  sessionId       String?
-  userId          String
-  projectId       String?
-  date            DateTime              @db.Date
-  messagesCount   Int                   @default(0)
-  tokensUsed      Int                   @default(0)
-  totalCost       Float                 @default(0)
-  commandsCount   Int                   @default(0)
-  filesModified   Int                   @default(0)
-  errorsCount     Int                   @default(0)
-  avgLatency      Float?                // Average response time
-  metadata        Json?
-  createdAt       DateTime              @default(now())
-  
-  Session         AssistantChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  User            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Project         Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  
+  id            String                @id @default(uuid())
+  sessionId     String?
+  userId        String
+  projectId     String?
+  date          DateTime              @db.Date
+  messagesCount Int                   @default(0)
+  tokensUsed    Int                   @default(0)
+  totalCost     Float                 @default(0)
+  commandsCount Int                   @default(0)
+  filesModified Int                   @default(0)
+  errorsCount   Int                   @default(0)
+  avgLatency    Float?
+  metadata      Json?
+  createdAt     DateTime              @default(now())
+  Project       Project?              @relation(fields: [projectId], references: [id])
+  Session       AssistantChatSession? @relation(fields: [sessionId], references: [id])
+  User          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, projectId, date])
   @@index([userId])
   @@index([projectId])
   @@index([date])
 }
 
-// Terminal Sessions for Workspace
 model WorkspaceTerminalSession {
-  id            String    @id @default(uuid())
-  projectId     String    // Required - Terminal ต้องผูกกับ project
-  workspaceId   String?   // Optional - ถ้ามี workspace concept
-  userId        String    // User ที่ใช้งาน
-  type          String    // 'bash', 'zsh', 'powershell', 'cmd'
-  tabName       String
-  active        Boolean   @default(true)
-  currentPath   String
-  environment   Json?     // Environment variables
-  pid           Int?
-  metadata      Json?
-  startedAt     DateTime  @default(now())
-  endedAt       DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  Project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  commands      WorkspaceTerminalCommand[]
-  logs          WorkspaceTerminalLog[]
-  
+  id          String                     @id @default(uuid())
+  projectId   String
+  workspaceId String?
+  userId      String
+  type        String
+  tabName     String
+  active      Boolean                    @default(true)
+  currentPath String
+  environment Json?
+  pid         Int?
+  metadata    Json?
+  startedAt   DateTime                   @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  commands    WorkspaceTerminalCommand[]
+  logs        WorkspaceTerminalLog[]
+  Project     Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  User        User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([projectId])
   @@index([workspaceId])
   @@index([userId])
@@ -1597,49 +1566,97 @@ model WorkspaceTerminalSession {
   @@index([startedAt])
 }
 
-// Commands in Workspace Terminal
 model WorkspaceTerminalCommand {
-  id            String                    @id @default(uuid())
-  sessionId     String
-  projectId     String
-  userId        String
-  command       String                    @db.Text
-  workingDir    String
-  output        String?                   @db.Text
-  errorOutput   String?                   @db.Text
-  exitCode      Int?
-  duration      Int?                      // Execution time in ms
-  timestamp     DateTime                  @default(now())
-  
-  Session       WorkspaceTerminalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  Project       Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id          String                   @id @default(uuid())
+  sessionId   String
+  projectId   String
+  userId      String
+  command     String
+  workingDir  String
+  output      String?
+  errorOutput String?
+  exitCode    Int?
+  duration    Int?
+  timestamp   DateTime                 @default(now())
+  Project     Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  Session     WorkspaceTerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  User        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([sessionId])
   @@index([projectId])
   @@index([userId])
   @@index([timestamp])
 }
 
-// Detailed logs for Workspace Terminal
 model WorkspaceTerminalLog {
-  id            String                    @id @default(uuid())
-  sessionId     String
-  projectId     String
-  userId        String
-  type          String                    // 'stdin', 'stdout', 'stderr', 'system'
-  content       String                    @db.Text
-  rawContent    String?                   @db.Text  // With ANSI codes
-  sequence      Int                       // Order in session
-  timestamp     DateTime                  @default(now())
-  
-  Session       WorkspaceTerminalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  Project       Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id         String                   @id @default(uuid())
+  sessionId  String
+  projectId  String
+  userId     String
+  type       String
+  content    String
+  rawContent String?
+  sequence   Int
+  timestamp  DateTime                 @default(now())
+  Project    Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  Session    WorkspaceTerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  User       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([sessionId, sequence])
   @@index([projectId])
   @@index([userId])
   @@index([type])
+  @@index([timestamp])
+}
+
+model GitConfig {
+  id            String             @id @default(cuid())
+  projectId     String             @unique
+  projectPath   String
+  repoName      String
+  isGitRepo     Boolean
+  isBare        Boolean
+  workingDir    String
+  currentBranch String
+  defaultBranch String
+  isClean       Boolean
+  ahead         Int                @default(0)
+  behind        Int                @default(0)
+  staged        Int                @default(0)
+  modified      Int                @default(0)
+  untracked     Int                @default(0)
+  userName      String?
+  userEmail     String?
+  remotes       Json
+  branches      Json
+  config        Json
+  gitVersion    String?
+  lastFetch     DateTime?
+  syncedAt      DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  Project       Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  history       GitConfigHistory[]
+
+  @@index([projectId])
+  @@index([syncedAt])
+}
+
+model GitConfigHistory {
+  id         String    @id @default(cuid())
+  configId   String
+  projectId  String
+  changeType String
+  fromValue  String?
+  toValue    String?
+  details    Json?
+  userId     String?
+  timestamp  DateTime  @default(now())
+  GitConfig  GitConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  Project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  User       User?     @relation(fields: [userId], references: [id])
+
+  @@index([configId])
+  @@index([projectId])
+  @@index([userId])
   @@index([timestamp])
 }

@@ -10,49 +10,11 @@ import {
   ChatBubbleLeftRightIcon,
   FolderOpenIcon,
   CommandLineIcon,
-  UserIcon,
   Cog6ToothIcon,
-  UsersIcon,
   ChartBarIcon,
-  DocumentTextIcon,
-  PhotoIcon,
-  ClipboardDocumentListIcon,
-  CubeIcon,
-  ServerIcon,
-  CodeBracketIcon,
-  BeakerIcon,
-  BookOpenIcon,
-  BriefcaseIcon,
-  CalendarIcon,
-  CameraIcon,
   ChartPieIcon,
-  CloudIcon,
-  CpuChipIcon,
-  CreditCardIcon,
-  DocumentIcon,
-  FolderIcon,
-  GlobeAltIcon,
-  InboxIcon,
-  KeyIcon,
-  LinkIcon,
-  MapIcon,
-  MegaphoneIcon,
-  PaperAirplaneIcon,
-  PhoneIcon,
-  PlayIcon,
-  PuzzlePieceIcon,
-  QueueListIcon,
-  RocketLaunchIcon,
-  ShieldCheckIcon,
-  ShoppingCartIcon,
-  SignalIcon,
-  SparklesIcon,
-  TagIcon,
-  TicketIcon,
-  TrophyIcon,
-  TruckIcon,
-  WifiIcon,
-  WrenchScrewdriverIcon
+  CubeIcon,
+  KeyIcon
 } from '@heroicons/react/24/outline';
 
 function classNames(...classes: string[]) {
@@ -62,12 +24,13 @@ function classNames(...classes: string[]) {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, badge: null },
   { name: 'AI Assistant', href: '/assistant', icon: ChatBubbleLeftRightIcon, badge: 'AI' },
+  { name: 'Workspace', href: '/workspace', icon: FolderOpenIcon, badge: null },
+  { name: 'Terminal', href: '/terminal', icon: CommandLineIcon, badge: null },
+  { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, badge: null },
+  { name: 'Logs Monitor', href: '/logs', icon: ChartPieIcon, badge: null },
   { name: 'API Keys', href: '/api-keys', icon: KeyIcon, badge: null },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, badge: null },
 ];
-
-// Only show modules that are actually implemented
-const modules: any[] = [];
 
 interface SidebarProps {
   sidebarOpen: boolean;

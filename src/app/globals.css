@@ -160,6 +160,11 @@ body.modal-open {
   
   html {
     scroll-behavior: smooth;
+    @apply dark;
+  }
+  
+  html.dark {
+    color-scheme: dark;
   }
 }
 

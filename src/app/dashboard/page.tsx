@@ -84,36 +84,6 @@ export default function Dashboard() {
     }
   };
 
-  const quickActions = [
-    {
-      title: 'AI Assistant',
-      description: 'Start a conversation with Claude',
-      icon: ChatBubbleLeftRightIcon,
-      color: 'bg-blue-500',
-      href: '/assistant'
-    },
-    {
-      title: 'Workspace',
-      description: 'Manage your projects',
-      icon: FolderOpenIcon,
-      color: 'bg-green-500',
-      href: '/workspace'
-    },
-    {
-      title: 'Terminal',
-      description: 'Access command line',
-      icon: CommandLineIcon,
-      color: 'bg-purple-500',
-      href: '/terminal'
-    },
-    {
-      title: 'Analytics',
-      description: 'View your statistics',
-      icon: ChartBarIcon,
-      color: 'bg-orange-500',
-      href: '/analytics'
-    }
-  ];
 
   const statsCards = [
     {
@@ -160,7 +130,7 @@ export default function Dashboard() {
     <AppLayout>
       <div className="space-y-6">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-lg shadow-xl p-6 text-white border border-indigo-500/20">
           <h1 className="text-3xl font-bold">
             Welcome back, {user?.displayName || user?.username}!
           </h1>
@@ -176,19 +146,19 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {statsCards.map((stat) => (
-            <div key={stat.name} className="bg-white overflow-hidden shadow rounded-lg">
+            <div key={stat.name} className="bg-gray-800 overflow-hidden shadow-lg rounded-lg border border-gray-700">
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <stat.icon className="h-6 w-6 text-gray-400" aria-hidden="true" />
+                    <stat.icon className="h-6 w-6 text-indigo-400" aria-hidden="true" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">{stat.name}</dt>
+                      <dt className="text-sm font-medium text-gray-400 truncate">{stat.name}</dt>
                       <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
+                        <div className="text-2xl font-semibold text-white">{stat.value}</div>
                         <div className={`ml-2 flex items-baseline text-sm font-semibold ${
-                          stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                          stat.changeType === 'positive' ? 'text-green-400' : 'text-red-400'
                         }`}>
                           {stat.change}
                         </div>
@@ -201,81 +171,54 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Quick Actions and Recent Activity */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Quick Actions */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-4">
-                {quickActions.map((action) => (
-                  <button
-                    key={action.title}
-                    onClick={() => router.push(action.href)}
-                    className="relative rounded-lg p-4 text-left hover:bg-gray-50 border border-gray-200 transition-colors"
-                  >
-                    <div className={`inline-flex p-3 rounded-lg ${action.color} text-white`}>
-                      <action.icon className="h-6 w-6" aria-hidden="true" />
-                    </div>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">{action.title}</h3>
-                    <p className="mt-1 text-xs text-gray-500">{action.description}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Recent Activity */}
+        <div className="bg-gray-800 shadow-lg rounded-lg border border-gray-700">
+          <div className="px-6 py-4 border-b border-gray-700">
+            <h2 className="text-lg font-medium text-white">Recent Activity</h2>
           </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-            </div>
-            <div className="p-6">
-              <div className="flow-root">
-                <ul role="list" className="-mb-8">
-                  {recentActivity.map((activity, activityIdx) => (
-                    <li key={activity.id}>
-                      <div className="relative pb-8">
-                        {activityIdx !== recentActivity.length - 1 ? (
-                          <span
-                            className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                            aria-hidden="true"
-                          />
-                        ) : null}
-                        <div className="relative flex space-x-3">
+          <div className="p-6">
+            <div className="flow-root">
+              <ul role="list" className="-mb-8">
+                {recentActivity.map((activity, activityIdx) => (
+                  <li key={activity.id}>
+                    <div className="relative pb-8">
+                      {activityIdx !== recentActivity.length - 1 ? (
+                        <span
+                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-700"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      <div className="relative flex space-x-3">
+                        <div>
+                          <span className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center">
+                            <activity.icon className="h-5 w-5 text-indigo-400" aria-hidden="true" />
+                          </span>
+                        </div>
+                        <div className="flex min-w-0 flex-1 justify-between space-x-4">
                           <div>
-                            <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                              <activity.icon className="h-5 w-5 text-gray-500" aria-hidden="true" />
-                            </span>
+                            <p className="text-sm text-gray-200">{activity.message}</p>
                           </div>
-                          <div className="flex min-w-0 flex-1 justify-between space-x-4">
-                            <div>
-                              <p className="text-sm text-gray-900">{activity.message}</p>
-                            </div>
-                            <div className="whitespace-nowrap text-right text-sm text-gray-500">
-                              <time>{activity.time}</time>
-                            </div>
+                          <div className="whitespace-nowrap text-right text-sm text-gray-400">
+                            <time>{activity.time}</time>
                           </div>
                         </div>
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
 
         {/* Project Overview */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-gray-800 shadow-lg rounded-lg border border-gray-700">
+          <div className="px-6 py-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">Active Projects</h2>
+              <h2 className="text-lg font-medium text-white">Active Projects</h2>
               <button
                 onClick={() => router.push('/workspace')}
-                className="text-sm text-indigo-600 hover:text-indigo-500"
+                className="text-sm text-indigo-400 hover:text-indigo-300"
               >
                 View all
               </button>
@@ -283,27 +226,27 @@ export default function Dashboard() {
           </div>
           <div className="p-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg border border-gray-600">
                 <div className="flex items-center space-x-3">
-                  <ServerIcon className="h-6 w-6 text-gray-400" />
+                  <ServerIcon className="h-6 w-6 text-indigo-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">E-commerce Platform</p>
-                    <p className="text-xs text-gray-500">Last updated 2 hours ago</p>
+                    <p className="text-sm font-medium text-gray-200">E-commerce Platform</p>
+                    <p className="text-xs text-gray-400">Last updated 2 hours ago</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900/50 text-green-400 border border-green-600/50">
                   Active
                 </span>
               </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg border border-gray-600">
                 <div className="flex items-center space-x-3">
-                  <DocumentTextIcon className="h-6 w-6 text-gray-400" />
+                  <DocumentTextIcon className="h-6 w-6 text-indigo-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Blog Application</p>
-                    <p className="text-xs text-gray-500">Last updated 1 day ago</p>
+                    <p className="text-sm font-medium text-gray-200">Blog Application</p>
+                    <p className="text-xs text-gray-400">Last updated 1 day ago</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-900/50 text-yellow-400 border border-yellow-600/50">
                   In Progress
                 </span>
               </div>

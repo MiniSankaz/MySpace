@@ -1,447 +1,321 @@
 import { PrismaClient } from '@prisma/client';
-import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '@/core/database/prisma';
 
-const prisma = new PrismaClient();
-
-// ============================================
-// AI ASSISTANT LOGGING SERVICE
-// ============================================
-
-interface AssistantSessionData {
+export interface AssistantSession {
+  id: string;
+  sessionId: string;
+  title?: string;
   userId: string;
-  projectId?: string;
-  sessionName?: string;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
+  folderId?: string;
+  isActive: boolean;
+  startedAt: Date;
+  endedAt?: Date;
   metadata?: any;
+  messages?: AssistantMessage[];
+  _count?: {
+    messages: number;
+  };
 }
 
-interface AssistantMessageData {
-  sessionId: string;
-  userId?: string;
-  projectId?: string;
-  role: 'user' | 'assistant' | 'system';
+export interface AssistantMessage {
+  id: string;
+  conversationId: string;
+  type: 'user' | 'assistant' | 'system';
   content: string;
-  model?: string;
-  tokensUsed?: number;
-  cost?: number;
-  latency?: number;
   metadata?: any;
+  createdAt: Date;
 }
 
-interface AssistantCommandData {
+export interface AssistantCommand {
+  id: string;
   sessionId: string;
-  messageId?: string;
-  projectId?: string;
   command: string;
-  type: 'terminal' | 'file_edit' | 'file_create' | 'file_delete' | 'other';
-  status?: 'pending' | 'executed' | 'failed' | 'skipped';
-  output?: string;
-  error?: string;
-  metadata?: any;
+  result?: string;
+  exitCode?: number;
+  timestamp: Date;
 }
 
-interface AssistantFileData {
-  sessionId: string;
-  projectId?: string;
-  filePath: string;
-  action: 'created' | 'modified' | 'deleted' | 'read';
-  content?: string;
-  diff?: string;
-  metadata?: any;
+export interface AssistantStats {
+  totalMessages: number;
+  totalTokens: number;
+  totalCost: number;
+  avgTokensPerMessage: number;
+  modelUsage: Record<string, number>;
+  totalSessions?: number;
+  activeSessions?: number;
 }
 
-export class AssistantLoggingService {
-  private static instance: AssistantLoggingService;
-  private messageQueue: Map<string, AssistantMessageData[]> = new Map();
-  private batchTimer: NodeJS.Timeout | null = null;
-  private readonly BATCH_SIZE = 20;
-  private readonly BATCH_INTERVAL = 2000; // 2 seconds
+class AssistantLoggingService {
+  private db: PrismaClient;
 
-  private constructor() {
-    this.startBatchProcessor();
+  constructor() {
+    this.db = prisma;
   }
 
-  static getInstance(): AssistantLoggingService {
-    if (!AssistantLoggingService.instance) {
-      AssistantLoggingService.instance = new AssistantLoggingService();
-    }
-    return AssistantLoggingService.instance;
-  }
-
-  private startBatchProcessor() {
-    this.batchTimer = setInterval(() => {
-      this.flushMessageBatches();
-    }, this.BATCH_INTERVAL);
-  }
-
-  // ============================================
-  // SESSION MANAGEMENT
-  // ============================================
-
-  async getSession(sessionId: string) {
+  // Create or update session
+  async createSession(data: {
+    sessionId: string;
+    userId: string;
+    projectId: string;
+    sessionName?: string;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+  }): Promise<AssistantSession> {
     try {
-      const session = await prisma.assistantChatSession.findUnique({
-        where: { id: sessionId }
-      });
-      return session;
-    } catch (error) {
-      console.error('[AssistantLog] Failed to get session:', error);
-      return null;
-    }
-  }
-
-  async createSession(data: AssistantSessionData) {
-    try {
-      const session = await prisma.assistantChatSession.create({
-        data: {
-          id: uuidv4(),
-          userId: data.userId,
-          projectId: data.projectId,
-          sessionName: data.sessionName,
-          model: data.model || 'claude-3-opus',
-          temperature: data.temperature || 0.7,
-          maxTokens: data.maxTokens || 4096,
-          metadata: data.metadata || {},
-        },
-      });
-
-      // Initialize message queue for this session
-      this.messageQueue.set(session.id, []);
-      
-      console.log(`[AssistantLog] Created session: ${session.id} for user: ${data.userId}, project: ${data.projectId || 'none'}`);
-      return session;
-    } catch (error) {
-      console.error('[AssistantLog] Failed to create session:', error);
-      throw error;
-    }
-  }
-
-  async endSession(sessionId: string) {
-    try {
-      // Flush any remaining messages
-      await this.flushSessionMessages(sessionId);
-      
-      // Update session
-      const session = await prisma.assistantChatSession.update({
-        where: { id: sessionId },
-        data: {
-          endedAt: new Date(),
-        },
-      });
-
-      // Clean up queue
-      this.messageQueue.delete(sessionId);
-      
-      console.log(`[AssistantLog] Ended session: ${sessionId}`);
-      return session;
-    } catch (error) {
-      console.error('[AssistantLog] Failed to end session:', error);
-      throw error;
-    }
-  }
-
-  async updateSessionStats(sessionId: string, tokensUsed: number, cost: number) {
-    try {
-      await prisma.assistantChatSession.update({
-        where: { id: sessionId },
-        data: {
-          totalTokensUsed: { increment: tokensUsed },
-          totalCost: { increment: cost },
-        },
-      });
-    } catch (error) {
-      console.error('[AssistantLog] Failed to update session stats:', error);
-    }
-  }
-
-  // ============================================
-  // MESSAGE LOGGING
-  // ============================================
-
-  async logMessage(data: AssistantMessageData) {
-    // Add to queue for batch processing
-    const queue = this.messageQueue.get(data.sessionId) || [];
-    queue.push(data);
-    this.messageQueue.set(data.sessionId, queue);
-
-    // Flush if queue is full
-    if (queue.length >= this.BATCH_SIZE) {
-      await this.flushSessionMessages(data.sessionId);
-    }
-
-    // Update session stats if assistant message
-    if (data.role === 'assistant' && data.tokensUsed && data.cost) {
-      await this.updateSessionStats(data.sessionId, data.tokensUsed, data.cost);
-    }
-  }
-
-  private async flushSessionMessages(sessionId: string) {
-    const messages = this.messageQueue.get(sessionId);
-    if (!messages || messages.length === 0) return;
-
-    try {
-      // Check if session exists before flushing
-      const sessionExists = await prisma.assistantChatSession.findUnique({
-        where: { id: sessionId }
-      });
-
-      if (!sessionExists) {
-        console.warn(`[AssistantLog] Session ${sessionId} not found, creating new session before flushing messages`);
-        
-        // Extract userId from first message or use default
-        const firstMessage = messages[0];
-        const userId = firstMessage.userId || 'system';
-        
-        // Create a new session
-        await prisma.assistantChatSession.create({
-          data: {
-            id: sessionId,
-            userId: userId,
-            model: 'claude-3-sonnet',
-            temperature: 0.7,
-            maxTokens: 4096,
-            totalTokensUsed: 0,
-            totalCost: 0,
-            createdAt: new Date(),
+      const session = await this.db.assistantConversation.upsert({
+        where: { 
+          userId_sessionId: {
+            userId: data.userId,
+            sessionId: data.sessionId
           }
-        });
-      }
-
-      await prisma.assistantChatMessage.createMany({
-        data: messages.map(msg => ({
-          id: uuidv4(),
-          ...msg,
-          content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-          timestamp: new Date(),
-        })),
-      });
-
-      console.log(`[AssistantLog] Flushed ${messages.length} messages for session: ${sessionId}`);
-      
-      // Clear queue
-      this.messageQueue.set(sessionId, []);
-    } catch (error) {
-      console.error('[AssistantLog] Failed to flush messages:', error);
-      // Clear problematic messages to prevent repeated errors
-      this.messageQueue.set(sessionId, []);
-    }
-  }
-
-  private async flushMessageBatches() {
-    for (const [sessionId, messages] of this.messageQueue) {
-      if (messages.length > 0) {
-        await this.flushSessionMessages(sessionId);
-      }
-    }
-  }
-
-  // ============================================
-  // COMMAND LOGGING
-  // ============================================
-
-  async logCommand(data: AssistantCommandData) {
-    try {
-      const command = await prisma.assistantCommand.create({
-        data: {
-          id: uuidv4(),
-          ...data,
-          status: data.status || 'pending',
-          createdAt: new Date(),
         },
-      });
-
-      console.log(`[AssistantLog] Logged command: ${data.type} for session: ${data.sessionId}`);
-      return command;
-    } catch (error) {
-      console.error('[AssistantLog] Failed to log command:', error);
-      throw error;
-    }
-  }
-
-  async updateCommandStatus(
-    commandId: string,
-    status: 'executed' | 'failed' | 'skipped',
-    output?: string,
-    error?: string
-  ) {
-    try {
-      await prisma.assistantCommand.update({
-        where: { id: commandId },
-        data: {
-          status,
-          output,
-          error,
-          executedAt: status === 'executed' ? new Date() : undefined,
+        update: {
+          endedAt: null,
+          isActive: true,
         },
-      });
-
-      console.log(`[AssistantLog] Updated command ${commandId} status to: ${status}`);
-    } catch (error) {
-      console.error('[AssistantLog] Failed to update command status:', error);
-    }
-  }
-
-  // ============================================
-  // FILE LOGGING
-  // ============================================
-
-  async logFileOperation(data: AssistantFileData) {
-    try {
-      const file = await prisma.assistantFile.create({
-        data: {
-          id: uuidv4(),
-          ...data,
-          timestamp: new Date(),
-        },
-      });
-
-      console.log(`[AssistantLog] Logged file operation: ${data.action} on ${data.filePath}`);
-      return file;
-    } catch (error) {
-      console.error('[AssistantLog] Failed to log file operation:', error);
-      throw error;
-    }
-  }
-
-  // ============================================
-  // ANALYTICS
-  // ============================================
-
-  async updateDailyAnalytics(userId: string, projectId?: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    try {
-      const existing = await prisma.assistantAnalytics.findUnique({
-        where: {
-          userId_projectId_date: {
-            userId,
-            projectId: projectId || '',
-            date: today,
+        create: {
+          sessionId: data.sessionId,
+          title: data.sessionName || `Session ${new Date().toISOString()}`,
+          userId: data.userId,
+          folderId: null,
+          isActive: true,
+          startedAt: new Date(),
+          metadata: {
+            model: data.model || 'gpt-3.5-turbo',
+            temperature: data.temperature || 0.7,
+            maxTokens: data.maxTokens || 2000,
+            projectId: data.projectId || 'default'
           },
         },
-      });
-
-      if (existing) {
-        // Update existing record
-        await prisma.assistantAnalytics.update({
-          where: { id: existing.id },
-          data: {
-            messagesCount: { increment: 1 },
-            // Other stats will be updated by triggers or separate processes
-          },
-        });
-      } else {
-        // Create new record
-        await prisma.assistantAnalytics.create({
-          data: {
-            id: uuidv4(),
-            userId,
-            projectId,
-            date: today,
-            messagesCount: 1,
-          },
-        });
-      }
-    } catch (error) {
-      console.error('[AssistantLog] Failed to update analytics:', error);
-    }
-  }
-
-  // ============================================
-  // QUERY METHODS
-  // ============================================
-
-  async getSessionHistory(sessionId: string) {
-    try {
-      const messages = await prisma.assistantChatMessage.findMany({
-        where: { sessionId },
-        orderBy: { timestamp: 'asc' },
-      });
-
-      return messages;
-    } catch (error) {
-      console.error('[AssistantLog] Failed to get session history:', error);
-      throw error;
-    }
-  }
-
-  async getUserSessions(userId: string, projectId?: string) {
-    try {
-      const sessions = await prisma.assistantChatSession.findMany({
-        where: {
-          userId,
-          projectId,
-          endedAt: null, // Only active sessions
-        },
-        orderBy: { lastActiveAt: 'desc' },
         include: {
           _count: {
             select: {
               messages: true,
-              commands: true,
-            },
-          },
-        },
+            }
+          }
+        }
       });
 
-      return sessions;
+      return this.mapPrismaSessionToAssistantSession(session);
     } catch (error) {
-      console.error('[AssistantLog] Failed to get user sessions:', error);
+      console.error('Error creating assistant session:', error);
       throw error;
     }
   }
 
-  async getProjectStats(projectId: string) {
+  // Log message
+  async logMessage(data: {
+    sessionId: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    tokens?: number;
+    cost?: number;
+  }): Promise<void> {
     try {
-      const stats = await prisma.assistantChatSession.aggregate({
-        where: { projectId },
-        _sum: {
-          totalTokensUsed: true,
-          totalCost: true,
-        },
-        _count: {
-          id: true,
-        },
+      // First find the conversation
+      const conversation = await this.db.assistantConversation.findFirst({
+        where: { sessionId: data.sessionId }
+      });
+      
+      if (!conversation) {
+        console.error('Conversation not found for sessionId:', data.sessionId);
+        return;
+      }
+
+      // Store message - ensure content is a string
+      const contentString = typeof data.content === 'string' 
+        ? data.content 
+        : JSON.stringify(data.content);
+      
+      await this.db.assistantMessage.create({
+        data: {
+          conversationId: conversation.id,
+          type: data.role,
+          content: contentString,
+          metadata: {
+            tokens: data.tokens || 0,
+            cost: data.cost || 0,
+          },
+          createdAt: new Date(),
+        }
       });
 
-      const commandStats = await prisma.assistantCommand.groupBy({
-        by: ['status'],
-        where: { projectId },
-        _count: {
-          id: true,
-        },
-      });
-
-      return {
-        sessions: stats._count.id,
-        totalTokens: stats._sum.totalTokensUsed || 0,
-        totalCost: stats._sum.totalCost || 0,
-        commands: commandStats,
-      };
+      // Update session metadata if needed
+      if (data.tokens || data.cost) {
+        const currentMetadata = conversation.metadata as any || {};
+        await this.db.assistantConversation.update({
+          where: { id: conversation.id },
+          data: {
+            metadata: {
+              ...currentMetadata,
+              totalTokensUsed: (currentMetadata.totalTokensUsed || 0) + (data.tokens || 0),
+              totalCost: (currentMetadata.totalCost || 0) + (data.cost || 0),
+              lastActiveAt: new Date(),
+            }
+          }
+        });
+      }
     } catch (error) {
-      console.error('[AssistantLog] Failed to get project stats:', error);
-      throw error;
+      console.error('Error logging assistant message:', error);
+      // Don't throw to avoid breaking the main flow
     }
   }
 
-  // ============================================
-  // CLEANUP
-  // ============================================
+  // Get user sessions
+  async getUserSessions(userId: string, projectId?: string): Promise<AssistantSession[]> {
+    try {
+      const sessions = await this.db.assistantConversation.findMany({
+        where: {
+          userId,
+        },
+        orderBy: { startedAt: 'desc' },
+        include: {
+          _count: {
+            select: {
+              messages: true,
+            }
+          }
+        },
+        take: 100,
+      });
 
-  async cleanup() {
-    // Flush all remaining messages
-    await this.flushMessageBatches();
-    
-    // Stop batch processor
-    if (this.batchTimer) {
-      clearInterval(this.batchTimer);
-      this.batchTimer = null;
+      return sessions.map(s => this.mapPrismaSessionToAssistantSession(s));
+    } catch (error) {
+      console.error('Error fetching user sessions:', error);
+      return [];
     }
+  }
+
+  // Get session history
+  async getSessionHistory(sessionId: string): Promise<AssistantMessage[]> {
+    try {
+      // First find the conversation
+      const conversation = await this.db.assistantConversation.findFirst({
+        where: { sessionId }
+      });
+      
+      if (!conversation) {
+        return [];
+      }
+
+      const messages = await this.db.assistantMessage.findMany({
+        where: { conversationId: conversation.id },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return messages.map(m => ({
+        id: m.id,
+        conversationId: m.conversationId,
+        type: m.type as 'user' | 'assistant' | 'system',
+        content: m.content,
+        metadata: m.metadata,
+        createdAt: m.createdAt,
+      }));
+    } catch (error) {
+      console.error('Error fetching session history:', error);
+      return [];
+    }
+  }
+
+  // Get project statistics
+  async getProjectStats(projectId: string): Promise<AssistantStats> {
+    try {
+      // Filter by projectId in metadata
+      const sessions = await this.db.assistantConversation.findMany({
+        where: {},
+        include: {
+          messages: true,
+        }
+      });
+
+      const stats: AssistantStats = {
+        totalMessages: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        avgTokensPerMessage: 0,
+        modelUsage: {},
+        totalSessions: sessions.length,
+        activeSessions: sessions.filter(s => {
+          const metadata = s.metadata as any || {};
+          return metadata.projectId === projectId && s.isActive;
+        }).length,
+      };
+
+      sessions.forEach(session => {
+        const metadata = session.metadata as any || {};
+        
+        // Only count sessions for this projectId
+        if (metadata.projectId !== projectId) {
+          return;
+        }
+        
+        stats.totalTokens += metadata.totalTokensUsed || 0;
+        stats.totalCost += metadata.totalCost || 0;
+        stats.totalMessages += session.messages?.length || 0;
+        
+        // Count model usage
+        if (metadata.model) {
+          stats.modelUsage[metadata.model] = (stats.modelUsage[metadata.model] || 0) + 1;
+        }
+      });
+
+      stats.avgTokensPerMessage = stats.totalMessages > 0 
+        ? stats.totalTokens / stats.totalMessages 
+        : 0;
+
+      return stats;
+    } catch (error) {
+      console.error('Error calculating project stats:', error);
+      return {
+        totalMessages: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        avgTokensPerMessage: 0,
+        modelUsage: {},
+        totalSessions: 0,
+        activeSessions: 0,
+      };
+    }
+  }
+
+  // Clear old sessions
+  async clearOldSessions(daysToKeep: number = 30): Promise<number> {
+    try {
+      const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
+      
+      const result = await this.db.assistantConversation.deleteMany({
+        where: {
+          endedAt: {
+            lt: cutoffDate
+          },
+          isActive: false
+        }
+      });
+
+      return result.count;
+    } catch (error) {
+      console.error('Error clearing old sessions:', error);
+      return 0;
+    }
+  }
+
+  // Helper to map Prisma result to AssistantSession
+  private mapPrismaSessionToAssistantSession(session: any): AssistantSession {
+    return {
+      id: session.id,
+      sessionId: session.sessionId,
+      title: session.title,
+      userId: session.userId,
+      folderId: session.folderId,
+      isActive: session.isActive,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      metadata: session.metadata,
+      _count: session._count,
+    };
   }
 }
 
 // Export singleton instance
-export const assistantLogger = AssistantLoggingService.getInstance();
+export const assistantLogger = new AssistantLoggingService();

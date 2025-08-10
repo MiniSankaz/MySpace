@@ -463,11 +463,11 @@ export class AuthService {
 
     const accessToken = accessTokenExpiry === 'never' 
       ? jwt.sign(payload, this.JWT_SECRET)
-      : jwt.sign(payload, this.JWT_SECRET, { expiresIn: accessTokenExpiry });
+      : jwt.sign(payload, this.JWT_SECRET, { expiresIn: String(accessTokenExpiry) });
 
     const refreshToken = refreshTokenExpiry === 'never'
       ? jwt.sign(payload, this.JWT_REFRESH_SECRET)
-      : jwt.sign(payload, this.JWT_REFRESH_SECRET, { expiresIn: refreshTokenExpiry });
+      : jwt.sign(payload, this.JWT_REFRESH_SECRET, { expiresIn: String(refreshTokenExpiry) });
 
     // Calculate expiry in seconds
     const expiresIn = accessTokenExpiry === 'never' ? -1 : this.parseExpiryToSeconds(accessTokenExpiry);

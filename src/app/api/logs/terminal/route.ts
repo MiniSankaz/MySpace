@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/middleware/auth';
 import { workspaceTerminalLogger } from '@/services/workspace-terminal-logging.service';
 import { z } from 'zod';
+import { mockTerminalLogs } from '../mock-data';
 
 const querySchema = z.object({
   sessionId: z.string().optional(),
@@ -12,7 +13,16 @@ const querySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
+    // Configuration - can be set via environment variable
+    const useMockData = process.env.USE_MOCK_LOGS === 'true' || false; // Use real data by default
+    
+    // Return mock data immediately if enabled (bypass auth for testing)
+    if (useMockData) {
+      console.log('[Logs API - Terminal] Using mock data (auth bypassed)');
+      return NextResponse.json(mockTerminalLogs);
+    }
+    
+    // Verify authentication for real data
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(

@@ -1,6 +1,13 @@
 // Register TypeScript paths
 require('tsconfig-paths/register');
 
+// Check Node.js version for Claude CLI compatibility
+const nodeVersion = process.version;
+const majorVersion = parseInt(nodeVersion.split('.')[0].substring(1));
+if (majorVersion >= 22) {
+  console.warn('⚠️  Warning: Node.js v22+ may have issues with Claude CLI. Consider using Node.js v18.');
+}
+
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');

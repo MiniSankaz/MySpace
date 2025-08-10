@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Project, Script } from '../../types';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import FileTree from './FileTree';
+import GitConfig from '@/components/GitConfig';
 
 interface ConfigPanelProps {
   project: Project;
@@ -11,7 +12,7 @@ interface ConfigPanelProps {
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
   const { updateProject, refreshProjectStructure } = useWorkspace();
-  const [activeTab, setActiveTab] = useState<'overview' | 'env' | 'scripts'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'git' | 'scripts'>('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -83,27 +84,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
     });
   };
 
-  const handleAddEnvVariable = () => {
-    const key = prompt('Environment variable name:');
-    const value = prompt('Environment variable value:');
-    
-    if (key && value) {
-      updateProject(project.id, {
-        envVariables: {
-          ...project.envVariables,
-          [key]: value,
-        },
-      });
-    }
-  };
-
-  const handleRemoveEnvVariable = (key: string) => {
-    const newEnvVars = { ...project.envVariables };
-    delete newEnvVars[key];
-    updateProject(project.id, {
-      envVariables: newEnvVars,
-    });
-  };
 
   return (
     <div className="h-full flex flex-col">
@@ -120,14 +100,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
           Overview
         </button>
         <button
-          onClick={() => setActiveTab('env')}
+          onClick={() => setActiveTab('git')}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'env'
+            activeTab === 'git'
               ? 'text-blue-400 border-b-2 border-blue-400'
               : 'text-gray-400 hover:text-gray-300'
           }`}
         >
-          Environment
+          Git Config
         </button>
         <button
           onClick={() => setActiveTab('scripts')}
@@ -245,63 +225,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
           </div>
         )}
 
-        {activeTab === 'env' && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-400">Environment Variables</h3>
-              <button
-                onClick={handleAddEnvVariable}
-                className="p-1 text-gray-400 hover:text-gray-300 transition-colors"
-                title="Add variable"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-2">
-              {Object.entries(project.envVariables).length === 0 ? (
-                <p className="text-sm text-gray-500">No environment variables defined</p>
-              ) : (
-                Object.entries(project.envVariables).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between bg-gray-800 rounded p-2">
-                    <div className="flex-1">
-                      <span className="text-sm font-mono text-gray-400">{key}=</span>
-                      <span className="text-sm font-mono text-gray-300">{value}</span>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveEnvVariable(key)}
-                      className="p-1 text-gray-500 hover:text-red-400 transition-colors"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        {activeTab === 'git' && (
+          <GitConfig 
+            projectPath={project.path} 
+            projectId={project.id} 
+          />
         )}
 
         {activeTab === 'scripts' && (

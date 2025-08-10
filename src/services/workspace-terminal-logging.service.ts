@@ -1,314 +1,171 @@
 import { PrismaClient } from '@prisma/client';
-import { v4 as uuidv4 } from 'uuid';
+import { prisma } from '@/core/database/prisma';
 
-const prisma = new PrismaClient();
-
-// ============================================
-// WORKSPACE TERMINAL LOGGING SERVICE
-// ============================================
-
-interface TerminalSessionData {
-  projectId: string;  // Required for workspace terminals
-  workspaceId?: string;
-  userId: string;
-  type: 'bash' | 'zsh' | 'powershell' | 'cmd' | 'sh';
+export interface TerminalSession {
+  id: string;
+  tabId: string;
   tabName: string;
-  currentPath: string;
-  environment?: Record<string, string>;
-  pid?: number;
-  metadata?: any;
-}
-
-interface TerminalCommandData {
-  sessionId: string;
+  type: string;
+  active: boolean;
+  currentPath?: string;
   projectId: string;
   userId: string;
+  startedAt: Date;
+  endedAt?: Date;
+  _count?: {
+    commands: number;
+    logs: number;
+  };
+}
+
+export interface TerminalCommand {
+  id: string;
+  sessionId: string;
   command: string;
-  workingDir: string;
-  output?: string;
-  errorOutput?: string;
+  workingDir?: string;
   exitCode?: number;
   duration?: number;
+  timestamp: Date;
 }
 
-interface TerminalLogData {
+export interface TerminalLog {
+  id: string;
   sessionId: string;
-  projectId: string;
-  userId: string;
-  type: 'stdin' | 'stdout' | 'stderr' | 'system';
+  type: 'stdout' | 'stderr' | 'info';
   content: string;
-  rawContent?: string;
+  timestamp: Date;
 }
 
-export class WorkspaceTerminalLoggingService {
-  private static instance: WorkspaceTerminalLoggingService;
-  private sequenceMap = new Map<string, number>();
-  private logQueue = new Map<string, TerminalLogData[]>();
-  private commandStartTime = new Map<string, number>();
-  private batchTimer: NodeJS.Timeout | null = null;
-  private readonly BATCH_SIZE = 100;
-  private readonly BATCH_INTERVAL = 1000; // 1 second
+export interface TerminalStats {
+  totalCommands: number;
+  successfulCommands: number;
+  failedCommands: number;
+  errorRate: number;
+  avgExecutionTime: number;
+  mostUsedCommands: Array<{ command: string; count: number }>;
+  totalSessions?: number;
+  activeSessions?: number;
+}
 
-  private constructor() {
-    this.startBatchProcessor();
+class WorkspaceTerminalLoggingService {
+  private db: PrismaClient;
+
+  constructor() {
+    this.db = prisma;
   }
 
-  static getInstance(): WorkspaceTerminalLoggingService {
-    if (!WorkspaceTerminalLoggingService.instance) {
-      WorkspaceTerminalLoggingService.instance = new WorkspaceTerminalLoggingService();
-    }
-    return WorkspaceTerminalLoggingService.instance;
-  }
-
-  private startBatchProcessor() {
-    this.batchTimer = setInterval(() => {
-      this.flushLogBatches();
-    }, this.BATCH_INTERVAL);
-  }
-
-  // ============================================
-  // SESSION MANAGEMENT
-  // ============================================
-
-  async createSession(data: TerminalSessionData) {
+  // Create or update terminal session
+  async createSession(data: {
+    tabId: string;
+    tabName: string;
+    type?: string;
+    projectId: string;
+    userId: string;
+    currentPath?: string;
+  }): Promise<TerminalSession> {
     try {
-      const session = await prisma.workspaceTerminalSession.create({
+      const session = await this.db.terminalSession.create({
         data: {
-          id: uuidv4(),
-          projectId: data.projectId,
-          workspaceId: data.workspaceId,
-          userId: data.userId,
-          type: data.type,
+          id: data.tabId, // Use tabId as the session ID
           tabName: data.tabName,
-          currentPath: data.currentPath,
-          environment: data.environment || {},
-          pid: data.pid,
-          metadata: data.metadata || {},
+          type: data.type || 'system',
           active: true,
+          currentPath: data.currentPath || process.cwd(),
+          projectId: data.projectId || 'default',
+          userId: data.userId || null,
           startedAt: new Date(),
+          metadata: {},
         },
+        include: {
+          _count: {
+            select: {
+              commands: true,
+              logs: true,
+            }
+          }
+        }
       });
 
-      // Initialize sequence counter and log queue
-      this.sequenceMap.set(session.id, 0);
-      this.logQueue.set(session.id, []);
-      
-      console.log(`[WorkspaceTerminal] Created session: ${session.id} for project: ${data.projectId}, user: ${data.userId}`);
-      
-      // Log session creation
-      await this.logEntry({
-        sessionId: session.id,
-        projectId: data.projectId,
-        userId: data.userId,
-        type: 'system',
-        content: `Terminal session started in ${data.currentPath}`,
-      });
-
-      return session;
+      return this.mapPrismaSessionToTerminalSession(session);
     } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to create session:', error);
+      console.error('Error creating terminal session:', error);
       throw error;
     }
   }
 
-  async endSession(sessionId: string) {
+  // Log command execution
+  async logCommand(data: {
+    sessionId: string;
+    command: string;
+    workingDir?: string;
+    exitCode?: number;
+    duration?: number;
+  }): Promise<void> {
     try {
-      // Get session info for final log
-      const session = await prisma.workspaceTerminalSession.findUnique({
-        where: { id: sessionId },
+      // Get projectId from session
+      const session = await this.db.terminalSession.findUnique({
+        where: { id: data.sessionId }
       });
-
+      
       if (!session) {
-        console.warn(`[WorkspaceTerminal] Session not found: ${sessionId}`);
+        console.error('Session not found for command logging:', data.sessionId);
         return;
       }
 
-      // Log session end
-      await this.logEntry({
-        sessionId,
-        projectId: session.projectId,
-        userId: session.userId,
-        type: 'system',
-        content: 'Terminal session ended',
-      });
-
-      // Flush any remaining logs
-      await this.flushSessionLogs(sessionId);
-      
-      // Update session
-      await prisma.workspaceTerminalSession.update({
-        where: { id: sessionId },
+      await this.db.terminalCommand.create({
         data: {
-          active: false,
-          endedAt: new Date(),
-        },
+          sessionId: data.sessionId,
+          projectId: session.projectId,
+          command: data.command,
+          output: '',  // Required field, can be updated later
+          exitCode: data.exitCode || 0,
+          timestamp: new Date(),
+        }
       });
-
-      // Clean up
-      this.sequenceMap.delete(sessionId);
-      this.logQueue.delete(sessionId);
-      this.commandStartTime.delete(sessionId);
-      
-      console.log(`[WorkspaceTerminal] Ended session: ${sessionId}`);
     } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to end session:', error);
-      throw error;
+      console.error('Error logging terminal command:', error);
+      // Don't throw to avoid breaking the main flow
     }
   }
 
-  async updateSessionPath(sessionId: string, newPath: string) {
+  // Log terminal output
+  async logOutput(data: {
+    sessionId: string;
+    type: 'stdout' | 'stderr' | 'info';
+    content: string;
+  }): Promise<void> {
     try {
-      await prisma.workspaceTerminalSession.update({
-        where: { id: sessionId },
-        data: { currentPath: newPath },
+      // Get the next sequence number for this session
+      const lastLog = await this.db.terminalLog.findFirst({
+        where: { sessionId: data.sessionId },
+        orderBy: { sequence: 'desc' }
       });
-    } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to update session path:', error);
-    }
-  }
+      const nextSequence = (lastLog?.sequence || 0) + 1;
 
-  // ============================================
-  // COMMAND LOGGING
-  // ============================================
-
-  async startCommand(sessionId: string, command: string) {
-    // Store start time for duration calculation
-    this.commandStartTime.set(`${sessionId}:${command}`, Date.now());
-  }
-
-  async logCommand(data: TerminalCommandData) {
-    try {
-      // Calculate duration if start time is available
-      const startTimeKey = `${data.sessionId}:${data.command}`;
-      const startTime = this.commandStartTime.get(startTimeKey);
-      const duration = startTime ? Date.now() - startTime : undefined;
-      
-      const command = await prisma.workspaceTerminalCommand.create({
+      await this.db.terminalLog.create({
         data: {
-          id: uuidv4(),
-          ...data,
-          duration,
-          timestamp: new Date(),
-        },
-      });
-
-      // Clean up start time
-      this.commandStartTime.delete(startTimeKey);
-
-      console.log(`[WorkspaceTerminal] Logged command: "${data.command}" for project: ${data.projectId}`);
-      
-      // Also log to detailed logs
-      await this.logEntry({
-        sessionId: data.sessionId,
-        projectId: data.projectId,
-        userId: data.userId,
-        type: 'stdin',
-        content: data.command,
-      });
-
-      if (data.output) {
-        await this.logEntry({
           sessionId: data.sessionId,
-          projectId: data.projectId,
-          userId: data.userId,
-          type: 'stdout',
-          content: data.output,
-        });
-      }
-
-      if (data.errorOutput) {
-        await this.logEntry({
-          sessionId: data.sessionId,
-          projectId: data.projectId,
-          userId: data.userId,
-          type: 'stderr',
-          content: data.errorOutput,
-        });
-      }
-
-      return command;
-    } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to log command:', error);
-      throw error;
-    }
-  }
-
-  // ============================================
-  // DETAILED LOGGING
-  // ============================================
-
-  async logEntry(data: TerminalLogData) {
-    // Get and increment sequence number
-    const sequence = this.sequenceMap.get(data.sessionId) || 0;
-    this.sequenceMap.set(data.sessionId, sequence + 1);
-
-    // Add to queue with sequence number
-    const queue = this.logQueue.get(data.sessionId) || [];
-    queue.push({ ...data, sequence } as any);
-    this.logQueue.set(data.sessionId, queue);
-
-    // Flush if queue is full
-    if (queue.length >= this.BATCH_SIZE) {
-      await this.flushSessionLogs(data.sessionId);
-    }
-  }
-
-  private async flushSessionLogs(sessionId: string) {
-    const logs = this.logQueue.get(sessionId);
-    if (!logs || logs.length === 0) return;
-
-    try {
-      await prisma.workspaceTerminalLog.createMany({
-        data: logs.map((log, index) => ({
-          id: uuidv4(),
-          ...log,
-          sequence: (this.sequenceMap.get(sessionId) || 0) - logs.length + index,
+          type: data.type === 'stdout' ? 'output' : data.type === 'stderr' ? 'error' : 'system',
+          direction: 'output',
+          content: data.content,
           timestamp: new Date(),
-        })),
+          sequence: nextSequence,
+          metadata: {}
+        }
       });
-
-      console.log(`[WorkspaceTerminal] Flushed ${logs.length} logs for session: ${sessionId}`);
-      
-      // Clear queue
-      this.logQueue.set(sessionId, []);
     } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to flush logs:', error);
+      console.error('Error logging terminal output:', error);
+      // Don't throw to avoid breaking the main flow
     }
   }
 
-  private async flushLogBatches() {
-    for (const [sessionId, logs] of this.logQueue) {
-      if (logs.length > 0) {
-        await this.flushSessionLogs(sessionId);
-      }
-    }
-  }
-
-  // ============================================
-  // QUERY METHODS
-  // ============================================
-
-  async getSessionLogs(sessionId: string, limit?: number) {
+  // Get project sessions
+  async getProjectSessions(projectId: string, activeOnly?: boolean): Promise<TerminalSession[]> {
     try {
-      const logs = await prisma.workspaceTerminalLog.findMany({
-        where: { sessionId },
-        orderBy: { sequence: 'asc' },
-        take: limit,
-      });
-
-      return logs;
-    } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to get session logs:', error);
-      throw error;
-    }
-  }
-
-  async getProjectSessions(projectId: string, active?: boolean) {
-    try {
-      const sessions = await prisma.workspaceTerminalSession.findMany({
+      const sessions = await this.db.terminalSession.findMany({
         where: {
           projectId,
-          ...(active !== undefined ? { active } : {}),
+          ...(activeOnly !== undefined && { active: activeOnly }),
         },
         orderBy: { startedAt: 'desc' },
         include: {
@@ -316,133 +173,187 @@ export class WorkspaceTerminalLoggingService {
             select: {
               commands: true,
               logs: true,
-            },
-          },
+            }
+          }
         },
+        take: 100,
       });
 
-      return sessions;
+      return sessions.map(s => this.mapPrismaSessionToTerminalSession(s));
     } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to get project sessions:', error);
-      throw error;
+      console.error('Error fetching project sessions:', error);
+      return [];
     }
   }
 
-  async getProjectCommands(projectId: string, limit?: number) {
+  // Get session logs
+  async getSessionLogs(sessionId: string, limit: number = 100): Promise<TerminalLog[]> {
     try {
-      const commands = await prisma.workspaceTerminalCommand.findMany({
-        where: { projectId },
+      const logs = await this.db.terminalLog.findMany({
+        where: { sessionId },
         orderBy: { timestamp: 'desc' },
-        take: limit || 100,
-        select: {
-          command: true,
-          workingDir: true,
-          exitCode: true,
-          duration: true,
-          timestamp: true,
-          User: {
-            select: {
-              username: true,
-              displayName: true,
-            },
-          },
-        },
+        take: limit,
       });
 
-      return commands;
+      return logs.map(log => ({
+        id: log.id,
+        sessionId: log.sessionId,
+        type: log.type as 'stdout' | 'stderr' | 'info',
+        content: log.content,
+        timestamp: log.timestamp,
+      }));
     } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to get project commands:', error);
-      throw error;
+      console.error('Error fetching session logs:', error);
+      return [];
     }
   }
 
-  async getProjectStats(projectId: string) {
+  // Get project commands
+  async getProjectCommands(projectId: string, limit: number = 100): Promise<TerminalCommand[]> {
     try {
-      const sessionCount = await prisma.workspaceTerminalSession.count({
+      // First get sessions for the project
+      const sessions = await this.db.terminalSession.findMany({
         where: { projectId },
+        select: { id: true },
       });
 
-      const commandCount = await prisma.workspaceTerminalCommand.count({
-        where: { projectId },
-      });
+      const sessionIds = sessions.map(s => s.id);
 
-      const activeSessionCount = await prisma.workspaceTerminalSession.count({
-        where: { projectId, active: true },
-      });
-
-      const errorCommands = await prisma.workspaceTerminalCommand.count({
+      const commands = await this.db.terminalCommand.findMany({
         where: {
-          projectId,
-          exitCode: { not: 0 },
+          sessionId: { in: sessionIds },
         },
+        orderBy: { timestamp: 'desc' },
+        take: limit,
       });
 
-      return {
-        totalSessions: sessionCount,
-        activeSessions: activeSessionCount,
-        totalCommands: commandCount,
-        errorCommands,
-        errorRate: commandCount > 0 ? (errorCommands / commandCount) * 100 : 0,
-      };
+      return commands.map(cmd => ({
+        id: cmd.id,
+        sessionId: cmd.sessionId,
+        command: cmd.command,
+        workingDir: undefined,  // Field doesn't exist in schema
+        exitCode: cmd.exitCode || undefined,
+        duration: undefined,  // Field doesn't exist in schema
+        timestamp: cmd.timestamp,
+      }));
     } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to get project stats:', error);
-      throw error;
+      console.error('Error fetching project commands:', error);
+      return [];
     }
   }
 
-  // ============================================
-  // REAL-TIME STREAMING
-  // ============================================
-
-  async streamOutput(sessionId: string, projectId: string, userId: string, content: string, type: 'stdout' | 'stderr' = 'stdout') {
-    // For real-time output, we might want to batch less aggressively
-    await this.logEntry({
-      sessionId,
-      projectId,
-      userId,
-      type,
-      content,
-      rawContent: content, // Preserve ANSI codes
-    });
-  }
-
-  // ============================================
-  // CLEANUP
-  // ============================================
-
-  async cleanup() {
-    // Flush all remaining logs
-    await this.flushLogBatches();
-    
-    // Stop batch processor
-    if (this.batchTimer) {
-      clearInterval(this.batchTimer);
-      this.batchTimer = null;
-    }
-  }
-
-  async cleanupOldSessions(daysToKeep: number = 30) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-
+  // Get project statistics
+  async getProjectStats(projectId: string): Promise<TerminalStats> {
     try {
-      const result = await prisma.workspaceTerminalSession.deleteMany({
+      const sessions = await this.db.terminalSession.findMany({
+        where: { projectId },
+        include: {
+          commands: true,
+        }
+      });
+
+      const allCommands = sessions.flatMap(s => s.commands);
+      
+      const stats: TerminalStats = {
+        totalCommands: allCommands.length,
+        successfulCommands: allCommands.filter(c => c.exitCode === 0).length,
+        failedCommands: allCommands.filter(c => c.exitCode !== 0 && c.exitCode !== null).length,
+        errorRate: 0,
+        avgExecutionTime: 0,
+        mostUsedCommands: [],
+        totalSessions: sessions.length,
+        activeSessions: sessions.filter(s => s.active).length,
+      };
+
+      // Calculate error rate
+      if (stats.totalCommands > 0) {
+        stats.errorRate = (stats.failedCommands / stats.totalCommands) * 100;
+      }
+
+      // Average execution time not available in current schema
+      stats.avgExecutionTime = 0;
+
+      // Get most used commands
+      const commandCounts = new Map<string, number>();
+      allCommands.forEach(cmd => {
+        const baseCommand = cmd.command.split(' ')[0]; // Get base command
+        commandCounts.set(baseCommand, (commandCounts.get(baseCommand) || 0) + 1);
+      });
+
+      stats.mostUsedCommands = Array.from(commandCounts.entries())
+        .map(([command, count]) => ({ command, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      return stats;
+    } catch (error) {
+      console.error('Error calculating project stats:', error);
+      return {
+        totalCommands: 0,
+        successfulCommands: 0,
+        failedCommands: 0,
+        errorRate: 0,
+        avgExecutionTime: 0,
+        mostUsedCommands: [],
+        totalSessions: 0,
+        activeSessions: 0,
+      };
+    }
+  }
+
+  // Mark session as ended
+  async endSession(sessionId: string): Promise<void> {
+    try {
+      await this.db.terminalSession.update({
+        where: { id: sessionId },
+        data: {
+          active: false,
+          endedAt: new Date(),
+        }
+      });
+    } catch (error) {
+      console.error('Error ending terminal session:', error);
+    }
+  }
+
+  // Clear old sessions
+  async clearOldSessions(daysToKeep: number = 30): Promise<number> {
+    try {
+      const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
+      
+      const result = await this.db.terminalSession.deleteMany({
         where: {
           active: false,
           endedAt: {
-            lt: cutoffDate,
-          },
-        },
+            lt: cutoffDate
+          }
+        }
       });
 
-      console.log(`[WorkspaceTerminal] Cleaned up ${result.count} old sessions`);
       return result.count;
     } catch (error) {
-      console.error('[WorkspaceTerminal] Failed to cleanup old sessions:', error);
-      throw error;
+      console.error('Error clearing old sessions:', error);
+      return 0;
     }
+  }
+
+  // Helper to map Prisma result to TerminalSession
+  private mapPrismaSessionToTerminalSession(session: any): TerminalSession {
+    return {
+      id: session.id,
+      tabId: session.id,  // Use id as tabId since tabId field doesn't exist
+      tabName: session.tabName,
+      type: session.type,
+      active: session.active,
+      currentPath: session.currentPath,
+      projectId: session.projectId,
+      userId: session.userId,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      _count: session._count,
+    };
   }
 }
 
 // Export singleton instance
-export const workspaceTerminalLogger = WorkspaceTerminalLoggingService.getInstance();
+export const workspaceTerminalLogger = new WorkspaceTerminalLoggingService();

@@ -44,44 +44,33 @@ export const POST = withRateLimit(async (request: NextRequest) => {
     // Create or get logging session
     let loggingSessionId = sessionId;
     try {
-      // Check if session exists in database
-      const existingSession = await assistantLogger.getSession(sessionId);
-      
-      if (!existingSession) {
-        // Create new session if it doesn't exist
-        const loggingSession = await assistantLogger.createSession({
-          userId,
-          projectId,
-          sessionName: `Chat Session - ${new Date().toLocaleString()}`,
-          model: directMode ? 'claude-direct' : 'claude-assistant',
-        });
-        loggingSessionId = loggingSession.id;
+      // Create or get session in database
+      const loggingSession = await assistantLogger.createSession({
+        sessionId,
+        userId,
+        projectId,
+        sessionName: `Chat Session - ${new Date().toLocaleString()}`,
+        model: directMode ? 'claude-direct' : 'claude-assistant',
+      });
+      if (loggingSession) {
+        loggingSessionId = loggingSession.sessionId;
       }
     } catch (error) {
       console.error('Failed to create/get logging session:', error);
-      // Create a fallback session to prevent errors
-      try {
-        const fallbackSession = await assistantLogger.createSession({
-          userId,
-          projectId,
-          sessionName: `Fallback Session - ${new Date().toLocaleString()}`,
-          model: directMode ? 'claude-direct' : 'claude-assistant',
-        });
-        loggingSessionId = fallbackSession.id;
-      } catch (fallbackError) {
-        console.error('Failed to create fallback session:', fallbackError);
-      }
+      // Continue without logging if it fails
     }
     
     // Log user message
     const startTime = Date.now();
-    await assistantLogger.logMessage({
-      sessionId: loggingSessionId,
-      userId,
-      projectId,
-      role: 'user',
-      content: validation.data.message,
-    });
+    try {
+      await assistantLogger.logMessage({
+        sessionId: loggingSessionId,
+        role: 'user',
+        content: validation.data.message,
+      });
+    } catch (error) {
+      console.error('Failed to log user message:', error);
+    }
     
     const assistant = getAssistantInstance();
     
@@ -107,20 +96,21 @@ export const POST = withRateLimit(async (request: NextRequest) => {
     const estimatedCost = estimatedTokens * 0.00002; // Rough estimate
     
     // Log assistant response
-    await assistantLogger.logMessage({
-      sessionId: loggingSessionId,
-      userId,
-      projectId,
-      role: 'assistant',
-      content: response,
-      model: directMode ? 'claude-direct' : 'claude-assistant',
-      tokensUsed: estimatedTokens,
-      cost: estimatedCost,
-      latency,
-    });
-    
-    // Update daily analytics
-    await assistantLogger.updateDailyAnalytics(userId, projectId);
+    try {
+      // Extract text content if response is an object
+      const responseContent = typeof response === 'string' ? response : 
+        (response?.message || response?.content || JSON.stringify(response));
+      
+      await assistantLogger.logMessage({
+        sessionId: loggingSessionId,
+        role: 'assistant',
+        content: responseContent,
+        tokens: estimatedTokens,
+        cost: estimatedCost,
+      });
+    } catch (error) {
+      console.error('Failed to log assistant message:', error);
+    }
     
     // Generate a message ID for the response
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

@@ -17,9 +17,11 @@ const updateUserSchema = z.object({
 // GET /api/ums/users/[userId] - Get user details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
+    
     // Verify authentication
     const authResult = await requireAuth(request);
     if (!authResult.authenticated) {
@@ -30,14 +32,14 @@ export async function GET(
     }
 
     // Users can only get their own data unless they're admin
-    if (params.userId !== authResult.userId && !authResult.roles?.includes('admin')) {
+    if (userId !== authResult.userId && !authResult.roles?.includes('admin')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden' },
         { status: 403 }
       );
     }
 
-    const user = await userService.getUser(params.userId);
+    const user = await userService.getUser(userId);
 
     return NextResponse.json({
       success: true,
@@ -58,9 +60,11 @@ export async function GET(
 // PUT /api/ums/users/[userId] - Update user
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
+    
     // Verify authentication
     const authResult = await requireAuth(request);
     if (!authResult.authenticated) {
@@ -71,7 +75,7 @@ export async function PUT(
     }
 
     // Users can only update their own data unless they're admin
-    if (params.userId !== authResult.userId && !authResult.roles?.includes('admin')) {
+    if (userId !== authResult.userId && !authResult.roles?.includes('admin')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden' },
         { status: 403 }
@@ -81,7 +85,7 @@ export async function PUT(
     const body = await request.json();
     const data = updateUserSchema.parse(body);
 
-    const user = await userService.updateUser(params.userId, data);
+    const user = await userService.updateUser(userId, data);
 
     return NextResponse.json({
       success: true,
@@ -102,9 +106,11 @@ export async function PUT(
 // DELETE /api/ums/users/[userId] - Delete user
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const { userId } = await params;
+    
     // Verify authentication - only admins can delete users
     const authResult = await requireAuth(request, ['admin']);
     if (!authResult.authenticated) {
@@ -114,7 +120,7 @@ export async function DELETE(
       );
     }
 
-    await userService.deleteUser(params.userId, authResult.userId);
+    await userService.deleteUser(userId, authResult.userId);
 
     return NextResponse.json({
       success: true,
