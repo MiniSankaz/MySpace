@@ -181,9 +181,14 @@ export default function SettingsPage() {
       // Save settings based on active tab
       console.log('Saving settings:', activeTab, data);
       
+      // Check if data already contains category and settings (from AIAssistantSettings)
+      const hasStructure = data.category && data.settings;
+      
       // Make actual API call to save settings
       // Convert ai-assistant to ai_assistant for backend consistency
-      const categoryForBackend = activeTab === 'ai-assistant' ? 'ai_assistant' : activeTab;
+      const categoryForBackend = hasStructure ? 
+        (data.category === 'ai-assistant' ? 'ai_assistant' : data.category) : 
+        (activeTab === 'ai-assistant' ? 'ai_assistant' : activeTab);
       
       const response = await authClient.fetch('/api/settings/user', {
         method: 'POST',
@@ -192,7 +197,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           category: categoryForBackend,
-          settings: data
+          settings: hasStructure ? data.settings : data
         })
       });
 

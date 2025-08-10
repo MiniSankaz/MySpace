@@ -25,7 +25,7 @@ const userSettingsSchema = z.object({
 });
 
 const aiAssistantSettingsSchema = z.object({
-  responseTimeout: z.number().min(10).max(300),
+  responseTimeout: z.number().min(10).max(10000), // Allow up to 10000 seconds
   maxContextMessages: z.number().min(1).max(50),
   modelSelection: z.string(),
   temperature: z.number().min(0).max(1),

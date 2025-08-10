@@ -94,9 +94,18 @@ export default function AIAssistantSettings({ user, tabId, onSave, saving }: AIA
 
   const handleSave = async () => {
     try {
+      // Ensure all numeric values are properly typed
+      const sanitizedSettings = {
+        ...settings,
+        responseTimeout: Number(settings.responseTimeout),
+        maxContextMessages: Number(settings.maxContextMessages),
+        temperature: Number(settings.temperature),
+        maxTokens: Number(settings.maxTokens)
+      };
+      
       await onSave({
         category: 'ai_assistant',
-        settings: settings
+        settings: sanitizedSettings
       });
       setHasChanges(false);
     } catch (error) {
