@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Message } from '../types';
 import { MessageRenderer } from './MessageRenderer';
+import { authClient } from '@/core/auth/auth-client';
 import '../styles/chat-interface.css';
 import '../styles/message-renderer.css';
 
@@ -114,16 +115,12 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
   const loadSessions = async () => {
     setLoadingSessions(true);
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/assistant/sessions', {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      });
+      const response = await authClient.fetch('/api/assistant/sessions');
       const data = await response.json();
       
       if (data.success) {
         setSessions(data.sessions);
+        console.log('Loaded sessions:', data.sessions.length);
       }
     } catch (error) {
       console.error('Failed to load sessions:', error);
@@ -134,23 +131,14 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
 
   const loadFolders = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/assistant/folders', {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      });
+      const response = await authClient.fetch('/api/assistant/folders');
       const data = await response.json();
       
       if (data.success) {
         // Load conversations for each folder
         const foldersWithConversations = await Promise.all(
           data.folders.map(async (folder: FolderInfo) => {
-            const folderResponse = await fetch(`/api/assistant/folders/${folder.id}`, {
-              headers: {
-                'Authorization': token ? `Bearer ${token}` : ''
-              }
-            });
+            const folderResponse = await authClient.fetch(`/api/assistant/folders/${folder.id}`);
             const folderData = await folderResponse.json();
             return {
               ...folder,
@@ -167,12 +155,7 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
 
   const loadConversationHistory = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/assistant/chat?sessionId=${sessionId}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      });
+      const response = await authClient.fetch(`/api/assistant/chat?sessionId=${sessionId}`);
       const data = await response.json();
       
       if (data.success) {
@@ -198,12 +181,8 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
 
   const deleteSession = async (sessionIdToDelete: string) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/assistant/sessions/${sessionIdToDelete}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
+      const response = await authClient.fetch(`/api/assistant/sessions/${sessionIdToDelete}`, {
+        method: 'DELETE'
       });
 
       const data = await response.json();
@@ -230,12 +209,8 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
 
   const clearAllSessions = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/assistant/sessions/clear', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
+      const response = await authClient.fetch('/api/assistant/sessions/clear', {
+        method: 'DELETE'
       });
 
       const data = await response.json();
@@ -255,11 +230,9 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
     if (!newFolderName.trim()) return;
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/assistant/folders', {
+      const response = await authClient.fetch('/api/assistant/folders', {
         method: 'POST',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -287,12 +260,8 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
     if (!confirm('Delete this folder? Conversations will be moved to root.')) return;
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/assistant/folders/${folderId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
+      const response = await authClient.fetch(`/api/assistant/folders/${folderId}`, {
+        method: 'DELETE'
       });
 
       const data = await response.json();
@@ -311,11 +280,9 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
 
   const moveToFolder = async (sessionIdToMove: string, targetFolderId: string | null) => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`/api/assistant/sessions/${sessionIdToMove}/move`, {
+      const response = await authClient.fetch(`/api/assistant/sessions/${sessionIdToMove}/move`, {
         method: 'PATCH',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ folderId: targetFolderId })
@@ -398,12 +365,10 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
     setIsTyping(true);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch('/api/assistant/chat', {
+      const response = await authClient.fetch('/api/assistant/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           message: userMessage.content,
