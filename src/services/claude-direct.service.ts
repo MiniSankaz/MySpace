@@ -2,6 +2,8 @@ import { spawn, ChildProcess, exec } from 'child_process';
 import { EventEmitter } from 'events';
 import { promisify } from 'util';
 import { ClaudeBackgroundService } from './claude-background.service';
+import { ClaudeSessionManager } from './claude-session-manager.service';
+import { AIAssistantConfigService } from './ai-assistant-config.service';
 
 const execAsync = promisify(exec);
 
@@ -13,11 +15,15 @@ interface ClaudeResponse {
 export class ClaudeDirectService extends EventEmitter {
   private static instance: ClaudeDirectService;
   private backgroundService: ClaudeBackgroundService | null = null;
+  private sessionManager: ClaudeSessionManager;
+  private configService: AIAssistantConfigService;
   private isReady = false;
-  private useBackgroundMode = false; // Flag to control which mode to use
+  private useBackgroundMode = false; // Disable background mode - use direct execution for better performance
 
   private constructor() {
     super();
+    this.sessionManager = ClaudeSessionManager.getInstance();
+    this.configService = AIAssistantConfigService.getInstance();
   }
 
   static getInstance(): ClaudeDirectService {
@@ -72,17 +78,101 @@ export class ClaudeDirectService extends EventEmitter {
     }
   }
 
-  async sendMessage(message: string, context?: any[]): Promise<ClaudeResponse> {
+  async sendMessageWithSession(sessionId: string, message: string, context?: any[], userId?: string): Promise<ClaudeResponse> {
     if (!this.isReady) {
       await this.initialize();
     }
 
     try {
+      // Load user settings if userId is provided
+      let userConfig = null;
+      if (userId) {
+        try {
+          userConfig = await this.configService.getUserConfig(userId);
+          console.log('[Claude Direct] Loaded user config:', {
+            timeout: userConfig.responseTimeout,
+            maxContext: userConfig.maxContextMessages,
+            temperature: userConfig.temperature
+          });
+        } catch (error) {
+          console.log('[Claude Direct] Using default config');
+        }
+      }
+
+      // Use session manager for background mode
+      if (this.useBackgroundMode) {
+        console.log(`[Claude Direct] Using session manager for session: ${sessionId}`);
+        
+        // Build message with context if provided
+        let fullMessage = message;
+        if (context && context.length > 0) {
+          const maxContextMessages = userConfig?.maxContextMessages || 5;
+          const contextMessages = context
+            .filter(m => m.role !== 'system')
+            .slice(-maxContextMessages) // Use user-configured context size
+            .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+            .join('\n');
+          
+          if (contextMessages) {
+            fullMessage = `Previous conversation:\n${contextMessages}\n\nUser: ${message}\n\nPlease respond considering the conversation context above.`;
+          }
+        }
+        
+        const response = await this.sessionManager.sendMessageToSession(sessionId, fullMessage, userId);
+        return { content: response };
+      }
+
+      // Fallback to direct exec mode with user settings
+      return this.sendMessage(message, context, userId);
+    } catch (error: any) {
+      console.error('[Claude Direct] Error with session:', error);
+      // Fallback to direct mode if session fails
+      return this.sendMessage(message, context, userId);
+    }
+  }
+
+  async sendMessage(message: string, context?: any[], userId?: string): Promise<ClaudeResponse> {
+    if (!this.isReady) {
+      await this.initialize();
+    }
+
+    try {
+      // Load user settings if userId is provided
+      let userConfig = null;
+      let timeout = 60000; // Default 60 seconds
+      let maxContextMessages = 5; // Default 5 messages
+      
+      if (userId) {
+        try {
+          userConfig = await this.configService.getUserConfig(userId);
+          timeout = (userConfig.responseTimeout || 60) * 1000; // Convert to milliseconds
+          maxContextMessages = userConfig.maxContextMessages || 5;
+          console.log('[Claude Direct] Using user config:', {
+            timeout: timeout / 1000,
+            maxContext: maxContextMessages,
+            temperature: userConfig.temperature,
+            maxTokens: userConfig.maxTokens
+          });
+        } catch (error) {
+          console.log('[Claude Direct] Using default config');
+        }
+      }
       // If background service is available and running, use it
       if (this.useBackgroundMode && this.backgroundService && this.backgroundService.isReady()) {
         console.log('[Claude Direct] Using background service...');
-        const response = await this.backgroundService.sendMessage(message);
-        return { content: response };
+        try {
+          const response = await Promise.race([
+            this.backgroundService.sendMessage(message),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Background service timeout')), 90000)
+            )
+          ]) as string;
+          return { content: response };
+        } catch (bgError: any) {
+          console.error('[Claude Direct] Background service failed:', bgError.message);
+          // Fall through to direct mode
+          this.useBackgroundMode = false;
+        }
       }
 
       // Otherwise use direct exec mode (like the main branch version)
@@ -93,7 +183,7 @@ export class ClaudeDirectService extends EventEmitter {
       if (context && context.length > 0) {
         const contextMessages = context
           .filter(m => m.role !== 'system')
-          .slice(-5) // Last 5 messages for context
+          .slice(-maxContextMessages) // Use user-configured context size
           .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
           .join('\n');
         
@@ -111,12 +201,14 @@ export class ClaudeDirectService extends EventEmitter {
         .replace(/`/g, '\\`')
         .replace(/\n/g, '\\n');
       
-      // Send to Claude CLI using echo pipe (like main branch)
-      const command = `echo -e "${escapedMessage}" | claude 2>&1`;
+      // Send to Claude CLI using echo pipe with --print flag for better performance
+      // Unset ANTHROPIC_API_KEY to use logged-in session
+      const command = `unset ANTHROPIC_API_KEY && echo -e "${escapedMessage}" | claude --print 2>&1`;
       
       const { stdout, stderr } = await execAsync(command, {
-        timeout: 30000, // 30 second timeout
-        maxBuffer: 10 * 1024 * 1024 // 10MB
+        timeout: timeout, // Use user-configured timeout
+        maxBuffer: 10 * 1024 * 1024, // 10MB
+        env: { ...process.env, ANTHROPIC_API_KEY: undefined }
       });
 
       if (stderr && !stderr.includes('warning')) {
@@ -140,7 +232,14 @@ export class ClaudeDirectService extends EventEmitter {
     } catch (error: any) {
       console.error('[Claude Direct] Error:', error);
       
-      // Return fallback response
+      // Return fallback response with specific error handling
+      if (error.code === 'TIMEOUT') {
+        return {
+          content: 'ขออภัย ระบบตอบสนองช้าเกินไป กรุณาลองใหม่อีกครั้ง',
+          error: 'Request timeout'
+        };
+      }
+      
       return {
         content: this.getFallbackResponse(message),
         error: error.message

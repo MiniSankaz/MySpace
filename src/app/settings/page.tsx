@@ -19,7 +19,8 @@ import {
   ServerIcon,
   CircleStackIcon,
   DocumentTextIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 import AppLayout from '@/components/layout/AppLayout';
 import UserSettings from '@/components/settings/UserSettings';
@@ -28,6 +29,7 @@ import SystemSettings from '@/components/settings/SystemSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
+import AIAssistantSettings from '@/components/settings/AIAssistantSettings';
 
 interface SettingsTab {
   id: string;
@@ -35,7 +37,7 @@ interface SettingsTab {
   icon: any;
   component: any;
   description: string;
-  category: 'user' | 'api' | 'system';
+  category: 'user' | 'api' | 'system' | 'ai';
   requiresAdmin?: boolean;
 }
 
@@ -72,6 +74,15 @@ const settingsTabs: SettingsTab[] = [
     component: SecuritySettings,
     description: 'Manage your security settings and two-factor authentication',
     category: 'user'
+  },
+  // AI Assistant Settings
+  {
+    id: 'ai-assistant',
+    name: 'AI Assistant',
+    icon: ChatBubbleLeftRightIcon,
+    component: AIAssistantSettings,
+    description: 'Configure AI Assistant behavior and response settings',
+    category: 'ai'
   },
   // API Settings
   {
@@ -169,12 +180,44 @@ export default function SettingsPage() {
       // Save settings based on active tab
       console.log('Saving settings:', activeTab, data);
       
+      // Make actual API call to save settings
+      // Convert ai-assistant to ai_assistant for backend consistency
+      const categoryForBackend = activeTab === 'ai-assistant' ? 'ai_assistant' : activeTab;
+      
+      const response = await fetch('/api/settings/user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user?.id || 'default_user',
+          category: categoryForBackend,
+          settings: data
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save settings');
+      }
+
+      const result = await response.json();
+      console.log('Settings saved:', result);
+      
       // Show success message
       setSavedMessage('Settings saved successfully!');
       setTimeout(() => setSavedMessage(null), 3000);
+      
+      // Reload page to apply new settings
+      if (activeTab === 'ai-assistant' || activeTab === 'ai_assistant') {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
-      setSavedMessage('Failed to save settings. Please try again.');
+      setSavedMessage(error instanceof Error ? error.message : 'Failed to save settings. Please try again.');
+      setTimeout(() => setSavedMessage(null), 5000);
     } finally {
       setSaving(false);
     }
@@ -190,6 +233,7 @@ export default function SettingsPage() {
 
   // Group tabs by category
   const userTabs = visibleTabs.filter(tab => tab.category === 'user');
+  const aiTabs = visibleTabs.filter(tab => tab.category === 'ai');
   const apiTabs = visibleTabs.filter(tab => tab.category === 'api');
   const systemTabs = visibleTabs.filter(tab => tab.category === 'system');
 
@@ -241,6 +285,32 @@ export default function SettingsPage() {
                   ))}
                 </ul>
               </div>
+
+              {/* AI Assistant Settings */}
+              {aiTabs.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                    AI Assistant
+                  </h3>
+                  <ul className="space-y-1">
+                    {aiTabs.map((tab) => (
+                      <li key={tab.id}>
+                        <button
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                            activeTab === tab.id
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <tab.icon className="mr-3 h-5 w-5" />
+                          {tab.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* API Settings */}
               <div>
