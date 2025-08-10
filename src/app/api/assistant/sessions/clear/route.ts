@@ -19,7 +19,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete all sessions for the authenticated user
-    const result = await prisma.assistantConversation.deleteMany({
+    const result = await prisma.assistantChatSession.deleteMany({
       where: {
         userId: user.id
       }

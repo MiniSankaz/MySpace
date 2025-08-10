@@ -24,9 +24,9 @@ export async function DELETE(
     const { sessionId } = await params;
 
     // First check if the session belongs to the user
-    const session = await prisma.assistantConversation.findFirst({
+    const session = await prisma.assistantChatSession.findFirst({
       where: {
-        sessionId: sessionId,
+        id: sessionId,
         userId: user.id
       }
     });
@@ -42,7 +42,7 @@ export async function DELETE(
     }
 
     // Delete the session and all related messages (cascade delete)
-    await prisma.assistantConversation.delete({
+    await prisma.assistantChatSession.delete({
       where: {
         id: session.id
       }
@@ -86,15 +86,15 @@ export async function GET(
     const { sessionId } = await params;
 
     // Get the session with messages
-    const session = await prisma.assistantConversation.findFirst({
+    const session = await prisma.assistantChatSession.findFirst({
       where: {
-        sessionId: sessionId,
+        id: sessionId,
         userId: user.id
       },
       include: {
         messages: {
           orderBy: {
-            createdAt: 'asc'
+            timestamp: 'asc'
           }
         }
       }
@@ -114,15 +114,15 @@ export async function GET(
       success: true,
       session: {
         id: session.id,
-        sessionId: session.sessionId,
-        title: session.title,
+        sessionId: session.id,
+        title: session.sessionName,
         startedAt: session.startedAt,
         messageCount: session.messages.length,
         messages: session.messages.map(msg => ({
           id: msg.id,
           content: msg.content,
-          type: msg.type,
-          createdAt: msg.createdAt
+          role: msg.role,
+          timestamp: msg.timestamp
         }))
       }
     });

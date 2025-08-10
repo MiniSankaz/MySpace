@@ -37,8 +37,9 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const fetchFileTree = useCallback(async () => {
     try {
       setLoading(true);
-      // Use current working directory if projectPath is external
-      const response = await fetch(`/api/workspace/files?depth=4`);
+      // Use project path if provided
+      const pathParam = projectPath ? `&path=${encodeURIComponent(projectPath)}` : '';
+      const response = await fetch(`/api/workspace/files?depth=4${pathParam}`);
       const data = await response.json();
       
       if (data.success) {
@@ -91,7 +92,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             action: 'read',
-            path: '.' + node.path 
+            path: projectPath && node.path ? `${projectPath}${node.path.startsWith('/') ? '' : '/'}${node.path}` : node.path 
           })
         });
         
@@ -132,7 +133,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'delete',
-          path: '.' + node.path 
+          path: projectPath && node.path ? `${projectPath}${node.path.startsWith('/') ? '' : '/'}${node.path}` : node.path 
         })
       });
       
@@ -162,8 +163,8 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'rename',
-          path: '.' + node.path,
-          newPath: '.' + newPath
+          path: projectPath && node.path ? `${projectPath}${node.path.startsWith('/') ? '' : '/'}${node.path}` : node.path,
+          newPath: projectPath && newPath ? `${projectPath}${newPath.startsWith('/') ? '' : '/'}${newPath}` : newPath
         })
       });
       
@@ -191,7 +192,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'create',
-          path: '.' + parentPath + '/' + fileName,
+          path: projectPath ? `${projectPath}${parentPath}/${fileName}` : `${parentPath}/${fileName}`,
           content: ''
         })
       });
@@ -219,7 +220,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'mkdir',
-          path: '.' + parentPath + '/' + folderName
+          path: projectPath ? `${projectPath}${parentPath}/${folderName}` : `${parentPath}/${folderName}`
         })
       });
       

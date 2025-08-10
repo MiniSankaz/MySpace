@@ -17,7 +17,7 @@ export * from './page-builder/services/pageService';
 export { default as ChatInterface } from './personal-assistant/components/ChatInterfaceWithFolders';
 export * from './personal-assistant/types';
 export * from './personal-assistant/services/assistant.service';
-export * from './personal-assistant/services/claude-ai.service';
+// Note: claude-ai.service is replaced with claude-direct.service in @/services
 
 // Terminal Module
 export { default as WebTerminal } from './terminal/components/WebTerminal';

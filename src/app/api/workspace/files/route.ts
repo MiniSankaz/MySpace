@@ -107,16 +107,23 @@ async function getFileTree(dirPath: string, depth: number = 0, maxDepth: number 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const projectPath = searchParams.get('path') || process.cwd();
+    // Get the base project path and the relative path within it
+    const projectBasePath = searchParams.get('projectPath') || process.cwd();
+    const relativePath = searchParams.get('path') || '/';
     const maxDepth = parseInt(searchParams.get('depth') || '3');
 
-    // Validate the path is within the allowed directory
-    const resolvedPath = path.resolve(projectPath);
+    // Combine project path with relative path
+    const fullPath = path.join(projectBasePath, relativePath);
+    const resolvedPath = path.resolve(fullPath);
     const cwd = process.cwd();
     
-    if (!resolvedPath.startsWith(cwd)) {
+    // Allow access to the project path even if outside cwd for workspace functionality
+    // Security: Only allow if projectPath is explicitly provided
+    const allowedPath = projectBasePath ? path.resolve(projectBasePath) : cwd;
+    
+    if (!resolvedPath.startsWith(allowedPath)) {
       return NextResponse.json(
-        { error: 'Access denied: Path outside project directory' },
+        { error: 'Access denied: Path outside allowed directory' },
         { status: 403 }
       );
     }

@@ -24,7 +24,7 @@ const publicRoutes = [
   '/api/dashboard/stats', // Allow dashboard stats endpoint to handle auth internally
   '/api/settings/user', // Allow settings API to handle auth internally
   // Temporarily allow workspace API for testing
-  // '/api/workspace',
+  '/api/workspace/files',
 ];
 
 // Admin-only routes

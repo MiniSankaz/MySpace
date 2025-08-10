@@ -1,7 +1,7 @@
 import { Command, AssistantContext, AssistantResponse } from '../types';
-import { ClaudeAIService } from '../services/claude-ai.service';
+import { ClaudeDirectService } from '@/services/claude-direct.service';
 
-const claudeAI = ClaudeAIService.getInstance();
+const claudeAI = ClaudeDirectService.getInstance();
 // Initialize once on module load
 claudeAI.initialize().catch(console.error);
 
@@ -32,7 +32,15 @@ export const aiCodeCommand: Command = {
     }
 
     try {
-      const response = await claudeAI.generateCode(requirements);
+      const codePrompt = `Please generate code based on these requirements: ${requirements}. 
+Provide clean, well-documented code with explanations.`;
+      
+      const response = await claudeAI.sendMessage(codePrompt, [
+        {
+          role: 'system',
+          content: 'You are a code generation assistant. Generate clean, well-documented code based on user requirements. Include comments and best practices.'
+        }
+      ]);
       
       return {
         message: `🤖 **AI Generated Code:**\n\n${response.content}`,
@@ -42,8 +50,7 @@ export const aiCodeCommand: Command = {
           'task add - บันทึกเป็นงาน'
         ],
         data: { 
-          source: 'claude-ai', 
-          model: response.model,
+          source: 'claude-direct', 
           code: response.content 
         }
       };
@@ -83,7 +90,15 @@ export const aiExplainCommand: Command = {
     }
 
     try {
-      const response = await claudeAI.explainCode(content);
+      const explainPrompt = `Please explain this code or concept in detail: ${content}. 
+Provide clear explanations with examples if possible.`;
+      
+      const response = await claudeAI.sendMessage(explainPrompt, [
+        {
+          role: 'system',
+          content: 'You are a helpful code explanation assistant. Explain code and concepts clearly with examples and best practices.'
+        }
+      ]);
       
       return {
         message: `📚 **AI Explanation:**\n\n${response.content}`,
@@ -93,8 +108,7 @@ export const aiExplainCommand: Command = {
           'ai debug - ช่วย debug'
         ],
         data: { 
-          source: 'claude-ai',
-          model: response.model,
+          source: 'claude-direct',
           explanation: response.content 
         }
       };

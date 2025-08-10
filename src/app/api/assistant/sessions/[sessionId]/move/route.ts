@@ -35,17 +35,17 @@ export async function PATCH(
       );
     }
 
-    // Check if conversation exists and belongs to user
-    const conversation = await prisma.assistantConversation.findFirst({
+    // Check if session exists and belongs to user
+    const session = await prisma.assistantChatSession.findFirst({
       where: {
-        sessionId: sessionId,
+        id: sessionId,
         userId: user.id
       }
     });
 
-    if (!conversation) {
+    if (!session) {
       return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
+        { success: false, error: 'Session not found' },
         { status: 404 }
       );
     }
@@ -67,18 +67,12 @@ export async function PATCH(
       }
     }
 
-    // Update conversation's folder
-    await prisma.assistantConversation.update({
-      where: { id: conversation.id },
-      data: { folderId: validation.data.folderId }
-    });
-
+    // Note: AssistantChatSession doesn't have folderId field yet
+    // This functionality needs to be implemented by adding folderId to the schema
     return NextResponse.json({
-      success: true,
-      message: validation.data.folderId 
-        ? 'Conversation moved to folder' 
-        : 'Conversation moved to root'
-    });
+      success: false,
+      error: 'Folder functionality not yet implemented for new chat sessions'
+    }, { status: 501 });
   } catch (error) {
     console.error('Move conversation error:', error);
     return NextResponse.json(

@@ -108,14 +108,44 @@ npm run test:e2e        # Run E2E tests
 ./scripts/optimize-for-claude.sh  # Optimize for Claude Code
 ```
 
+## Test Accounts
+
+### Admin Account
+- **Email**: sankaz@admin.com
+- **Username**: sankaz
+- **Password**: Sankaz#3E25167B@2025
+- **Role**: Admin (Full access)
+
+### Default Admin (from README)
+- **Email**: admin@example.com
+- **Password**: Admin@123
+
+### Test Users (from seed)
+- **Email**: admin@personalai.com
+- **Password**: Check seed.ts or run setup script
+
+### Create New Test User
+```bash
+# Run sankaz setup script (generates new password)
+tsx scripts/database/cleanup-and-setup-sankaz.ts
+
+# Or create admin manually
+tsx scripts/create-admin.ts
+```
+
 ## Module-Specific Tests
 
 ### User Management System (UMS)
 ```bash
-# Test authentication
-curl -X POST http://localhost:3000/api/ums/auth/login \
+# Test authentication with sankaz account
+curl -X POST http://localhost:4000/api/ums/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password"}'
+  -d '{"email":"sankaz@admin.com","password":"Sankaz#3E25167B@2025"}'
+
+# Test with default admin
+curl -X POST http://localhost:4000/api/ums/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"Admin@123"}'
 
 # Test user endpoints
 npm run test -- src/modules/ums/**/*.test.ts
@@ -124,7 +154,7 @@ npm run test -- src/modules/ums/**/*.test.ts
 ### AI Assistant
 ```bash
 # Test chat API
-curl -X POST http://localhost:3000/api/assistant/chat \
+curl -X POST http://localhost:4000/api/assistant/chat \
   -H "Content-Type: application/json" \
   -d '{"message":"Hello","sessionId":"test-session"}'
 
@@ -279,3 +309,70 @@ _Last updated: Fri Aug  8 13:05:48 +07 2025_
 - terminal: 3 files
 - ums: 6 files
 - user: 4 files
+- workspace: 10 files
+
+## Critical Services & Ports
+
+- **Development Server**: http://localhost:4000 (Main app - NOT 3000)
+- **WebSocket Terminal**: ws://localhost:4001 (Terminal PTY)
+- **Claude Terminal WS**: ws://localhost:4002 (Claude integration)
+- **Database**: PostgreSQL on DigitalOcean (port 25060)
+- **Prisma Studio**: http://localhost:5555
+
+## Environment Files Priority
+
+1. `.env.local` - Local development (highest priority)
+2. `.env.development.local` - Development overrides
+3. `.env` - Base configuration
+4. `.env.production` - Production settings
+
+## Service Dependencies
+
+### Claude AI Integration
+- Requires `ANTHROPIC_API_KEY` in environment
+- Multiple service implementations for different use cases
+- Session management for conversation persistence
+- Background processing for long-running tasks
+
+### Terminal Service
+- WebSocket connection on port 4001
+- Claude Terminal WebSocket on port 4002
+- PTY (pseudo-terminal) support
+- Real-time logging and analytics
+
+## AI Agent System
+
+### Available Agents (in .claude/agents/)
+- **sop-compliance-guardian**: Validates code changes against SOPs
+- **dev-life-consultant**: Development and life management assistance
+- **devops-maturity-auditor**: DevOps practices assessment
+
+### Agent Usage
+- Agents are triggered via Task tool, not automatic
+- Use before commits, creating routes, or when builds fail
+- Each agent has specific expertise areas
+
+## Performance Best Practices
+
+1. **File Search**: Use Grep/Glob for specific searches, Agent for complex exploration
+2. **Batch Operations**: Run multiple commands in parallel when possible
+3. **Context Management**: Provide specific file paths and module names
+4. **Testing**: Always run lint and type-check after code changes
+5. **Git Operations**: Check SOP compliance before commits
+
+## Security Reminders
+
+- Never commit `.env` files or secrets
+- Use environment variables for sensitive data
+- Validate all user inputs
+- Use Prisma parameterized queries only
+- Check authentication on all protected routes
+
+## Development Workflow
+
+1. **Start Development**: `npm run dev` or `./quick-restart.sh`
+2. **Make Changes**: Follow module structure and conventions
+3. **Test Changes**: Run relevant tests and linters
+4. **Check SOPs**: Use sop-compliance-guardian agent
+5. **Commit**: Use conventional commit messages
+6. **Document**: Update CLAUDE.md if adding new patterns

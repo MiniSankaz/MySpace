@@ -281,10 +281,32 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
     setState(prev => ({ ...prev, activeClaudeTab: tabId }));
   }, []);
 
+  // Auto-create default project if none exist
+  const initializeDefaultProject = useCallback(async () => {
+    if (state.projects.length === 0 && !state.loading && !state.error) {
+      try {
+        console.log('No projects found, creating default project...');
+        const defaultProject = await createProject({
+          name: 'Current Workspace',
+          description: 'Default project for current workspace',
+          path: '/Users/sem4pro/Stock/port',
+        });
+        await selectProject(defaultProject.id);
+      } catch (error) {
+        console.error('Failed to create default project:', error);
+      }
+    }
+  }, [state.projects.length, state.loading, state.error, createProject, selectProject]);
+
   // Load projects on mount
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  // Initialize default project if needed
+  useEffect(() => {
+    initializeDefaultProject();
+  }, [initializeDefaultProject]);
 
   const value: WorkspaceContextType = {
     ...state,

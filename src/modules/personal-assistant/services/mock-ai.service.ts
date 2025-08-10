@@ -1,4 +1,14 @@
-import { ClaudeMessage, ClaudeResponse } from './claude-ai.service';
+// Mock Claude types for compatibility
+interface ClaudeMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+interface ClaudeResponse {
+  content: string;
+  model?: string;
+  usage?: any;
+}
 
 export class MockAIService {
   private responses: { [key: string]: string } = {
