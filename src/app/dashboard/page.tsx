@@ -86,13 +86,32 @@ export default function Dashboard() {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch('/api/ums/users/me');
+      const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      
+      const response = await fetch('/api/ums/users/me', {
+        headers: {
+          'Authorization': accessToken ? `Bearer ${accessToken}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
+      } else if (response.status === 401) {
+        // User not authenticated - check if user is stored in localStorage
+        const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch user data:', error);
+      // Try to get user from localStorage as fallback
+      const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
     }
   };
 

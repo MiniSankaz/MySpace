@@ -112,10 +112,8 @@ class DashboardService {
         where: { userId } 
       });
 
-      // Count active projects (using GitConfig as projects)
-      const activeProjects = await this.db.gitConfig.count({
-        where: { userId }
-      });
+      // Count active projects (using Project model)
+      const activeProjects = await this.db.project.count();
 
       return {
         totalSessions,
@@ -288,8 +286,13 @@ class DashboardService {
       // Check database health
       let databaseHealth: 'healthy' | 'warning' | 'critical' = 'healthy';
       try {
-        await this.db.$queryRaw`SELECT 1`;
+        if (!this.db) {
+          databaseHealth = 'critical';
+        } else {
+          await this.db.$queryRaw`SELECT 1`;
+        }
       } catch (error) {
+        console.error('Database health check failed:', error);
         databaseHealth = 'critical';
       }
 
@@ -298,21 +301,21 @@ class DashboardService {
       const memoryUsage = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
 
       // Count active assistant sessions as active connections
-      const activeConnections = await this.db.assistantChatSession.count({
+      const activeConnections = this.db ? await this.db.assistantChatSession.count({
         where: {
           endedAt: null
         }
-      });
+      }) : 0;
 
       // Get last backup info
-      const lastBackup = await this.db.dataExport.findFirst({
+      const lastBackup = this.db ? await this.db.backupExport.findFirst({
         where: {
-          type: 'BACKUP'
+          type: 'backup'
         },
         orderBy: {
           createdAt: 'desc'
         }
-      });
+      }) : null;
 
       return {
         uptime: Math.round(uptime),
@@ -441,9 +444,7 @@ class DashboardService {
             timestamp: { gte: todayStart }
           }
         }),
-        this.db.gitConfig.count({
-          where: { userId }
-        }),
+        this.db.project.count(),
         this.db.terminalSession.count({
           where: {
             userId,
