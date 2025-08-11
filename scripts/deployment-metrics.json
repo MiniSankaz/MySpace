@@ -429,9 +429,22 @@
       },
       "circuitBreaker": true,
       "memoryUsage": 6.3498077392578125
+    },
+    {
+      "timestamp": "2025-08-11T12:08:40.413Z",
+      "systemTerminal": {
+        "status": "healthy",
+        "latency": 3003
+      },
+      "claudeTerminal": {
+        "status": "partial",
+        "latency": 3002
+      },
+      "circuitBreaker": true,
+      "memoryUsage": 5.87139892578125
     }
   ],
-  "connectionSuccesses": 33,
+  "connectionSuccesses": 34,
   "connectionFailures": 0,
   "circuitBreakerTriggers": 0,
   "sessionReuses": 0,
@@ -501,7 +514,9 @@
     2,
     1,
     4,
-    4
+    4,
+    2,
+    3
   ],
   "memoryUsage": [
     {
@@ -701,6 +716,12 @@
       "heapUsed": 6.3498077392578125,
       "heapTotal": 7.296875,
       "rss": 60.890625
+    },
+    {
+      "timestamp": "2025-08-11T12:08:46.425Z",
+      "heapUsed": 5.87139892578125,
+      "heapTotal": 7.296875,
+      "rss": 60.921875
     }
   ],
   "errors": [],
