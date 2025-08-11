@@ -6,7 +6,13 @@ import { useWorkspace } from '../../contexts/WorkspaceContext';
 import ProjectSelector from '../Sidebar/ProjectSelector';
 import ConfigPanel from '../Sidebar/ConfigPanel';
 import FileExplorer from '../Sidebar/FileExplorer';
+// Import TerminalContainer or TerminalContainerV2 based on feature flag
+const USE_TERMINAL_V2 = process.env.NEXT_PUBLIC_USE_TERMINAL_V2 === 'true' || true; // Enable V2 by default
 import TerminalContainer from '../Terminal/TerminalContainer';
+import TerminalContainerV2 from '../Terminal/TerminalContainerV2';
+
+// Select the appropriate terminal component
+const TerminalComponent = USE_TERMINAL_V2 ? TerminalContainerV2 : TerminalContainer;
 import TopBar from './TopBar';
 import StatusBar from './StatusBar';
 import QuickActions from './QuickActions';
@@ -166,7 +172,7 @@ export const WorkspaceLayout: React.FC = () => {
                     currentProject && project.id === currentProject.id ? 'block' : 'hidden'
                   }`}
                 >
-                  <TerminalContainer project={project} />
+                  <TerminalComponent project={project} />
                 </div>
               ))}
             </motion.div>
@@ -297,7 +303,7 @@ export const WorkspaceLayout: React.FC = () => {
                           project.id === currentProject.id ? 'block' : 'hidden'
                         }`}
                       >
-                        <TerminalContainer project={project} />
+                        <TerminalComponent project={project} />
                       </div>
                     ))}
                   </motion.div>

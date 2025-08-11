@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -14,10 +14,13 @@ interface XTermViewProps {
   projectPath: string;
   projectId: string;
   type: 'system' | 'claude';
+  multiplexer?: TerminalWebSocketMultiplexer | null;
   onConnectionChange?: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
+  isFocused?: boolean; // Focus-based streaming control
+  activeTab?: string | null; // Active tab ID for focus detection
 }
 
-// Global multiplexer instance for all terminals
+// Global multiplexer instance for all terminals (fallback if not provided)
 let globalMultiplexer: TerminalWebSocketMultiplexer | null = null;
 
 const XTermView: React.FC<XTermViewProps> = ({
@@ -25,7 +28,10 @@ const XTermView: React.FC<XTermViewProps> = ({
   projectPath,
   projectId,
   type,
-  onConnectionChange
+  multiplexer: providedMultiplexer,
+  onConnectionChange,
+  isFocused,
+  activeTab
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
@@ -34,13 +40,28 @@ const XTermView: React.FC<XTermViewProps> = ({
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const scrollPositionRef = useRef<number>(0);
   const multiplexerRef = useRef<TerminalWebSocketMultiplexer | null>(null);
+  const [connectionMode, setConnectionMode] = useState<'active' | 'background'>('background');
+  
+  // Determine focus state - if isFocused prop is provided, use it; otherwise use activeTab logic
+  const isComponentFocused = useMemo(() => {
+    if (isFocused !== undefined) return isFocused;
+    return activeTab === sessionId;
+  }, [isFocused, activeTab, sessionId]);
   
   // Get store actions for buffer management
   const { sessionMetadata, addToOutputBuffer, clearOutputBuffer, markOutputAsRead, activeTabs } = useTerminalStore();
 
-  // Initialize multiplexer
+  // Initialize multiplexer (use provided or create global)
   const getMultiplexer = useCallback(() => {
+    // Use provided multiplexer if available
+    if (providedMultiplexer) {
+      console.log('[XTermView] Using provided multiplexer');
+      return providedMultiplexer;
+    }
+    
+    // Otherwise use/create global multiplexer
     if (!globalMultiplexer) {
+      console.log('[XTermView] Creating new global multiplexer');
       const token = localStorage.getItem('accessToken');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost = '127.0.0.1:4001';
@@ -62,15 +83,11 @@ const XTermView: React.FC<XTermViewProps> = ({
       });
     }
     return globalMultiplexer;
-  }, []);
+  }, [providedMultiplexer]);
 
-  // Flush buffered output when tab becomes active
+  // Flush buffered output when component becomes focused
   useEffect(() => {
-    const isActiveTab = activeTabs[projectId] && 
-      ((type === 'system' && activeTabs[projectId].system === sessionId) ||
-       (type === 'claude' && activeTabs[projectId].claude === sessionId));
-    
-    if (isActiveTab && terminal) {
+    if (isComponentFocused && terminal) {
       const metadata = sessionMetadata[sessionId];
       if (metadata?.outputBuffer && metadata.outputBuffer.length > 0) {
         // Flush buffered output to terminal
@@ -88,7 +105,21 @@ const XTermView: React.FC<XTermViewProps> = ({
         }
       }
     }
-  }, [activeTabs, projectId, sessionId, type, terminal, sessionMetadata, clearOutputBuffer, markOutputAsRead, isUserScrolledUp]);
+  }, [isComponentFocused, terminal, sessionMetadata, sessionId, clearOutputBuffer, markOutputAsRead, isUserScrolledUp]);
+
+  // Update connection mode based on focus state
+  useEffect(() => {
+    const newMode = isComponentFocused ? 'active' : 'background';
+    if (newMode !== connectionMode) {
+      setConnectionMode(newMode);
+      
+      // Notify multiplexer about mode change
+      if (multiplexerRef.current) {
+        const standardSessionId = SessionValidator.isValidSessionId(sessionId) ? sessionId : SessionValidator.generateSessionId();
+        multiplexerRef.current.setSessionMode?.(standardSessionId, newMode);
+      }
+    }
+  }, [isComponentFocused, connectionMode, sessionId]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -205,13 +236,9 @@ const XTermView: React.FC<XTermViewProps> = ({
 
     const handleSessionData = ({ sessionId: dataSessionId, data }: any) => {
       if (dataSessionId === standardSessionId) {
-        // Check if this is the active tab
-        const isActiveTab = activeTabs[projectId] && 
-          ((type === 'system' && activeTabs[projectId].system === sessionId) ||
-           (type === 'claude' && activeTabs[projectId].claude === sessionId));
-        
-        if (isActiveTab) {
-          // Stream output directly to terminal for active tab
+        // Use focus-based streaming logic
+        if (isComponentFocused) {
+          // Stream output directly to terminal for focused component
           term.write(data);
           
           // Auto-scroll to bottom only if user hasn't scrolled up
@@ -219,7 +246,7 @@ const XTermView: React.FC<XTermViewProps> = ({
             term.scrollToBottom();
           }
         } else {
-          // Buffer output for background tabs
+          // Buffer output for unfocused components
           addToOutputBuffer(sessionId, data);
         }
       }

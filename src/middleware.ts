@@ -20,6 +20,7 @@ const publicRoutes = [
   '/api/ums/auth/login',
   '/api/ums/auth/register',
   '/api/health',
+  '/api/terminal/health', // Terminal health check endpoint
   '/favicon.ico',
   '/api/dashboard/stats', // Allow dashboard stats endpoint to handle auth internally
   '/api/settings/user', // Allow settings API to handle auth internally
@@ -29,9 +30,8 @@ const publicRoutes = [
 
 // Admin-only routes
 const adminRoutes = [
-  '/terminal',
-  '/api/terminal',
   '/admin',
+  // Note: /terminal and /api/terminal are for authenticated users, not just admins
 ];
 
 // Rate limiting store (in production, use Redis)
@@ -80,7 +80,8 @@ export async function middleware(request: NextRequest) {
   // Check if route is public or static resource
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route)) ||
                        pathname.startsWith('/_next') ||
-                       pathname.includes('.');
+                       pathname.includes('.') ||
+                       pathname === '/';
   
   // Apply security headers for response
   let response = NextResponse.next();

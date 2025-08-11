@@ -85,6 +85,7 @@ export interface TerminalActions {
   // Bulk operations
   clearProjectSessions: (projectId: string) => void;
   loadProjectSessions: (projectId: string, sessions: TerminalSession[]) => void;
+  forceCloseAllSessions: () => void; // Force close all sessions across all projects
   
   // Reset
   reset: () => void;
@@ -427,6 +428,32 @@ export const useTerminalStore = create<TerminalState & TerminalActions>()(
                 },
               },
               sessionMetadata: newSessionMetadata,
+            };
+          });
+        },
+
+        forceCloseAllSessions: () => {
+          console.log('[TerminalStore] Force closing all terminal sessions across all projects');
+          
+          set((state) => {
+            // Count total sessions being closed
+            let totalSessions = 0;
+            Object.keys(state.projectSessions).forEach(projectId => {
+              const sessions = state.projectSessions[projectId];
+              if (sessions) {
+                totalSessions += sessions.system.length + sessions.claude.length;
+              }
+            });
+            
+            console.log(`[TerminalStore] Closing ${totalSessions} terminal sessions`);
+            
+            // Clear all project sessions and related data
+            return {
+              projectSessions: {},
+              activeTabs: {},
+              connectionStatus: {},
+              commandHistory: state.commandHistory, // Keep command history for next session
+              sessionMetadata: {},
             };
           });
         },

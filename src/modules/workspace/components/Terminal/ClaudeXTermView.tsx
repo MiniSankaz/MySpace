@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -14,7 +14,10 @@ interface ClaudeXTermViewProps {
   projectPath: string;
   projectId: string;
   type: 'claude';
+  multiplexer?: TerminalWebSocketMultiplexer | null;
   onConnectionChange?: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
+  isFocused?: boolean; // Focus-based streaming control
+  activeTab?: string | null; // Active tab ID for focus detection
 }
 
 // Global multiplexer instance for all Claude terminals
@@ -25,7 +28,10 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
   projectPath,
   projectId,
   type,
-  onConnectionChange
+  multiplexer: providedMultiplexer,
+  onConnectionChange,
+  isFocused,
+  activeTab
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
@@ -38,10 +44,25 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const scrollPositionRef = useRef<number>(0);
   const multiplexerRef = useRef<TerminalWebSocketMultiplexer | null>(null);
+  const [connectionMode, setConnectionMode] = useState<'active' | 'background'>('background');
+  
+  // Determine focus state - if isFocused prop is provided, use it; otherwise use activeTab logic
+  const isComponentFocused = useMemo(() => {
+    if (isFocused !== undefined) return isFocused;
+    return activeTab === sessionId;
+  }, [isFocused, activeTab, sessionId]);
 
-  // Initialize Claude multiplexer
+  // Initialize Claude multiplexer (use provided or create global)
   const getClaudeMultiplexer = useCallback(() => {
+    // Use provided multiplexer if available
+    if (providedMultiplexer) {
+      console.log('[ClaudeXTermView] Using provided multiplexer');
+      return providedMultiplexer;
+    }
+    
+    // Otherwise use/create global multiplexer
     if (!claudeMultiplexer) {
+      console.log('[ClaudeXTermView] Creating new global multiplexer');
       const token = localStorage.getItem('accessToken');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost = '127.0.0.1:4002'; // Claude terminal port
@@ -63,7 +84,7 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
       });
     }
     return claudeMultiplexer;
-  }, []);
+  }, [providedMultiplexer]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -181,21 +202,29 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
 
     const handleSessionData = ({ sessionId: dataSessionId, data }: any) => {
       if (dataSessionId === standardSessionId) {
-        // Stream output directly to terminal
-        term.write(data);
-        
-        // Auto-scroll to bottom only if user hasn't scrolled up
-        if (!isUserScrolledUp) {
-          term.scrollToBottom();
+        // Use focus-based streaming logic
+        if (isComponentFocused) {
+          // Stream output directly to terminal for focused component
+          term.write(data);
+          
+          // Auto-scroll to bottom only if user hasn't scrolled up
+          if (!isUserScrolledUp) {
+            term.scrollToBottom();
+          }
+        } else {
+          // Buffer output for unfocused components
+          addToOutputBuffer(sessionId, data);
         }
         
-        // Check if Claude CLI is ready
+        // Check if Claude CLI is ready (regardless of focus)
         if (data.includes('Claude>') || data.includes('claude>')) {
           if (!isClaudeReady) {
             setIsClaudeReady(true);
-            term.write('\r\n\x1b[32m✓ Claude Code CLI is ready!\x1b[0m\r\n');
-            // Always scroll to show the ready message
-            term.scrollToBottom();
+            if (isComponentFocused) {
+              term.write('\r\n\x1b[32m✓ Claude Code CLI is ready!\x1b[0m\r\n');
+              // Always scroll to show the ready message
+              term.scrollToBottom();
+            }
           }
         }
       }
@@ -309,6 +338,42 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
       term.dispose();
     };
   }, [projectId, sessionId, projectPath]);
+
+  // Flush buffered output when component becomes focused
+  useEffect(() => {
+    if (isComponentFocused && terminal) {
+      const metadata = sessionMetadata[sessionId];
+      if (metadata?.outputBuffer && metadata.outputBuffer.length > 0) {
+        // Flush buffered output to terminal
+        metadata.outputBuffer.forEach(data => {
+          terminal.write(data);
+        });
+        
+        // Clear buffer and mark as read
+        clearOutputBuffer(sessionId);
+        markOutputAsRead(sessionId);
+        
+        // Scroll to bottom after flushing
+        if (!isUserScrolledUp) {
+          terminal.scrollToBottom();
+        }
+      }
+    }
+  }, [isComponentFocused, terminal, sessionMetadata, sessionId, clearOutputBuffer, markOutputAsRead, isUserScrolledUp]);
+
+  // Update connection mode based on focus state
+  useEffect(() => {
+    const newMode = isComponentFocused ? 'active' : 'background';
+    if (newMode !== connectionMode) {
+      setConnectionMode(newMode);
+      
+      // Notify multiplexer about mode change
+      if (multiplexerRef.current) {
+        const standardSessionId = SessionValidator.isValidSessionId(sessionId) ? sessionId : SessionValidator.generateSessionId();
+        multiplexerRef.current.setSessionMode?.(standardSessionId, newMode);
+      }
+    }
+  }, [isComponentFocused, connectionMode, sessionId]);
 
   const handleClear = () => {
     if (terminal) {

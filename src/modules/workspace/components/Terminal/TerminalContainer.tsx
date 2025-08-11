@@ -11,6 +11,7 @@ import ClaudeXTermView from './ClaudeXTermView';
 import { useTerminalStore } from '../../stores/terminal.store';
 import { authClient } from '@/core/auth/auth-client';
 import { Maximize2, Minimize2, Columns, Rows, Grid, Terminal } from 'lucide-react';
+import { TerminalWebSocketMultiplexer } from '../../services/terminal-websocket-multiplexer';
 
 interface TerminalContainerProps {
   project: Project;
@@ -42,6 +43,95 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
   const [newSessionName, setNewSessionName] = useState('');
   const [backgroundActivity, setBackgroundActivity] = useState<Record<string, boolean>>({});
+  const [circuitBreakerStatus, setCircuitBreakerStatus] = useState<Record<string, 'closed' | 'open' | 'half-open'>>({});
+
+  // Multiplexer instances - use same pattern as XTermView
+  const [systemMultiplexer, setSystemMultiplexer] = useState<TerminalWebSocketMultiplexer | null>(null);
+  const [claudeMultiplexer, setClaudeMultiplexer] = useState<TerminalWebSocketMultiplexer | null>(null);
+
+  // Initialize multiplexers on mount
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // System terminal multiplexer (port 4001)
+    const systemMux = new TerminalWebSocketMultiplexer({
+      url: `${protocol}//127.0.0.1:4001`,
+      auth: { token },
+    });
+    
+    // Listen for circuit breaker events
+    systemMux.on('session:circuit-open', ({ sessionId, state }) => {
+      console.log(`[TerminalContainer] Circuit breaker OPEN for system session ${sessionId}`);
+      setCircuitBreakerStatus(prev => ({ ...prev, [sessionId]: 'open' }));
+    });
+    
+    systemMux.on('session:circuit-reset', ({ sessionId }) => {
+      console.log(`[TerminalContainer] Circuit breaker RESET for system session ${sessionId}`);
+      setCircuitBreakerStatus(prev => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+    });
+    
+    systemMux.on('session:circuit-breaker', ({ sessionId, state }) => {
+      console.log(`[TerminalContainer] Circuit breaker state update for system session ${sessionId}:`, state.state);
+      if (state.state === 'closed') {
+        setCircuitBreakerStatus(prev => {
+          const updated = { ...prev };
+          delete updated[sessionId];
+          return updated;
+        });
+      } else {
+        setCircuitBreakerStatus(prev => ({ ...prev, [sessionId]: state.state }));
+      }
+    });
+    
+    setSystemMultiplexer(systemMux);
+
+    // Claude terminal multiplexer (port 4002) 
+    const claudeMux = new TerminalWebSocketMultiplexer({
+      url: `${protocol}//127.0.0.1:4002`,
+      auth: { token },
+    });
+    
+    // Listen for circuit breaker events
+    claudeMux.on('session:circuit-open', ({ sessionId, state }) => {
+      console.log(`[TerminalContainer] Circuit breaker OPEN for claude session ${sessionId}`);
+      setCircuitBreakerStatus(prev => ({ ...prev, [sessionId]: 'open' }));
+    });
+    
+    claudeMux.on('session:circuit-reset', ({ sessionId }) => {
+      console.log(`[TerminalContainer] Circuit breaker RESET for claude session ${sessionId}`);
+      setCircuitBreakerStatus(prev => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+    });
+    
+    claudeMux.on('session:circuit-breaker', ({ sessionId, state }) => {
+      console.log(`[TerminalContainer] Circuit breaker state update for claude session ${sessionId}:`, state.state);
+      if (state.state === 'closed') {
+        setCircuitBreakerStatus(prev => {
+          const updated = { ...prev };
+          delete updated[sessionId];
+          return updated;
+        });
+      } else {
+        setCircuitBreakerStatus(prev => ({ ...prev, [sessionId]: state.state }));
+      }
+    });
+    
+    setClaudeMultiplexer(claudeMux);
+
+    return () => {
+      // Cleanup on unmount
+      systemMux.destroy();
+      claudeMux.destroy();
+    };
+  }, []);
 
   // Load existing sessions on mount
   useEffect(() => {
@@ -87,6 +177,38 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
     const interval = setInterval(checkBackgroundActivity, 500);
     return () => clearInterval(interval);
   }, [sessions, activeTab]);
+
+  // Smart Tab Management: Track activeTab changes and coordinate with multiplexer
+  useEffect(() => {
+    console.log('[TerminalContainer] Active tab change detected:', {
+      projectId: project.id,
+      systemActive: activeTab.system,
+      claudeActive: activeTab.claude
+    });
+    
+    // Update all system terminal modes based on focus state
+    sessions.system.forEach(session => {
+      const isFocused = activeTab.system === session.id;
+      const mode = isFocused ? 'active' : 'background';
+      
+      if (systemMultiplexer) {
+        console.log(`[TerminalContainer] Setting system terminal ${session.id} mode to ${mode}`);
+        systemMultiplexer.setSessionMode?.(session.id, mode);
+      }
+    });
+    
+    // Update all Claude terminal modes based on focus state
+    sessions.claude.forEach(session => {
+      const isFocused = activeTab.claude === session.id;
+      const mode = isFocused ? 'active' : 'background';
+      
+      if (claudeMultiplexer) {
+        console.log(`[TerminalContainer] Setting Claude terminal ${session.id} mode to ${mode}`);
+        claudeMultiplexer.setSessionMode?.(session.id, mode);
+      }
+    });
+    
+  }, [activeTab, sessions, systemMultiplexer, claudeMultiplexer, project.id]);
 
   const handleCreateSystemSession = async (name?: string) => {
     try {
@@ -136,15 +258,76 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
 
   const handleCloseSession = async (sessionId: string, type: 'system' | 'claude') => {
     try {
-      // Call API to close session
+      console.log(`[TerminalContainer] Closing ${type} session ${sessionId}`);
+      console.log(`[TerminalContainer] Multiplexer state:`, {
+        systemMultiplexer: !!systemMultiplexer,
+        claudeMultiplexer: !!claudeMultiplexer,
+        requestedType: type
+      });
+      
+      // 1. First, tell the multiplexer to send proper close code (1000) to backend
+      const multiplexer = type === 'system' ? systemMultiplexer : claudeMultiplexer;
+      if (multiplexer) {
+        console.log(`[TerminalContainer] ✅ Calling multiplexer.closeSession() for ${type} session ${sessionId}`);
+        multiplexer.closeSession(sessionId);
+        
+        // Give multiplexer time to send close signal before API call
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } else {
+        console.error(`[TerminalContainer] ❌ CRITICAL: No ${type} multiplexer available for session ${sessionId}!`);
+        console.error(`[TerminalContainer] This will cause the terminal process to NOT be killed properly!`);
+      }
+      
+      // 2. Call API to clean up DB records
+      console.log(`[TerminalContainer] Calling DELETE API for session ${sessionId}`);
       await authClient.fetch(`/api/workspace/terminals/${sessionId}`, {
         method: 'DELETE',
       });
       
-      // Remove from store
+      // 3. Remove from UI store
       removeSession(project.id, sessionId);
+      
+      console.log(`Successfully closed ${type} session ${sessionId}`);
     } catch (error) {
       console.error('Failed to close session:', error);
+    }
+  };
+
+  const handleRecoverSession = async (sessionId: string, type: 'system' | 'claude') => {
+    console.log(`[TerminalContainer] Attempting to recover ${type} session ${sessionId}`);
+    
+    try {
+      // Reset circuit breaker in multiplexer first
+      const multiplexer = type === 'system' ? systemMultiplexer : claudeMultiplexer;
+      if (multiplexer) {
+        multiplexer.resetCircuitBreaker(sessionId);
+        console.log(`[TerminalContainer] Reset circuit breaker for ${sessionId}`);
+      }
+      
+      // Close the broken session
+      await handleCloseSession(sessionId, type);
+      
+      // Clear circuit breaker status in UI
+      setCircuitBreakerStatus(prev => {
+        const updated = { ...prev };
+        delete updated[sessionId];
+        return updated;
+      });
+      
+      // Wait a moment for cleanup
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Create a new session with a fresh ID
+      const sessionName = sessions[type].find(s => s.id === sessionId)?.tabName || `${type === 'system' ? 'Terminal' : 'Claude'} (Recovered)`;
+      if (type === 'system') {
+        await handleCreateSystemSession(sessionName);
+      } else {
+        await handleCreateClaudeSession(sessionName);
+      }
+      
+      console.log(`[TerminalContainer] Recovery successful for ${type} session ${sessionId}`);
+    } catch (error) {
+      console.error(`[TerminalContainer] Recovery failed for ${type} session ${sessionId}:`, error);
     }
   };
 
@@ -271,7 +454,9 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                       setNewSessionName(session.tabName);
                     }
                   }}
+                  onRecoverSession={(id) => handleRecoverSession(id, 'system')}
                   connectionStatus={connectionStatus}
+                  circuitBreakerStatus={circuitBreakerStatus}
                   backgroundActivity={backgroundActivity}
                   hasNewOutput={Object.fromEntries(
                     sessions.system.map(s => [s.id, sessionMetadata[s.id]?.hasNewOutput || false])
@@ -313,6 +498,9 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                     projectPath={project.path}
                     projectId={project.id}
                     type="system"
+                    multiplexer={systemMultiplexer}
+                    isFocused={true} // This terminal is currently focused
+                    activeTab={activeTab.system}
                     onConnectionChange={(status) => setConnectionStatus(activeTab.system!, status)}
                   />
                 </motion.div>
@@ -379,7 +567,9 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                       setNewSessionName(session.tabName);
                     }
                   }}
+                  onRecoverSession={(id) => handleRecoverSession(id, 'claude')}
                   connectionStatus={connectionStatus}
+                  circuitBreakerStatus={circuitBreakerStatus}
                   backgroundActivity={backgroundActivity}
                 />
               </div>
@@ -418,6 +608,9 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                     projectPath={project.path}
                     projectId={project.id}
                     type="claude"
+                    multiplexer={claudeMultiplexer}
+                    isFocused={true} // This terminal is currently focused
+                    activeTab={activeTab.claude}
                     onConnectionChange={(status) => setConnectionStatus(activeTab.claude!, status)}
                   />
                 </motion.div>

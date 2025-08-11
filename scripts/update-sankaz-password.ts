@@ -3,59 +3,59 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function updatePassword() {
-  const email = 'sankaz@example.com';
-  const newPassword = 'Sankaz#3E25167B@2025';
-  
+async function updateSankazPassword() {
   try {
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    if (!user) {
-      console.error(`❌ User with email ${email} not found`);
-      process.exit(1);
-    }
-
-    console.log(`✅ Found user: ${user.email} (${user.username})`);
-
-    // Hash the new password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    console.log('✅ Password hashed successfully');
-
-    // Update the password
-    const updatedUser = await prisma.user.update({
-      where: { email },
-      data: { 
-        passwordHash: hashedPassword,
-        updatedAt: new Date()
+    // Check if user exists first
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        email: 'sankaz@example.com'
       }
     });
 
-    console.log(`✅ Password updated successfully for ${updatedUser.email}`);
-    console.log(`   Username: ${updatedUser.username}`);
-    console.log(`   Updated at: ${updatedUser.updatedAt}`);
-
-    // Verify the password works
-    const passwordValid = await bcrypt.compare(newPassword, hashedPassword);
-    if (passwordValid) {
-      console.log('✅ Password verification successful');
+    if (!existingUser) {
+      console.log('User not found. Creating new user...');
+      
+      // Create new user
+      const hashedPassword = await bcrypt.hash('Sankaz#3E25167B@2025', 10);
+      
+      const newUser = await prisma.user.create({
+        data: {
+          email: 'sankaz@example.com',
+          username: 'sankaz',
+          passwordHash: hashedPassword,
+          passwordChangedAt: new Date()
+        }
+      });
+      
+      console.log('✅ User created successfully');
+      console.log('Email:', newUser.email);
+      console.log('Username:', newUser.username);
+      console.log('Password: Sankaz#3E25167B@2025');
     } else {
-      console.error('❌ Password verification failed');
+      // Update existing user password
+      const hashedPassword = await bcrypt.hash('Sankaz#3E25167B@2025', 10);
+      
+      const updatedUser = await prisma.user.update({
+        where: {
+          email: 'sankaz@example.com'
+        },
+        data: {
+          passwordHash: hashedPassword,
+          passwordChangedAt: new Date()
+        }
+      });
+      
+      console.log('✅ Password updated successfully');
+      console.log('Email:', updatedUser.email);
+      console.log('Username:', updatedUser.username);
+      console.log('New Password: Sankaz#3E25167B@2025');
     }
-
+    
   } catch (error) {
-    console.error('❌ Error updating password:', error);
-    process.exit(1);
+    console.error('❌ Error:', error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Run the update
-updatePassword().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+updateSankazPassword();

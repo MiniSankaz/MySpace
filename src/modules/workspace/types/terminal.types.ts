@@ -165,12 +165,13 @@ export class SessionValidator {
 
 /**
  * Default circuit breaker configuration
+ * Optimized to stop loops quickly while allowing recovery
  */
 export const DEFAULT_CIRCUIT_BREAKER_CONFIG: CircuitBreakerConfig = {
-  failureThreshold: 5,
-  failureWindow: 60000, // 1 minute
-  recoveryTimeout: 30000, // 30 seconds
-  maxReconnectAttempts: 10,
-  reconnectBaseDelay: 1000, // 1 second
-  reconnectMaxDelay: 30000, // 30 seconds
+  failureThreshold: 2, // Open circuit after just 2 failures (more aggressive)
+  failureWindow: 10000, // 10 seconds window (faster detection)
+  recoveryTimeout: 30000, // 30 seconds recovery (allow retry sooner)
+  maxReconnectAttempts: 3, // Max 3 attempts only (stop loops faster)
+  reconnectBaseDelay: 1000, // 1 second base delay (faster initial retry)
+  reconnectMaxDelay: 5000, // 5 seconds max (prevent long waits)
 };

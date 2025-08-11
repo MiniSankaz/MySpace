@@ -1,5 +1,6 @@
 {
   "passed": [
+    "API-Health",
     "SystemTerminal-Connection",
     "SystemTerminal-Commands",
     "ClaudeTerminal-Connection",
@@ -8,11 +9,10 @@
     "Performance-Metrics"
   ],
   "failed": [
-    "API-Health",
     "CircuitBreaker-Protection"
   ],
-  "startTime": 1754912043930,
-  "passRate": "75.0",
-  "duration": "18.50",
-  "timestamp": "2025-08-11T11:34:22.428Z"
+  "startTime": 1754914226668,
+  "passRate": "87.5",
+  "duration": "17.07",
+  "timestamp": "2025-08-11T12:10:43.739Z"
 }

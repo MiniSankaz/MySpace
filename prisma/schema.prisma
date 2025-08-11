@@ -1192,6 +1192,7 @@ model TerminalSession {
   userId      String?
   type        String
   tabName     String
+  status      String            @default("active") // active, inactive, closed, error
   active      Boolean           @default(true)
   output      Json              @default("[]")
   currentPath String
@@ -1209,6 +1210,7 @@ model TerminalSession {
   @@index([projectId])
   @@index([userId])
   @@index([type])
+  @@index([status])
   @@index([active])
   @@index([startedAt])
 }

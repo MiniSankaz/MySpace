@@ -59,15 +59,17 @@ app.prepare().then(() => {
   
   try {
     // Use standalone WebSocket server on port 4001
-    const { TerminalWebSocketServer } = require('./src/server/websocket/terminal-ws-standalone');
+    const { TerminalWebSocketServer, setupShutdownHandlers: setupTerminalShutdown } = require('./src/server/websocket/terminal-ws-standalone');
     const wsPort = process.env.WS_PORT || 4001;
     terminalWS = new TerminalWebSocketServer(wsPort);
+    setupTerminalShutdown(terminalWS);
     console.log(`✓ Terminal WebSocket server listening on port ${wsPort}`);
     
     // Initialize Claude Terminal WebSocket server on port 4002
-    const ClaudeTerminalWebSocketServer = require('./src/server/websocket/claude-terminal-ws');
+    const { ClaudeTerminalWebSocketServer, setupShutdownHandlers: setupClaudeShutdown } = require('./src/server/websocket/claude-terminal-ws');
     const claudeTerminalPort = process.env.CLAUDE_WS_PORT || 4002;
     claudeTerminalWS = new ClaudeTerminalWebSocketServer(claudeTerminalPort);
+    setupClaudeShutdown(claudeTerminalWS);
     console.log(`✓ Claude Terminal WebSocket server listening on port ${claudeTerminalPort}`);
     
     // Initialize Claude WebSocket server

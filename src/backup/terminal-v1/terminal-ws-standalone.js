@@ -24,10 +24,6 @@ class TerminalWebSocketServer {
     this.sessions = new Map();
     this.loggingService = terminalLoggingService;
     
-    // Focus management - track which sessions are focused
-    this.focusedSessions = new Map(); // projectId -> sessionId
-    this.outputBuffers = new Map(); // sessionId -> buffered output array
-    
     // Create standalone WebSocket server
     this.wss = new WebSocketServer({ 
       port: this.port,
@@ -254,22 +250,14 @@ class TerminalWebSocketServer {
           });
         }
 
-        // Handle PTY data with focus-aware streaming
+        // Handle PTY data with streaming
         shellProcess.onData((data) => {
-          // Check if this session is focused
-          const isFocused = this.isSessionFocused(sessionId, projectId);
-          
-          if (isFocused) {
-            // Stream output immediately for focused session
-            if (session.ws && session.ws.readyState === ws.OPEN) {
-              session.ws.send(JSON.stringify({
-                type: 'stream',
-                data: data,
-              }));
-            }
-          } else {
-            // Buffer output for unfocused session
-            this.bufferOutput(sessionId, data);
+          // Stream output immediately
+          if (session.ws && session.ws.readyState === ws.OPEN) {
+            session.ws.send(JSON.stringify({
+              type: 'stream',
+              data: data,
+            }));
           }
           
           // Log output to database
@@ -435,33 +423,6 @@ class TerminalWebSocketServer {
             case 'ping':
               ws.send(JSON.stringify({ type: 'pong' }));
               break;
-            
-            case 'focus':
-              // Handle focus change
-              this.handleFocusChange(sessionId, projectId, true);
-              // Flush any buffered output when session gains focus
-              const buffered = this.flushBuffer(sessionId);
-              if (buffered && buffered.length > 0 && session.ws && session.ws.readyState === ws.OPEN) {
-                session.ws.send(JSON.stringify({
-                  type: 'buffered',
-                  data: buffered
-                }));
-              }
-              break;
-            
-            case 'blur':
-              // Handle blur (unfocus)
-              this.handleFocusChange(sessionId, projectId, false);
-              break;
-            
-            case 'focus_change':
-              // Handle focus mode change from terminal service
-              if (data.mode === 'active') {
-                this.handleFocusChange(sessionId, projectId, true);
-              } else if (data.mode === 'background') {
-                this.handleFocusChange(sessionId, projectId, false);
-              }
-              break;
               
             default:
               console.warn('Unknown message type:', data.type);
@@ -591,59 +552,6 @@ class TerminalWebSocketServer {
     return projectId ? `${sessionId}:${projectId}` : sessionId;
   }
   
-  // Focus management methods
-  isSessionFocused(sessionId, projectId) {
-    if (!projectId) return true; // If no project, assume focused
-    const focusedSessionId = this.focusedSessions.get(projectId);
-    return focusedSessionId === sessionId;
-  }
-  
-  handleFocusChange(sessionId, projectId, isFocused) {
-    if (!projectId) return;
-    
-    if (isFocused) {
-      // Set this session as focused for the project
-      const previousFocused = this.focusedSessions.get(projectId);
-      this.focusedSessions.set(projectId, sessionId);
-      console.log(`Session ${sessionId} is now focused for project ${projectId}`);
-      
-      // Mark previous session as unfocused if different
-      if (previousFocused && previousFocused !== sessionId) {
-        console.log(`Session ${previousFocused} is now unfocused for project ${projectId}`);
-      }
-    } else {
-      // Unfocus this session if it was focused
-      const currentFocused = this.focusedSessions.get(projectId);
-      if (currentFocused === sessionId) {
-        this.focusedSessions.delete(projectId);
-        console.log(`Session ${sessionId} is now unfocused for project ${projectId}`);
-      }
-    }
-  }
-  
-  bufferOutput(sessionId, data) {
-    const buffer = this.outputBuffers.get(sessionId) || [];
-    buffer.push(data);
-    
-    // Limit buffer size to 500 lines/chunks
-    if (buffer.length > 500) {
-      buffer.splice(0, buffer.length - 500);
-    }
-    
-    this.outputBuffers.set(sessionId, buffer);
-  }
-  
-  flushBuffer(sessionId) {
-    const buffer = this.outputBuffers.get(sessionId) || [];
-    this.outputBuffers.delete(sessionId);
-    
-    // Join buffer into single string if it has content
-    if (buffer.length > 0) {
-      return buffer.join('');
-    }
-    return null;
-  }
-  
   closeSession(sessionId, projectId) {
     const sessionKey = this.getSessionKey(sessionId, projectId);
     const session = this.sessions.get(sessionKey);
@@ -655,12 +563,6 @@ class TerminalWebSocketServer {
         session.ws.close();
       }
       this.sessions.delete(sessionKey);
-      
-      // Clean up focus and buffer
-      if (projectId && this.focusedSessions.get(projectId) === sessionId) {
-        this.focusedSessions.delete(projectId);
-      }
-      this.outputBuffers.delete(sessionId);
     }
   }
 
