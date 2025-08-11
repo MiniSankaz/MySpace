@@ -12,7 +12,9 @@ import {
   CalendarDaysIcon,
   CpuChipIcon,
   CircleStackIcon,
-  LanguageIcon
+  LanguageIcon,
+  WifiIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import AppLayout from '@/components/layout/AppLayout';
 import DashboardKPICard from '@/components/dashboard/DashboardKPICard';
@@ -71,6 +73,8 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'connecting'>('online');
 
   useEffect(() => {
     fetchUserData();
@@ -86,6 +90,7 @@ export default function Dashboard() {
 
   const fetchUserData = async () => {
     try {
+      setConnectionStatus('connecting');
       const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       
       const response = await fetch('/api/ums/users/me', {
@@ -95,23 +100,65 @@ export default function Dashboard() {
         },
       });
       
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+      
+      if (data.success && data.user) {
         setUser(data.user);
-      } else if (response.status === 401) {
-        // User not authenticated - check if user is stored in localStorage
-        const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        // Store in localStorage for offline use
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(data.user));
         }
+        
+        // Check if we're in offline mode
+        if (data.offline) {
+          setIsOffline(true);
+          setConnectionStatus('offline');
+        } else {
+          setIsOffline(false);
+          setConnectionStatus('online');
+        }
+      } else if (response.status === 401) {
+        // Not authenticated - try localStorage
+        handleOfflineUser();
       }
     } catch (error) {
       console.error('Failed to fetch user data:', error);
-      // Try to get user from localStorage as fallback
-      const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      if (storedUser) {
+      handleOfflineUser();
+    }
+  };
+  
+  const handleOfflineUser = () => {
+    // Try to get user from localStorage as fallback
+    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    if (storedUser) {
+      try {
         setUser(JSON.parse(storedUser));
+        setIsOffline(true);
+        setConnectionStatus('offline');
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+        // Use default development user
+        setUser({
+          id: 'dev_user',
+          email: 'dev@localhost.com',
+          username: 'dev_user',
+          displayName: 'Development User',
+          roles: ['user']
+        });
+        setIsOffline(true);
+        setConnectionStatus('offline');
       }
+    } else if (process.env.NODE_ENV === 'development') {
+      // Development fallback
+      setUser({
+        id: 'dev_user',
+        email: 'dev@localhost.com',
+        username: 'dev_user',
+        displayName: 'Development User',
+        roles: ['user']
+      });
+      setIsOffline(true);
+      setConnectionStatus('offline');
     }
   };
 
@@ -213,18 +260,51 @@ export default function Dashboard() {
     <AppLayout>
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <div className="p-6 space-y-6">
+          {/* Offline/Connection Status Banner */}
+          {isOffline && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex items-center gap-3">
+              <WifiIcon className="w-5 h-5 text-yellow-500" />
+              <div className="flex-1">
+                <p className="text-yellow-500 text-sm font-medium">Running in Offline Mode</p>
+                <p className="text-yellow-400/70 text-xs mt-1">
+                  Database connection unavailable. Using cached data.
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-3 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 
+                         rounded text-yellow-400 text-sm transition-colors"
+              >
+                Retry Connection
+              </button>
+            </div>
+          )}
+          
           {/* Welcome Section */}
           <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-sm rounded-2xl p-8 border border-gray-700">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  {t('welcome.greeting')}, {user?.displayName || user?.username || 'ผู้ใช้'} 👋
+                  {t('welcome.greeting')}, {user?.displayName || user?.username || 'User'} 👋
                 </h1>
                 <p className="text-gray-300">
                   {t('welcome.description')}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
+                {/* Connection Status Indicator */}
+                <div className="flex items-center gap-2 px-2 py-1 bg-gray-800/50 rounded-lg">
+                  <div className={`w-2 h-2 rounded-full ${
+                    connectionStatus === 'online' ? 'bg-green-500' : 
+                    connectionStatus === 'offline' ? 'bg-red-500' : 
+                    'bg-yellow-500 animate-pulse'
+                  }`} />
+                  <span className="text-xs text-gray-400">
+                    {connectionStatus === 'online' ? 'Online' : 
+                     connectionStatus === 'offline' ? 'Offline' : 
+                     'Connecting...'}
+                  </span>
+                </div>
                 <button
                   onClick={() => switchLanguage(lang === 'th' ? 'en' : 'th')}
                   className="flex items-center gap-2 px-3 py-1 bg-gray-700/50 hover:bg-gray-700 
@@ -242,9 +322,15 @@ export default function Dashboard() {
           </div>
 
           {/* Error Alert */}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400">
-              <p className="text-sm">{error}</p>
+          {error && !isOffline && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-start gap-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-red-400/70 text-xs mt-1">
+                  Some features may be limited. The app will continue to work with cached data.
+                </p>
+              </div>
             </div>
           )}
 

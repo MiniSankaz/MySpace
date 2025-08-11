@@ -1,5 +1,10 @@
 import { prisma } from '@/core/database/prisma';
 import { Message } from '../types';
+import { cacheManager } from '@/core/database/cache-manager';
+
+// Cache TTL constants
+const CONVERSATION_CACHE_TTL = 1 * 60 * 1000; // 1 minute
+const DB_TIMEOUT = 5000; // 5 seconds
 
 export class ConversationStorage {
   private prisma = prisma;
@@ -96,52 +101,88 @@ export class ConversationStorage {
     userId: string,
     sessionId: string
   ): Promise<Message[]> {
+    const cacheKey = `conversation:${userId}:${sessionId}`;
+    
     try {
-      // Load messages directly from AssistantChatMessage table
-      const messages = await this.prisma.assistantChatMessage.findMany({
-        where: {
-          sessionId: sessionId,  // Direct sessionId match (e.g., "session-1754819725323")
-          userId: userId
+      // Use cache with timeout handling
+      return await cacheManager.withCacheAndTimeout(
+        cacheKey,
+        async () => {
+          console.log(`[ConversationStorage] Loading messages from database for session ${sessionId}`);
+          
+          // Load messages directly from AssistantChatMessage table
+          const messages = await this.prisma.assistantChatMessage.findMany({
+            where: {
+              sessionId: sessionId,  // Direct sessionId match (e.g., "session-1754819725323")
+              userId: userId
+            },
+            orderBy: {
+              timestamp: 'asc'
+            }
+          });
+
+          const convertedMessages = messages.map(msg => ({
+            id: msg.id,
+            userId: msg.userId || userId,
+            content: msg.content,
+            type: msg.role as 'user' | 'assistant' | 'system',
+            timestamp: msg.timestamp,
+            metadata: msg.metadata as any
+          }));
+
+          console.log(`[ConversationStorage] Loaded ${convertedMessages.length} messages from AssistantChatMessage for session ${sessionId}`);
+          return convertedMessages;
         },
-        orderBy: {
-          timestamp: 'asc'
+        {
+          ttl: CONVERSATION_CACHE_TTL,
+          timeout: DB_TIMEOUT,
+          fallbackValue: [] // Return empty messages if timeout
         }
-      });
-
-      const convertedMessages = messages.map(msg => ({
-        id: msg.id,
-        userId: msg.userId || userId,
-        content: msg.content,
-        type: msg.role as 'user' | 'assistant' | 'system',
-        timestamp: msg.timestamp,
-        metadata: msg.metadata as any
-      }));
-
-      console.log(`[ConversationStorage] Loaded ${convertedMessages.length} messages from AssistantChatMessage for session ${sessionId}`);
-      return convertedMessages;
+      );
     } catch (error) {
       console.error('Failed to load conversation from database:', error);
-      // Fallback to file storage if database fails
-      return this.loadFromFile(userId, sessionId);
+      
+      // Try file storage fallback
+      try {
+        return await this.loadFromFile(userId, sessionId);
+      } catch (fileError) {
+        console.error('File storage fallback also failed:', fileError);
+        return [];
+      }
     }
   }
 
   async listSessions(userId: string): Promise<string[]> {
+    const cacheKey = `sessions:list:${userId}`;
+    
     try {
-      // Use AssistantChatSession instead
-      const sessions = await this.prisma.assistantChatSession.findMany({
-        where: {
-          userId
-        },
-        select: {
-          id: true
-        },
-        orderBy: {
-          startedAt: 'desc'
-        }
-      });
+      // Use cache with timeout handling
+      return await cacheManager.withCacheAndTimeout(
+        cacheKey,
+        async () => {
+          console.log(`[ConversationStorage] Loading session list for user ${userId}`);
+          
+          // Use AssistantChatSession instead
+          const sessions = await this.prisma.assistantChatSession.findMany({
+            where: {
+              userId
+            },
+            select: {
+              id: true
+            },
+            orderBy: {
+              startedAt: 'desc'
+            }
+          });
 
-      return sessions.map(session => session.id);
+          return sessions.map(session => session.id);
+        },
+        {
+          ttl: CONVERSATION_CACHE_TTL * 2, // Sessions list cache for 2 minutes
+          timeout: DB_TIMEOUT,
+          fallbackValue: []
+        }
+      );
     } catch (error) {
       console.error('Failed to list sessions from database:', error);
       return [];
@@ -235,46 +276,58 @@ export class ConversationStorage {
     }
   }
 
-  // Cleanup method to close database connection
-  async disconnect(): Promise<void> {
-    await this.prisma.$disconnect();
-  }
+  // Cleanup method moved to end of class
 
   // API methods for external usage
   async getSession(sessionId: string, userId: string): Promise<any> {
+    const cacheKey = `session:detail:${userId}:${sessionId}`;
+    
     try {
-      const conversation = await this.prisma.assistantConversation.findUnique({
-        where: {
-          userId_sessionId: {
-            userId,
-            sessionId
-          }
-        },
-        include: {
-          messages: {
-            orderBy: {
-              createdAt: 'asc'
+      // Use cache with timeout handling
+      return await cacheManager.withCacheAndTimeout(
+        cacheKey,
+        async () => {
+          console.log(`[ConversationStorage] Loading session detail for ${sessionId}`);
+          
+          const conversation = await this.prisma.assistantConversation.findUnique({
+            where: {
+              userId_sessionId: {
+                userId,
+                sessionId
+              }
+            },
+            include: {
+              messages: {
+                orderBy: {
+                  createdAt: 'asc'
+                }
+              }
             }
+          });
+
+          if (!conversation) {
+            return null;
           }
+
+          return {
+            id: conversation.id,
+            sessionId: conversation.sessionId,
+            title: conversation.title,
+            createdAt: conversation.startedAt,
+            updatedAt: conversation.endedAt || conversation.startedAt,
+            messages: conversation.messages.map(msg => ({
+              role: msg.type,
+              content: msg.content,
+              timestamp: msg.createdAt
+            }))
+          };
+        },
+        {
+          ttl: CONVERSATION_CACHE_TTL,
+          timeout: DB_TIMEOUT,
+          fallbackValue: null
         }
-      });
-
-      if (!conversation) {
-        return null;
-      }
-
-      return {
-        id: conversation.id,
-        sessionId: conversation.sessionId,
-        title: conversation.title,
-        createdAt: conversation.startedAt,
-        updatedAt: conversation.endedAt || conversation.startedAt,
-        messages: conversation.messages.map(msg => ({
-          role: msg.type,
-          content: msg.content,
-          timestamp: msg.createdAt
-        }))
-      };
+      );
     } catch (error) {
       console.error('Failed to get session:', error);
       return null;
@@ -283,92 +336,122 @@ export class ConversationStorage {
 
   async saveMessage(sessionId: string, userId: string, role: string, content: string): Promise<void> {
     try {
-      let conversation = await this.prisma.assistantConversation.findUnique({
-        where: {
-          userId_sessionId: {
-            userId,
-            sessionId
-          }
-        }
-      });
-
-      if (!conversation) {
-        // Ensure user exists
-        const user = await this.prisma.user.findUnique({
-          where: { id: userId }
-        });
-        
-        if (!user) {
-          await this.prisma.user.create({
-            data: {
-              id: userId,
-              email: `${userId}@api.local`,
-              username: userId,
-              passwordHash: 'API_USER',
-              isActive: true,
-              createdAt: new Date(),
-              updatedAt: new Date()
+      // Use timeout for save operations
+      await cacheManager.withCacheAndTimeout(
+        `save:message:${Date.now()}`,
+        async () => {
+          let conversation = await this.prisma.assistantConversation.findUnique({
+            where: {
+              userId_sessionId: {
+                userId,
+                sessionId
+              }
             }
           });
-        }
 
-        conversation = await this.prisma.assistantConversation.create({
-          data: {
-            id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            userId,
-            sessionId,
-            title: content.substring(0, 50)
+          if (!conversation) {
+            // Ensure user exists
+            const user = await this.prisma.user.findUnique({
+              where: { id: userId }
+            });
+            
+            if (!user) {
+              await this.prisma.user.create({
+                data: {
+                  id: userId,
+                  email: `${userId}@api.local`,
+                  username: userId,
+                  passwordHash: 'API_USER',
+                  isActive: true,
+                  createdAt: new Date(),
+                  updatedAt: new Date()
+                }
+              });
+            }
+
+            conversation = await this.prisma.assistantConversation.create({
+              data: {
+                id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                userId,
+                sessionId,
+                title: content.substring(0, 50)
+              }
+            });
           }
-        });
-      }
 
-      await this.prisma.assistantMessage.create({
-        data: {
-          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          conversationId: conversation.id,
-          content,
-          type: role,
-          metadata: {},
-          createdAt: new Date()
+          await this.prisma.assistantMessage.create({
+            data: {
+              id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              conversationId: conversation.id,
+              content,
+              type: role,
+              metadata: {},
+              createdAt: new Date()
+            }
+          });
+
+          return true;
+        },
+        {
+          timeout: DB_TIMEOUT,
+          skipCache: true // Don't cache save operations
         }
-      });
+      );
+
+      // Clear related caches after successful save
+      this.clearUserCaches(userId, sessionId);
     } catch (error) {
       console.error('Failed to save message:', error);
     }
   }
 
   async getAllSessions(userId: string): Promise<any[]> {
+    const cacheKey = `sessions:all:${userId}`;
+    
     try {
-      const conversations = await this.prisma.assistantConversation.findMany({
-        where: {
-          userId,
-          isActive: true
-        },
-        include: {
-          messages: {
-            orderBy: {
-              createdAt: 'desc'
+      // Use cache with timeout handling
+      return await cacheManager.withCacheAndTimeout(
+        cacheKey,
+        async () => {
+          console.log(`[ConversationStorage] Loading all sessions for user ${userId}`);
+          
+          const conversations = await this.prisma.assistantConversation.findMany({
+            where: {
+              userId,
+              isActive: true
             },
-            take: 1
-          }
-        },
-        orderBy: {
-          startedAt: 'desc'
-        }
-      });
+            include: {
+              messages: {
+                orderBy: {
+                  createdAt: 'desc'
+                },
+                take: 1
+              }
+            },
+            orderBy: {
+              startedAt: 'desc'
+            }
+          });
 
-      return conversations.map(conv => ({
-        id: conv.id,
-        sessionId: conv.sessionId,
-        title: conv.title,
-        createdAt: conv.startedAt,
-        updatedAt: conv.endedAt || conv.startedAt,
-        messages: conv.messages.map(msg => ({
-          role: msg.type,
-          content: msg.content,
-          timestamp: msg.createdAt
-        }))
-      }));
+          return conversations.map(conv => ({
+            id: conv.id,
+            sessionId: conv.sessionId,
+            title: conv.title,
+            createdAt: conv.startedAt,
+            updatedAt: conv.endedAt || conv.startedAt,
+            messages: conv.messages.map(msg => ({
+              role: msg.type,
+              content: msg.content,
+              timestamp: msg.createdAt
+            }))
+          }));
+        },
+        {
+          ttl: CONVERSATION_CACHE_TTL * 2, // All sessions cache for 2 minutes
+          timeout: DB_TIMEOUT,
+          fallbackValue: []
+        }
+      );
     } catch (error) {
       console.error('Failed to get all sessions:', error);
       return [];
@@ -376,6 +459,68 @@ export class ConversationStorage {
   }
 
   async deleteSession(sessionId: string, userId: string): Promise<void> {
-    await this.deleteConversation(userId, sessionId);
+    try {
+      await this.deleteConversation(userId, sessionId);
+      
+      // Clear related caches after successful delete
+      this.clearUserCaches(userId, sessionId);
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+    }
+  }
+
+  // Cache management methods
+  private clearUserCaches(userId: string, sessionId?: string): void {
+    try {
+      // Clear conversation-specific caches
+      if (sessionId) {
+        cacheManager.clearByPattern(`conversation:${userId}:${sessionId}`);
+        cacheManager.clearByPattern(`session:detail:${userId}:${sessionId}`);
+        cacheManager.clearByPattern(`chat:.*:${userId}:${sessionId}`);
+      }
+
+      // Clear user-level caches
+      cacheManager.clearByPattern(`sessions:.*:${userId}`);
+      cacheManager.clearByPattern(`dashboard:.*:${userId}`);
+      
+      console.log(`[ConversationStorage] Cleared caches for user ${userId}${sessionId ? ` session ${sessionId}` : ''}`);
+    } catch (error) {
+      console.error('Failed to clear caches:', error);
+    }
+  }
+
+  // Enhanced disconnect method with cache cleanup
+  async disconnect(): Promise<void> {
+    try {
+      await this.prisma.$disconnect();
+      console.log('[ConversationStorage] Disconnected from database');
+    } catch (error) {
+      console.error('[ConversationStorage] Error disconnecting from database:', error);
+    }
+  }
+
+  // Health check method for monitoring
+  async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; latency?: number }> {
+    const start = Date.now();
+    
+    try {
+      await cacheManager.withCacheAndTimeout(
+        'health:check',
+        async () => {
+          await this.prisma.$queryRaw`SELECT 1`;
+          return true;
+        },
+        {
+          timeout: 2000, // 2 second timeout for health check
+          skipCache: true
+        }
+      );
+
+      const latency = Date.now() - start;
+      return { status: 'healthy', latency };
+    } catch (error) {
+      console.error('Database health check failed:', error);
+      return { status: 'unhealthy' };
+    }
   }
 }

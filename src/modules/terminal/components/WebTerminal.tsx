@@ -20,6 +20,8 @@ export function WebTerminal({ className = '', onClose }: WebTerminalProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+  const scrollPositionRef = useRef<number>(0);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -72,6 +74,40 @@ export function WebTerminal({ className = '', onClose }: WebTerminalProps) {
     // Open terminal in DOM
     term.open(terminalRef.current);
     fitAddon.fit();
+    
+    // Track user scroll behavior
+    const handleScroll = () => {
+      if (term.element) {
+        const scrollTop = term.element.scrollTop;
+        const scrollHeight = term.element.scrollHeight;
+        const clientHeight = term.element.clientHeight;
+        
+        // Consider user scrolled up if they're more than 10px from bottom
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
+        setIsUserScrolledUp(!isAtBottom);
+        
+        // Store current position for potential restoration
+        scrollPositionRef.current = scrollTop;
+      }
+    };
+    
+    // Add scroll listener
+    if (term.element) {
+      term.element.addEventListener('scroll', handleScroll);
+    }
+    
+    // Alternative: use MutationObserver to detect when element is available
+    const observer = new MutationObserver(() => {
+      if (term.element && !term.element.hasAttribute('data-scroll-listener')) {
+        term.element.addEventListener('scroll', handleScroll);
+        term.element.setAttribute('data-scroll-listener', 'true');
+        observer.disconnect();
+      }
+    });
+    
+    if (terminalRef.current) {
+      observer.observe(terminalRef.current, { childList: true, subtree: true });
+    }
 
     // Connect to WebSocket
     const socketInstance = io('/terminal', {
@@ -99,6 +135,11 @@ export function WebTerminal({ className = '', onClose }: WebTerminalProps) {
 
     socketInstance.on('terminal:data', (data: { sessionId: string; data: string }) => {
       term.write(data.data);
+      
+      // Auto-scroll to bottom only if user hasn't scrolled up
+      if (!isUserScrolledUp) {
+        term.scrollToBottom();
+      }
     });
 
     socketInstance.on('terminal:error', (data: { error: string }) => {
@@ -137,10 +178,25 @@ export function WebTerminal({ className = '', onClose }: WebTerminalProps) {
       }
     });
 
-    // Handle window resize
+    // Handle window resize without changing scroll position
     const handleResize = () => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
+      if (fitAddonRef.current && terminal) {
+        // Save current scroll position
+        const currentScrollTop = terminal.element?.scrollTop || 0;
+        const currentScrollHeight = terminal.element?.scrollHeight || 0;
+        const currentClientHeight = terminal.element?.clientHeight || 0;
+        
+        setTimeout(() => {
+          fitAddonRef.current?.fit();
+          
+          // Restore scroll position or maintain bottom scroll if user was at bottom
+          if (terminal.element) {
+            const wasAtBottom = currentScrollTop + currentClientHeight >= currentScrollHeight - 10;
+            if (wasAtBottom && !isUserScrolledUp) {
+              terminal.scrollToBottom();
+            }
+          }
+        }, 50);
       }
     };
 
@@ -152,6 +208,10 @@ export function WebTerminal({ className = '', onClose }: WebTerminalProps) {
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (term.element) {
+        term.element.removeEventListener('scroll', handleScroll);
+      }
+      observer.disconnect();
       
       if (sessionId && socketInstance.connected) {
         socketInstance.emit('terminal:close', { sessionId });

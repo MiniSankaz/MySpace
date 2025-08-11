@@ -37,9 +37,14 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const fetchFileTree = useCallback(async () => {
     try {
       setLoading(true);
-      // Use project path if provided
-      const pathParam = projectPath ? `&path=${encodeURIComponent(projectPath)}` : '';
-      const response = await fetch(`/api/workspace/files?depth=4${pathParam}`);
+      // Use projectPath parameter correctly - no leading slash needed
+      const params = new URLSearchParams();
+      params.append('depth', '4');
+      if (projectPath) {
+        params.append('projectPath', projectPath);
+      }
+      
+      const response = await fetch(`/api/workspace/files?${params.toString()}`);
       const data = await response.json();
       
       if (data.success) {
@@ -87,12 +92,17 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       
       // Read file content
       try {
-        const response = await fetch('/api/workspace/files', {
+        const params = new URLSearchParams();
+        if (projectPath) {
+          params.append('projectPath', projectPath);
+        }
+        
+        const response = await fetch(`/api/workspace/files?${params.toString()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             action: 'read',
-            path: projectPath && node.path ? `${projectPath}${node.path.startsWith('/') ? '' : '/'}${node.path}` : node.path 
+            path: node.path 
           })
         });
         
@@ -128,12 +138,17 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     if (!confirm(`Are you sure you want to delete ${node.name}?`)) return;
     
     try {
-      const response = await fetch('/api/workspace/files', {
+      const params = new URLSearchParams();
+      if (projectPath) {
+        params.append('projectPath', projectPath);
+      }
+      
+      const response = await fetch(`/api/workspace/files?${params.toString()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'delete',
-          path: projectPath && node.path ? `${projectPath}${node.path.startsWith('/') ? '' : '/'}${node.path}` : node.path 
+          path: node.path 
         })
       });
       
@@ -158,13 +173,18 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     
     try {
       const newPath = node.path.replace(node.name, newName);
-      const response = await fetch('/api/workspace/files', {
+      const params = new URLSearchParams();
+      if (projectPath) {
+        params.append('projectPath', projectPath);
+      }
+      
+      const response = await fetch(`/api/workspace/files?${params.toString()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'rename',
-          path: projectPath && node.path ? `${projectPath}${node.path.startsWith('/') ? '' : '/'}${node.path}` : node.path,
-          newPath: projectPath && newPath ? `${projectPath}${newPath.startsWith('/') ? '' : '/'}${newPath}` : newPath
+          path: node.path,
+          newPath: newPath
         })
       });
       
@@ -187,12 +207,17 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     if (!fileName) return;
     
     try {
-      const response = await fetch('/api/workspace/files', {
+      const params = new URLSearchParams();
+      if (projectPath) {
+        params.append('projectPath', projectPath);
+      }
+      
+      const response = await fetch(`/api/workspace/files?${params.toString()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'create',
-          path: projectPath ? `${projectPath}${parentPath}/${fileName}` : `${parentPath}/${fileName}`,
+          path: `${parentPath}/${fileName}`,
           content: ''
         })
       });
@@ -215,12 +240,17 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     if (!folderName) return;
     
     try {
-      const response = await fetch('/api/workspace/files', {
+      const params = new URLSearchParams();
+      if (projectPath) {
+        params.append('projectPath', projectPath);
+      }
+      
+      const response = await fetch(`/api/workspace/files?${params.toString()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'mkdir',
-          path: projectPath ? `${projectPath}${parentPath}/${folderName}` : `${parentPath}/${folderName}`
+          path: `${parentPath}/${folderName}`
         })
       });
       

@@ -24,6 +24,8 @@ const XTermView: React.FC<XTermViewProps> = ({
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+  const scrollPositionRef = useRef<number>(0);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -74,10 +76,47 @@ const XTermView: React.FC<XTermViewProps> = ({
     // Open terminal in DOM
     term.open(terminalRef.current);
     
-    // Initial fit and delayed fit to ensure proper sizing
+    // Track user scroll behavior
+    const handleScroll = () => {
+      if (term.element) {
+        const scrollTop = term.element.scrollTop;
+        const scrollHeight = term.element.scrollHeight;
+        const clientHeight = term.element.clientHeight;
+        
+        // Consider user scrolled up if they're more than 10px from bottom
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
+        setIsUserScrolledUp(!isAtBottom);
+        
+        // Store current position for potential restoration
+        scrollPositionRef.current = scrollTop;
+      }
+    };
+    
+    // Add scroll listener
+    if (term.element) {
+      term.element.addEventListener('scroll', handleScroll);
+    }
+    
+    // Alternative: use MutationObserver to detect when element is available
+    const observer = new MutationObserver(() => {
+      if (term.element && !term.element.hasAttribute('data-scroll-listener')) {
+        term.element.addEventListener('scroll', handleScroll);
+        term.element.setAttribute('data-scroll-listener', 'true');
+        observer.disconnect();
+      }
+    });
+    
+    if (terminalRef.current) {
+      observer.observe(terminalRef.current, { childList: true, subtree: true });
+    }
+    
+    // Initial fit without forcing scroll position
     setTimeout(() => {
       fitAddon.fit();
-      term.scrollToBottom();
+      // Only scroll to bottom on initial load, not on resize
+      if (!terminal) {
+        term.scrollToBottom();
+      }
     }, 100);
 
     // Connect to WebSocket
@@ -116,6 +155,11 @@ const XTermView: React.FC<XTermViewProps> = ({
           case 'stream':
             // Stream output directly to terminal
             term.write(message.data);
+            
+            // Auto-scroll to bottom only if user hasn't scrolled up
+            if (!isUserScrolledUp) {
+              term.scrollToBottom();
+            }
             break;
             
           case 'exit':
@@ -164,12 +208,24 @@ const XTermView: React.FC<XTermViewProps> = ({
       }
     });
 
-    // Handle window resize
+    // Handle window resize without changing scroll position
     const handleResize = () => {
       if (fitAddonRef.current && terminal) {
+        // Save current scroll position
+        const currentScrollTop = terminal.element?.scrollTop || 0;
+        const currentScrollHeight = terminal.element?.scrollHeight || 0;
+        const currentClientHeight = terminal.element?.clientHeight || 0;
+        
         setTimeout(() => {
           fitAddonRef.current?.fit();
-          terminal.scrollToBottom();
+          
+          // Restore scroll position or maintain bottom scroll if user was at bottom
+          if (terminal.element) {
+            const wasAtBottom = currentScrollTop + currentClientHeight >= currentScrollHeight - 10;
+            if (wasAtBottom && !isUserScrolledUp) {
+              terminal.scrollToBottom();
+            }
+          }
         }, 50);
       }
     };
@@ -182,6 +238,10 @@ const XTermView: React.FC<XTermViewProps> = ({
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (term.element) {
+        term.element.removeEventListener('scroll', handleScroll);
+      }
+      observer.disconnect();
       websocket.close();
       term.dispose();
     };

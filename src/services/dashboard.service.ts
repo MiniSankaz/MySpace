@@ -1,5 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { prisma } from '@/core/database/prisma';
+import { cacheManager } from '@/core/database/cache-manager';
+
+// Cache TTL constants
+const DASHBOARD_STATS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const USER_STATS_CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+const SYSTEM_STATS_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+const DB_TIMEOUT = 5000; // 5 seconds
 
 export interface DashboardStats {
   user: {
@@ -60,29 +67,44 @@ class DashboardService {
   }
 
   async getDashboardStats(userId: string): Promise<DashboardStats> {
+    const cacheKey = `dashboard:stats:${userId}`;
+    
     try {
-      // Fetch all data in parallel for better performance
-      const [
-        userStats,
-        aiStats,
-        terminalStats,
-        systemStats,
-        recentActivity
-      ] = await Promise.all([
-        this.getUserStats(userId),
-        this.getAIAssistantStats(userId),
-        this.getTerminalStats(userId),
-        this.getSystemStats(),
-        this.getRecentActivity(userId, 20)
-      ]);
+      // Use cache with timeout handling for entire dashboard stats
+      return await cacheManager.withCacheAndTimeout(
+        cacheKey,
+        async () => {
+          console.log(`[Dashboard] Loading stats for user ${userId}`);
+          
+          // Fetch all data in parallel for better performance
+          const [
+            userStats,
+            aiStats,
+            terminalStats,
+            systemStats,
+            recentActivity
+          ] = await Promise.all([
+            this.getUserStatsWithCache(userId),
+            this.getAIAssistantStatsWithCache(userId),
+            this.getTerminalStatsWithCache(userId),
+            this.getSystemStatsWithCache(),
+            this.getRecentActivityWithCache(userId, 20)
+          ]);
 
-      return {
-        user: userStats,
-        aiAssistant: aiStats,
-        terminal: terminalStats,
-        system: systemStats,
-        recentActivity
-      };
+          return {
+            user: userStats,
+            aiAssistant: aiStats,
+            terminal: terminalStats,
+            system: systemStats,
+            recentActivity
+          };
+        },
+        {
+          ttl: DASHBOARD_STATS_CACHE_TTL,
+          timeout: DB_TIMEOUT * 2, // More time for complex operations
+          fallbackValue: this.getDefaultStats()
+        }
+      );
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       // Return default data on error
@@ -135,6 +157,27 @@ class DashboardService {
         activeProjects: 0
       };
     }
+  }
+
+  private async getUserStatsWithCache(userId: string) {
+    const cacheKey = `dashboard:user:${userId}`;
+    
+    return await cacheManager.withCacheAndTimeout(
+      cacheKey,
+      async () => {
+        return await this.getUserStats(userId);
+      },
+      {
+        ttl: USER_STATS_CACHE_TTL,
+        timeout: DB_TIMEOUT,
+        fallbackValue: {
+          totalSessions: 0,
+          todayActivity: 0,
+          lastLogin: null,
+          activeProjects: 0
+        }
+      }
+    );
   }
 
   private async getAIAssistantStats(userId: string) {
@@ -235,6 +278,29 @@ class DashboardService {
     }
   }
 
+  private async getAIAssistantStatsWithCache(userId: string) {
+    const cacheKey = `dashboard:ai:${userId}`;
+    
+    return await cacheManager.withCacheAndTimeout(
+      cacheKey,
+      async () => {
+        return await this.getAIAssistantStats(userId);
+      },
+      {
+        ttl: USER_STATS_CACHE_TTL,
+        timeout: DB_TIMEOUT,
+        fallbackValue: {
+          totalConversations: 0,
+          activeConversations: 0,
+          tokensUsed: 0,
+          totalCost: 0,
+          averageResponseTime: 0,
+          popularCommands: []
+        }
+      }
+    );
+  }
+
   private async getTerminalStats(userId: string) {
     try {
       const terminalSessions = await this.db.terminalSession.findMany({
@@ -283,6 +349,27 @@ class DashboardService {
     }
   }
 
+  private async getTerminalStatsWithCache(userId: string) {
+    const cacheKey = `dashboard:terminal:${userId}`;
+    
+    return await cacheManager.withCacheAndTimeout(
+      cacheKey,
+      async () => {
+        return await this.getTerminalStats(userId);
+      },
+      {
+        ttl: USER_STATS_CACHE_TTL,
+        timeout: DB_TIMEOUT,
+        fallbackValue: {
+          totalSessions: 0,
+          commandsExecuted: 0,
+          errorRate: 0,
+          averageExecutionTime: 0
+        }
+      }
+    );
+  }
+
   private async getSystemStats() {
     try {
       // Get system uptime (time since server started)
@@ -297,12 +384,18 @@ class DashboardService {
           (now - this.healthCheckCache.timestamp) < this.HEALTH_CHECK_CACHE_TTL) {
         databaseHealth = this.healthCheckCache.status;
       } else {
-        // Perform actual health check
+        // Perform actual health check with timeout
         try {
           if (!this.db) {
             databaseHealth = 'critical';
           } else {
-            await this.db.$queryRaw`SELECT 1`;
+            // Use a quick health check with timeout
+            await Promise.race([
+              this.db.$queryRaw`SELECT 1`,
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Health check timeout')), 2000)
+              )
+            ]);
             databaseHealth = 'healthy';
           }
         } catch (error) {
@@ -321,22 +414,48 @@ class DashboardService {
       const memUsage = process.memoryUsage();
       const memoryUsage = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
 
-      // Count active assistant sessions as active connections
-      const activeConnections = this.db ? await this.db.assistantChatSession.count({
-        where: {
-          endedAt: null
+      // Count active assistant sessions as active connections with timeout
+      let activeConnections = 0;
+      if (this.db && databaseHealth !== 'critical') {
+        try {
+          activeConnections = await Promise.race([
+            this.db.assistantChatSession.count({
+              where: {
+                endedAt: null
+              }
+            }),
+            new Promise<number>((_, reject) => 
+              setTimeout(() => reject(new Error('Connection count timeout')), 2000)
+            )
+          ]);
+        } catch (error) {
+          console.error('Failed to count active connections:', error);
+          activeConnections = 0;
         }
-      }) : 0;
+      }
 
-      // Get last backup info
-      const lastBackup = this.db ? await this.db.backupExport.findFirst({
-        where: {
-          type: 'backup'
-        },
-        orderBy: {
-          createdAt: 'desc'
+      // Get last backup info with timeout
+      let lastBackup = null;
+      if (this.db && databaseHealth !== 'critical') {
+        try {
+          lastBackup = await Promise.race([
+            this.db.backupExport.findFirst({
+              where: {
+                type: 'backup'
+              },
+              orderBy: {
+                createdAt: 'desc'
+              }
+            }),
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('Backup query timeout')), 2000)
+            )
+          ]);
+        } catch (error) {
+          console.error('Failed to get backup info:', error);
+          lastBackup = null;
         }
-      }) : null;
+      }
 
       return {
         uptime: Math.round(uptime),
@@ -349,12 +468,34 @@ class DashboardService {
       console.error('Error in getSystemStats:', error);
       return {
         uptime: 0,
-        databaseHealth: 'healthy' as const,
+        databaseHealth: 'critical' as const, // More accurate when errors occur
         memoryUsage: 0,
         activeConnections: 0,
         lastBackup: null
       };
     }
+  }
+
+  private async getSystemStatsWithCache() {
+    const cacheKey = 'dashboard:system';
+    
+    return await cacheManager.withCacheAndTimeout(
+      cacheKey,
+      async () => {
+        return await this.getSystemStats();
+      },
+      {
+        ttl: SYSTEM_STATS_CACHE_TTL,
+        timeout: DB_TIMEOUT,
+        fallbackValue: {
+          uptime: Math.round(process.uptime()),
+          databaseHealth: 'critical' as const,
+          memoryUsage: 0,
+          activeConnections: 0,
+          lastBackup: null
+        }
+      }
+    );
   }
 
   private async getRecentActivity(userId: string, limit: number = 20) {
@@ -412,6 +553,22 @@ class DashboardService {
       console.error('Error in getRecentActivity:', error);
       return [];
     }
+  }
+
+  private async getRecentActivityWithCache(userId: string, limit: number = 20) {
+    const cacheKey = `dashboard:activity:${userId}:${limit}`;
+    
+    return await cacheManager.withCacheAndTimeout(
+      cacheKey,
+      async () => {
+        return await this.getRecentActivity(userId, limit);
+      },
+      {
+        ttl: USER_STATS_CACHE_TTL / 2, // Shorter TTL for activity (1.5 minutes)
+        timeout: DB_TIMEOUT,
+        fallbackValue: []
+      }
+    );
   }
 
   private getDefaultStats(): DashboardStats {

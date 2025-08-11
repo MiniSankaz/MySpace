@@ -38,7 +38,12 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState(initialSessionId || '');
+  const [sessionId, setSessionId] = useState(initialSessionId || 
+    (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      })));
   const [userId, setUserId] = useState<string>('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [directMode, setDirectMode] = useState(true);
@@ -88,7 +93,7 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
 
   useEffect(() => {
     if (sessionId) {
-      loadConversationHistory();
+      loadConversationHistory(sessionId);
     }
   }, [sessionId]);
 
@@ -153,12 +158,15 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
     }
   };
 
-  const loadConversationHistory = async () => {
+  const loadConversationHistory = async (sessionIdToLoad?: string) => {
+    const targetSessionId = sessionIdToLoad || sessionId;
+    if (!targetSessionId) return;
+    
     try {
-      const response = await authClient.fetch(`/api/assistant/chat?sessionId=${sessionId}`);
+      const response = await authClient.fetch(`/api/assistant/chat?sessionId=${targetSessionId}`);
       const data = await response.json();
       
-      if (data.success) {
+      if (data.success && data.messages) {
         setMessages(data.messages);
       }
     } catch (error) {
@@ -167,7 +175,12 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
   };
 
   const createNewSession = () => {
-    const newSessionId = `session-${Date.now()}`;
+    // Generate UUID v4 format for session ID
+    const newSessionId = `${crypto.randomUUID ? crypto.randomUUID() : 
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      })}`;
     setSessionId(newSessionId);
     setMessages([]);
     setSuggestions([]);
@@ -389,14 +402,39 @@ export const ChatInterfaceWithFolders: React.FC<ChatInterfaceProps> = ({
         const assistantMessage: Message = {
           id: data.messageId || `assistant-${Date.now()}`,
           userId: 'assistant',
-          content: data.response.message,
+          content: typeof data.response === 'string' 
+            ? data.response 
+            : (data.response?.message || data.response?.content || 'No response'),
           type: 'assistant',
           timestamp: new Date()
         };
 
-        setMessages(prev => [...prev, assistantMessage]);
+        // If API returns full messages, use them instead
+        if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+          // Convert messages to ensure proper format
+          const formattedMessages = data.messages.map((msg: any) => ({
+            id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+            userId: msg.userId || (msg.type === 'user' ? userId : 'assistant'),
+            content: msg.content || '',
+            type: msg.type || (msg.role as 'user' | 'assistant' | 'system') || 'user',
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+            metadata: msg.metadata || {}
+          }));
+          console.log(`[Chat] Setting ${formattedMessages.length} messages from API`);
+          setMessages(formattedMessages);
+        } else {
+          // Fallback to adding single message
+          console.log('[Chat] No messages from API, adding single assistant message');
+          setMessages(prev => [...prev, assistantMessage]);
+        }
 
-        if (data.response.suggestions?.length > 0) {
+        // Update current session ID if changed
+        if (data.sessionId && data.sessionId !== sessionId) {
+          setSessionId(data.sessionId);
+          // No need to reload since messages are already included in response
+        }
+
+        if (data.response?.suggestions?.length > 0) {
           setSuggestions(data.response.suggestions);
         }
       }

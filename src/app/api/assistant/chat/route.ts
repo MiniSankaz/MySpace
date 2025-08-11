@@ -4,6 +4,11 @@ import { verifyAuth } from '@/middleware/auth';
 import { withRateLimit } from '@/middleware/rate-limit';
 import { z } from 'zod';
 import { assistantLogger } from '@/services/assistant-logging.service';
+import { cacheManager } from '@/core/database/cache-manager';
+
+// Cache TTL constants
+const CHAT_MESSAGES_CACHE_TTL = 1 * 60 * 1000; // 1 minute
+const DB_TIMEOUT = 5000; // 5 seconds
 
 const chatSchema = z.object({
   message: z.string().min(1).max(1000),
@@ -94,41 +99,74 @@ export const POST = withRateLimit(async (request: NextRequest) => {
     const estimatedTokens = Math.ceil((validation.data.message.length + (typeof response === 'string' ? response.length : 500)) / 4);
     const estimatedCost = estimatedTokens * 0.00002;
     
-    // Log assistant response in background (don't block response)
-    const responseLogging = (async () => {
-      try {
-        const responseContent = typeof response === 'string' ? response : 
-          (response?.message || response?.content || JSON.stringify(response));
-        
-        await assistantLogger.logMessage({
-          sessionId,
-          role: 'assistant',
-          content: responseContent,
-          tokens: estimatedTokens,
-          cost: estimatedCost,
-          userId,
-          projectId
-        });
-      } catch (error) {
-        console.error('Failed to log assistant response:', error);
-      }
-    })();
+    // Log assistant response and wait for it to complete
+    try {
+      const responseContent = typeof response === 'string' ? response : 
+        (response?.message || response?.content || JSON.stringify(response));
+      
+      await assistantLogger.logMessage({
+        sessionId,
+        role: 'assistant',
+        content: responseContent,
+        tokens: estimatedTokens,
+        cost: estimatedCost,
+        userId,
+        projectId
+      });
+    } catch (error) {
+      console.error('Failed to log assistant response:', error);
+    }
     
     // Generate a message ID for the response
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Send response immediately, let background logging continue
+    // Wait for user message logging to complete
+    await userMessageLogging;
+    
+    // Load updated messages after all logging is done with cache and timeout
+    let messages = [];
+    try {
+      // Small delay to ensure database write is committed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const cacheKey = `chat:messages:${userId}:${sessionId}`;
+      
+      // Load messages with cache and timeout handling
+      messages = await cacheManager.withCacheAndTimeout(
+        cacheKey,
+        async () => {
+          console.log(`[API] Loading messages for session ${sessionId} from database`);
+          const assistant = getAssistantInstance();
+          return await assistant.getConversationHistory(userId, sessionId);
+        },
+        {
+          ttl: CHAT_MESSAGES_CACHE_TTL,
+          timeout: DB_TIMEOUT,
+          fallbackValue: [], // Return empty messages if timeout
+          skipCache: true // Always get fresh messages after chat response
+        }
+      );
+      
+      console.log(`[API] Loaded ${messages.length} messages for session ${sessionId}`);
+      
+      // Clear old cache for this session to ensure fresh data next time
+      cacheManager.clearByPattern(`chat:messages:${userId}:${sessionId}`);
+    } catch (error) {
+      console.error('Failed to load messages after response:', error);
+      // Use empty fallback
+      messages = [];
+    }
+    
+    // Send response with complete message history
     const result = NextResponse.json({
       success: true,
       sessionId,
       messageId,
       response,
+      messages, // Include full conversation history
       user: user ? { id: user.id, username: user.username } : null,
       latency, // Include performance metrics
     });
-    
-    // Ensure all logging completes (fire and forget)
-    Promise.allSettled([userMessageLogging, responseLogging]).catch(() => {});
     
     return result;
   } catch (error) {
@@ -161,16 +199,43 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Load conversation history for authenticated user only
-    const assistant = getAssistantInstance();
-    // Verify session belongs to user before loading
-    const history = await assistant.getConversationHistory(user.id, sessionId);
-    
-    return NextResponse.json({
-      success: true,
-      sessionId,
-      messages: history
-    });
+    try {
+      // Generate cache key for conversation history
+      const cacheKey = `chat:history:${user.id}:${sessionId}`;
+      
+      // Load conversation history with cache and timeout handling
+      const history = await cacheManager.withCacheAndTimeout(
+        cacheKey,
+        async () => {
+          console.log(`[API] Loading chat history for session ${sessionId} from database`);
+          const assistant = getAssistantInstance();
+          // Verify session belongs to user before loading
+          return await assistant.getConversationHistory(user.id, sessionId);
+        },
+        {
+          ttl: CHAT_MESSAGES_CACHE_TTL,
+          timeout: DB_TIMEOUT,
+          fallbackValue: [] // Return empty history if timeout
+        }
+      );
+      
+      return NextResponse.json({
+        success: true,
+        sessionId,
+        messages: history,
+        cached: history.length > 0 && cacheManager.get(cacheKey) !== null
+      });
+    } catch (cacheError) {
+      console.error('[Chat] Failed to load history:', cacheError);
+      
+      // Return empty history with warning if cache fails
+      return NextResponse.json({
+        success: true,
+        sessionId,
+        messages: [],
+        warning: 'Database unavailable, showing cached or empty data'
+      });
+    }
   } catch (error) {
     console.error('Get chat history error:', error);
     return NextResponse.json(

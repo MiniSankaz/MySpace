@@ -58,7 +58,8 @@ async function getFileTree(dirPath: string, depth: number = 0, maxDepth: number 
       
       try {
         const stats = await fs.stat(fullPath);
-        const relativePath = fullPath.replace(process.cwd(), '');
+        // Create a proper relative path from the project base
+        const relativePath = path.relative(process.cwd(), fullPath);
         
         const node: FileNode = {
           name: item,
@@ -109,17 +110,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     // Get the base project path and the relative path within it
     const projectBasePath = searchParams.get('projectPath') || process.cwd();
-    const relativePath = searchParams.get('path') || '/';
+    const relativePath = searchParams.get('path') || '';
     const maxDepth = parseInt(searchParams.get('depth') || '3');
 
-    // Combine project path with relative path
-    const fullPath = path.join(projectBasePath, relativePath);
-    const resolvedPath = path.resolve(fullPath);
-    const cwd = process.cwd();
+    // Determine the full path to scan
+    let fullPath: string;
+    if (relativePath && relativePath !== '/' && relativePath !== '') {
+      // If we have a relative path, combine it with the project base path
+      // Remove leading slash if present to prevent double slash
+      const cleanRelativePath = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+      fullPath = path.join(projectBasePath, cleanRelativePath);
+    } else {
+      // If no relative path, use the project base path directly
+      fullPath = projectBasePath;
+    }
     
-    // Allow access to the project path even if outside cwd for workspace functionality
-    // Security: Only allow if projectPath is explicitly provided
-    const allowedPath = projectBasePath ? path.resolve(projectBasePath) : cwd;
+    const resolvedPath = path.resolve(fullPath);
+    
+    // Security check: ensure the resolved path is within the project base path
+    const allowedPath = path.resolve(projectBasePath);
     
     if (!resolvedPath.startsWith(allowedPath)) {
       return NextResponse.json(
@@ -153,12 +162,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, path: filePath, content, newPath } = body;
-
-    // Resolve relative paths from current working directory
-    const resolvedPath = path.resolve(process.cwd(), filePath);
-    const cwd = process.cwd();
     
-    if (!resolvedPath.startsWith(cwd)) {
+    const { searchParams } = new URL(request.url);
+    const projectBasePath = searchParams.get('projectPath') || process.cwd();
+
+    // Resolve relative paths from project base path
+    const resolvedPath = path.resolve(projectBasePath, filePath.startsWith('/') ? filePath.slice(1) : filePath);
+    const allowedPath = path.resolve(projectBasePath);
+    
+    if (!resolvedPath.startsWith(allowedPath)) {
       return NextResponse.json(
         { error: 'Access denied: Path outside project directory' },
         { status: 403 }
@@ -203,8 +215,8 @@ export async function POST(request: NextRequest) {
         });
 
       case 'rename':
-        const resolvedNewPath = path.resolve(process.cwd(), newPath);
-        if (!resolvedNewPath.startsWith(cwd)) {
+        const resolvedNewPath = path.resolve(projectBasePath, newPath.startsWith('/') ? newPath.slice(1) : newPath);
+        if (!resolvedNewPath.startsWith(allowedPath)) {
           return NextResponse.json(
             { error: 'Access denied: New path outside project directory' },
             { status: 403 }

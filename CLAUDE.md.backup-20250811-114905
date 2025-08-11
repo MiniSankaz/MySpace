@@ -1,0 +1,1011 @@
+# CLAUDE.md - AI Assistant Guidelines
+
+## Quick Navigation
+- [Project Structure](#project-structure)
+- [API Endpoints Reference](#api-endpoints-reference)
+- [Services Architecture](#services-architecture)
+- [UI Components Guide](#ui-components-guide)
+- [Import Guide](#import-guide)
+- [Database Models](#database-models)
+- [Authentication Flow](#authentication-flow)
+- [Cache Strategy](#cache-strategy)
+- [Environment Variables](#environment-variables)
+- [Development Commands](#development-commands)
+- [Known Issues & Solutions](#known-issues--solutions)
+- [Key Files Mapping](#key-files-mapping)
+- [Module-Specific Tests](#module-specific-tests)
+- [Troubleshooting Patterns](#troubleshooting-patterns)
+- [Project Standards](#project-standards)
+- [Recent Changes](#recent-changes)
+
+## Project Structure
+
+```
+port/
+├── src/
+│   ├── app/                      # Next.js App Router pages
+│   │   ├── (auth)/               # Protected routes
+│   │   │   ├── assistant/        # AI Assistant UI
+│   │   │   └── logs/             # System logs page
+│   │   ├── api/                  # API routes
+│   │   │   ├── assistant/        # Assistant API endpoints
+│   │   │   ├── dashboard/        # Dashboard APIs
+│   │   │   ├── git/              # Git configuration APIs
+│   │   │   ├── health/           # Health check endpoint
+│   │   │   ├── logs/             # Logging APIs
+│   │   │   ├── settings/         # Settings management APIs
+│   │   │   ├── terminal/         # Terminal APIs
+│   │   │   ├── tokens/           # API token management
+│   │   │   ├── ums/              # User Management System API
+│   │   │   ├── v1/               # Versioned APIs
+│   │   │   └── workspace/        # Workspace management APIs
+│   │   ├── api-keys/             # API key management page
+│   │   ├── dashboard/            # Dashboard page
+│   │   ├── login/                # Login page
+│   │   ├── register/             # Registration page
+│   │   ├── settings/             # Settings page
+│   │   ├── terminal/             # Terminal page
+│   │   └── workspace/            # Workspace page
+│   │
+│   ├── modules/                  # Feature modules
+│   │   ├── i18n/                 # Internationalization
+│   │   ├── page-builder/         # Page builder components
+│   │   ├── personal-assistant/   # AI Assistant module
+│   │   ├── terminal/             # Terminal interface
+│   │   ├── ums/                  # User Management System
+│   │   ├── user/                 # User services
+│   │   └── workspace/            # Workspace management
+│   │
+│   ├── services/                 # Business logic services
+│   │   ├── claude-*.service.ts   # Claude AI integrations
+│   │   ├── dashboard.service.ts  # Dashboard services
+│   │   ├── git-config.service.ts # Git configuration
+│   │   ├── settings.service.ts   # Settings management
+│   │   └── terminal-*.service.ts # Terminal services
+│   │
+│   ├── components/               # Reusable UI components
+│   │   ├── ui/                   # Basic UI components
+│   │   ├── layout/               # Layout components
+│   │   ├── dashboard/            # Dashboard components
+│   │   └── settings/             # Settings components
+│   │
+│   ├── core/                     # Core utilities
+│   │   ├── auth/                 # Authentication
+│   │   ├── database/             # Database connections & cache
+│   │   ├── security/             # Security utilities
+│   │   └── utils/                # General utilities
+│   │
+│   ├── middleware/               # Express/Next.js middleware
+│   ├── utils/                    # Additional utilities
+│   ├── types/                    # TypeScript type definitions
+│   └── server/                   # Server-side services
+│       ├── services/             # Server services
+│       └── websocket/            # WebSocket handlers
+│
+├── prisma/                       # Database schema and migrations
+├── scripts/                      # Utility scripts
+├── docs/                         # Documentation
+├── _library/                     # Shared library components
+├── data/                         # Runtime data storage
+├── logs/                         # Application logs
+└── tests/                        # Test files
+```
+
+## API Endpoints Reference
+
+### Authentication & User Management
+- `POST /api/ums/auth/login` - User login with credentials
+- `POST /api/ums/auth/logout` - User logout
+- `POST /api/ums/auth/register` - User registration
+- `POST /api/ums/auth/refresh` - Refresh authentication token
+- `GET /api/ums/users/me` - Get current user profile
+- `GET /api/ums/users/[userId]` - Get specific user details
+
+### AI Assistant
+- `POST /api/assistant/chat` - Send message to AI assistant
+- `GET /api/assistant/chat` - Get chat history
+- `GET /api/assistant/sessions` - List chat sessions
+- `DELETE /api/assistant/sessions/clear` - Clear all sessions
+- `GET /api/assistant/sessions/[sessionId]` - Get specific session
+- `DELETE /api/assistant/sessions/[sessionId]` - Delete specific session
+- `PATCH /api/assistant/sessions/[sessionId]/move` - Move session to folder
+- `GET /api/assistant/folders` - List conversation folders
+- `POST /api/assistant/folders` - Create new folder
+- `GET /api/assistant/folders/[folderId]` - Get folder details
+- `PATCH /api/assistant/folders/[folderId]` - Update folder
+- `DELETE /api/assistant/folders/[folderId]` - Delete folder
+- `GET /api/assistant/tasks` - List tasks
+- `POST /api/assistant/tasks` - Create task
+- `PUT /api/assistant/tasks` - Update task
+- `DELETE /api/assistant/tasks` - Delete task
+
+### Workspace Management
+- `GET /api/workspace/projects` - List projects
+- `POST /api/workspace/projects` - Create new project
+- `GET /api/workspace/projects/[id]` - Get project details
+- `GET /api/workspace/projects/[id]/structure` - Get project structure
+- `GET /api/workspace/projects/[id]/terminals` - List project terminals
+- `GET /api/workspace/files` - Browse project files
+- `POST /api/workspace/claude` - Claude workspace integration
+- `GET /api/workspace/claude` - Get Claude workspace status
+
+### Terminal & Command Management
+- `GET /api/terminal/logs` - Get terminal logs
+- `GET /api/terminal/patterns` - Get command patterns
+- `GET /api/terminal/shortcuts` - List terminal shortcuts
+- `GET /api/terminal/sops` - Get Standard Operating Procedures
+
+### System & Configuration
+- `GET /api/health` - System health check
+- `GET /api/dashboard/stats` - Dashboard statistics
+- `GET /api/settings/api` - API settings
+- `POST /api/settings/api` - Update API settings
+- `GET /api/settings/system` - System settings
+- `POST /api/settings/system` - Update system settings
+- `GET /api/settings/user` - User settings
+- `POST /api/settings/user` - Update user settings
+- `GET /api/git/config` - Git configuration
+- `GET /api/tokens` - List API tokens
+- `POST /api/tokens` - Create API token
+
+### Logging & Analytics
+- `GET /api/logs/assistant` - AI assistant logs
+- `GET /api/logs/terminal` - Terminal logs
+- `GET /api/logs/summary` - Log summary
+
+### Legacy/Versioned APIs
+- `POST /api/v1/assistant/chat` - Legacy chat endpoint
+- `GET /api/v1/assistant/sessions` - Legacy sessions endpoint
+
+## Services Architecture
+
+### Core Services (`/src/services/`)
+- **claude-direct.service.ts** - Direct Claude API integration with timeout handling
+- **claude-background.service.ts** - Background Claude processing
+- **claude-websocket.service.ts** - WebSocket-based Claude communication
+- **claude-session-manager.service.ts** - Claude session management
+- **dashboard.service.ts** - Dashboard data aggregation with caching
+- **api-token.service.ts** - API token management
+- **api-usage.service.ts** - API usage tracking
+- **assistant-logging.service.ts** - AI assistant activity logging
+- **git-config.service.ts** - Git configuration management
+- **settings.service.ts** - System settings management
+- **terminal-analytics.service.ts** - Terminal usage analytics
+- **terminal-logging.service.ts** - Terminal session logging
+- **workspace-terminal-logging.service.ts** - Workspace terminal logging
+
+### Module Services
+
+#### User Management (`/src/modules/ums/services/`)
+- **auth.service.ts** - Authentication with JWT tokens, login attempts tracking
+- **user.service.ts** - User CRUD operations
+- **user.service.enhanced.ts** - Extended user operations
+- **role.service.ts** - Role-based access control
+- **local-auth.service.ts** - Local authentication fallback
+
+#### Personal Assistant (`/src/modules/personal-assistant/services/`)
+- **assistant.service.ts** - Main assistant orchestration
+- **conversation-storage.ts** - Chat conversation persistence with caching
+- **command-registry.ts** - AI command registration
+- **context-manager.ts** - Conversation context management
+- **nlp-processor.ts** - Natural language processing
+- **claude-realtime.service.ts** - Real-time Claude integration
+- **mock-ai.service.ts** - AI service mocking for development
+
+#### Workspace Management (`/src/modules/workspace/services/`)
+- **project.service.ts** - Project management
+- **filesystem.service.ts** - File system operations
+- **terminal.service.ts** - Terminal session management
+- **terminal.service.client.ts** - Client-side terminal interface
+- **claude-terminal.service.ts** - Claude-integrated terminal
+
+#### Other Modules
+- **translation.service.ts** - Internationalization
+- **pageService.ts** - Page builder functionality
+- **rbac.service.ts** - Role-based access control
+
+## UI Components Guide
+
+### Basic UI Components (`/src/components/ui/`)
+- **Alert.tsx** - Alert/notification component with variants (success, warning, error)
+- **Badge.tsx** - Badge component for status indicators
+- **Button.tsx** - Button component with variants (primary, secondary, outline, ghost, danger, success)
+- **Card.tsx** - Card container component
+- **Input.tsx** - Form input component with validation
+- **Loading.tsx** - Loading spinner/skeleton components
+- **Modal.tsx** - Modal dialog component
+- **Pagination.tsx** - Pagination component
+- **Select.tsx** - Dropdown select component
+- **Table.tsx** - Data table component
+- **Tabs.tsx** - Tab navigation component
+- **Tooltip.tsx** - Tooltip component
+
+### Layout Components (`/src/components/layout/`)
+- **AppLayout.tsx** - Main application layout wrapper
+- **Sidebar.tsx** - Navigation sidebar
+- **MainNavigation.tsx** - Main navigation menu
+- **Breadcrumbs.tsx** - Breadcrumb navigation
+
+### Feature-Specific Components
+
+#### Dashboard (`/src/components/dashboard/`)
+- **DashboardKPICard.tsx** - Key performance indicator cards
+- **RealTimeActivityFeed.tsx** - Live activity updates
+
+#### Settings (`/src/components/settings/`)
+- **AIAssistantSettings.tsx** - AI assistant configuration
+- **ApiSettings.tsx** - API configuration settings
+- **AppearanceSettings.tsx** - UI theme and appearance
+- **NotificationSettings.tsx** - Notification preferences
+- **SecuritySettings.tsx** - Security configuration
+- **SystemSettings.tsx** - System-wide settings
+- **UserSettings.tsx** - User profile settings
+
+#### Module Components
+
+##### Personal Assistant (`/src/modules/personal-assistant/components/`)
+- **ChatInterfaceWithFolders.tsx** - Main chat interface with folder organization
+- **ChatInterface.tsx** - Basic chat interface
+- **ChatInterfaceEnhanced.tsx** - Enhanced chat with advanced features
+- **ChatInterfaceSocket.tsx** - WebSocket-enabled chat
+- **ChatInterfaceWithHistory.tsx** - Chat with message history
+- **MessageRenderer.tsx** - Message rendering with markdown support
+
+##### Workspace (`/src/modules/workspace/components/`)
+- **WorkspaceLayout.tsx** - Main workspace layout with panels
+- **FileExplorer.tsx** - File browser component
+- **FileTree.tsx** - Tree view for files
+- **ProjectSelector.tsx** - Project selection dropdown
+- **TerminalContainer.tsx** - Terminal container
+- **TerminalView.tsx** - Terminal interface
+- **XTermView.tsx** - XTerm.js integration
+- **ClaudeXTermView.tsx** - Claude-integrated terminal
+- **FileEditorModal.tsx** - File editing modal
+- **FileTabs.tsx** - File tab management
+
+##### Page Builder (`/src/modules/page-builder/components/`)
+- **PageBuilder.tsx** - Main page builder interface
+- **ComponentPalette.tsx** - Component selection palette
+- **ComponentRenderer.tsx** - Component rendering engine
+- **DragDropCanvas.tsx** - Drag & drop interface
+- **PropertyPanel.tsx** - Component property editor
+- **RichTextEditor.tsx** - Rich text editing
+
+## Import Guide
+
+### Path Aliases (from tsconfig.json)
+```typescript
+// Available path aliases:
+"@/*": ["./src/*"]           // General src/ imports
+"@core/*": ["./src/core/*"]   // Core utilities
+"@modules/*": ["./src/modules/*"]  // Feature modules  
+"@shared/*": ["./src/shared/*"]    // Shared utilities
+```
+
+### Common Import Patterns
+
+#### Services
+```typescript
+// Core services
+import { ClaudeDirectService } from '@/services/claude-direct.service';
+import { dashboardService } from '@/services/dashboard.service';
+import { cacheManager } from '@/core/database/cache-manager';
+
+// Module services
+import { AuthService } from '@/modules/ums/services/auth.service';
+import { AssistantService } from '@/modules/personal-assistant/services/assistant.service';
+import { ConversationStorage } from '@/modules/personal-assistant/services/conversation-storage';
+```
+
+#### Components
+```typescript
+// UI Components (centralized exports)
+import { Button, Modal, Input, Card } from '@/components';
+
+// Or direct imports
+import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+
+// Module components
+import ChatInterface from '@/modules/personal-assistant/components/ChatInterfaceWithFolders';
+import { WorkspaceLayout } from '@/modules/workspace/components/Layout/WorkspaceLayout';
+```
+
+#### Database & Auth
+```typescript
+// Database
+import { prisma } from '@/core/database/prisma';
+import { cacheManager } from '@/core/database/cache-manager';
+
+// Authentication
+import { verifyAuth } from '@/middleware/auth';
+import { AuthService } from '@/modules/ums/services/auth.service';
+```
+
+#### Utilities
+```typescript
+// Core utilities
+import { logger } from '@/core/utils/logger';
+import { apiClient } from '@/core/utils/api-client';
+
+// Type imports
+import type { User, Role, Permission } from '@prisma/client';
+import type { Message, AssistantContext } from '@/modules/personal-assistant/types';
+```
+
+#### API Routes
+```typescript
+// Standard API route template
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/middleware/auth';
+import { withRateLimit } from '@/middleware/rate-limit';
+import { z } from 'zod';
+```
+
+## Database Models
+
+### Core User Models
+- **User** - Main user table with authentication fields, profile data
+- **Session** - User sessions with JWT tokens
+- **LoginHistory** - Track login attempts and IP addresses
+- **UserRole** - User-role assignments
+- **Role** - System roles (admin, user, etc.)
+- **Permission** - Granular permissions
+- **RolePermission** - Role-permission mappings
+
+### AI Assistant Models
+- **AssistantFolder** - Conversation organization folders
+- **AssistantConversation** - Chat conversations with metadata
+- **AssistantMessage** - Individual chat messages
+- **AssistantTask** - AI-generated or user-created tasks
+- **AssistantReminder** - Time-based reminders
+- **AssistantNote** - User notes and documentation
+- **AssistantChatSession** - Extended chat sessions with analytics
+- **AssistantChatMessage** - Detailed chat messages with tokens/cost tracking
+- **AssistantCommand** - Command execution tracking
+- **AssistantFile** - File operation tracking
+- **AssistantAnalytics** - Usage analytics and metrics
+
+### Workspace & Terminal Models
+- **Project** - Workspace projects with configuration
+- **WorkspaceTerminalSession** - Terminal sessions within workspaces
+- **WorkspaceTerminalCommand** - Commands executed in workspace terminals
+- **WorkspaceTerminalLog** - Terminal session logs
+- **TerminalSession** - General terminal sessions
+- **TerminalCommand** - Command execution history
+- **TerminalLog** - Terminal output logs
+- **TerminalAnalytics** - Terminal usage analytics
+- **TerminalCommandPattern** - Command pattern recognition
+- **TerminalShortcut** - User-defined command shortcuts
+- **TerminalSOP** - Standard Operating Procedures
+
+### Git & Configuration Models
+- **GitConfig** - Git repository configuration
+- **GitConfigHistory** - Git configuration change history
+- **UserConfig** - User-specific configurations
+- **SystemConfig** - System-wide configuration
+
+### API & Token Management
+- **ApiToken** - API access tokens
+- **ApiUsageLog** - API usage tracking
+- **ApiRateLimit** - Rate limiting data
+- **ApiWebhook** - Webhook configurations
+
+### Content Management Models
+- **Page** - Dynamic pages with components
+- **PageComponent** - Page building components
+- **PageTemplate** - Page templates
+- **Post** - Blog posts/articles
+- **Category** - Content categorization
+- **Media** - File uploads and media
+- **Gallery** - Media galleries
+- **Form** - Dynamic forms
+- **Survey** - Survey forms
+
+### Communication Models
+- **ChatConversation** - General chat conversations
+- **ChatMessage** - Chat messages
+- **EmailCampaign** - Email marketing campaigns
+- **EmailSubscriber** - Email subscribers
+- **Translation** - Multi-language support
+
+## Authentication Flow
+
+### Login Process
+1. **POST /api/ums/auth/login** with credentials
+2. **AuthService.login()** validates credentials
+3. Password verification with bcrypt
+4. Login attempt tracking and account lockout
+5. JWT token generation (access + refresh)
+6. Session creation in database
+7. Tokens returned with HttpOnly cookies
+
+### Token Management
+- **Access Token**: Short-lived (15 minutes default)
+- **Refresh Token**: Long-lived (7 days default)
+- **Remember Me**: Extended duration (30 days)
+- **Session Tracking**: IP address and user agent logging
+
+### Middleware Authentication
+```typescript
+// Route protection
+const user = await verifyAuth(request);
+if (!user) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+```
+
+### Authorization Levels
+1. **Public**: No authentication required
+2. **Authenticated**: Valid JWT token required
+3. **Role-based**: Specific roles required
+4. **Permission-based**: Granular permissions
+
+## Cache Strategy
+
+### Cache Manager Architecture
+Implemented enhanced in-memory caching with:
+- **TTL Support**: Individual cache entry expiration
+- **Timeout Handling**: Database operation timeouts (5s default)
+- **Fallback Values**: Graceful degradation when database unavailable
+- **Pattern Clearing**: Clear cache by patterns (e.g., `user:*`)
+- **Statistics**: Cache hit/miss tracking
+
+### Cache TTL Guidelines
+```typescript
+const CACHE_CONFIG = {
+  REAL_TIME_DATA: 30 * 1000,        // 30 seconds
+  CHAT_MESSAGES: 1 * 60 * 1000,     // 1 minute
+  USER_SESSIONS: 2 * 60 * 1000,     // 2 minutes
+  DASHBOARD_STATS: 5 * 60 * 1000,   // 5 minutes
+  USER_PROFILES: 10 * 60 * 1000,    // 10 minutes
+  SYSTEM_CONFIG: 30 * 60 * 1000,    // 30 minutes
+};
+```
+
+### Cached Operations
+- **User Sessions**: 2-minute cache with timeout protection
+- **Chat Messages**: 1-minute cache for conversation history
+- **Dashboard Stats**: 5-minute cache for performance metrics
+- **Assistant Folders**: 2-minute cache for folder structure
+- **System Health**: 30-second cache for health checks
+
+### Cache Usage Pattern
+```typescript
+const result = await cacheManager.withCacheAndTimeout(
+  'cache:key',
+  async () => {
+    // Database operation
+    return await prisma.model.findMany();
+  },
+  {
+    ttl: 5 * 60 * 1000,      // 5 minutes
+    timeout: 5000,           // 5 seconds
+    fallbackValue: []        // Empty array fallback
+  }
+);
+```
+
+### Offline Mode Support
+Implemented offline store with localStorage fallback:
+- **Automatic Sync**: When connection restored
+- **Local Storage**: Browser-based data persistence
+- **Memory Cache**: In-memory fallback
+- **Health Monitoring**: Connection status tracking
+
+## Environment Variables
+
+### Required Variables
+```bash
+# Application
+PORT=4000
+NODE_ENV=development|production
+NEXT_PUBLIC_APP_URL=http://localhost:4000
+
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/database?sslmode=require"
+
+# Authentication
+JWT_SECRET=your-jwt-secret-here
+JWT_REFRESH_SECRET=your-jwt-refresh-secret-here
+AUTH_ACCESS_TOKEN_EXPIRY=15m
+AUTH_REFRESH_TOKEN_EXPIRY=7d
+AUTH_SESSION_EXPIRY=7d
+AUTH_MAX_LOGIN_ATTEMPTS=5
+AUTH_LOCKOUT_DURATION=30
+```
+
+### Optional Variables
+```bash
+# Claude AI Integration
+CLAUDE_API_KEY=your-anthropic-api-key
+CLAUDE_REALTIME=false
+
+# NextAuth (if using)
+NEXTAUTH_URL=http://localhost:4000
+NEXTAUTH_SECRET=generate-your-secret-here
+
+# OAuth Providers
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_ID=
+GITHUB_SECRET=
+
+# Email Configuration
+EMAIL_FROM=noreply@example.com
+EMAIL_SERVER_HOST=smtp.gmail.com
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER=
+EMAIL_SERVER_PASSWORD=
+
+# Storage
+STORAGE_PROVIDER=local
+AWS_S3_BUCKET=
+AWS_S3_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+```
+
+### Development vs Production
+- **Development**: Uses `.env.local` (highest priority)
+- **Production**: Uses `.env.production`
+- **Base**: Uses `.env` for shared configuration
+
+## Development Commands
+
+### Core Commands
+```bash
+# Development
+npm run dev              # Start development server (port 4000)
+npm run dev:next         # Start Next.js only
+npm run build           # Build for production
+npm run start           # Start production server
+npm run lint            # Run ESLint
+npm run lint:fix        # Fix ESLint issues
+npm run format          # Format with Prettier
+npm run type-check      # Check TypeScript
+```
+
+### Database Commands
+```bash
+# Prisma Operations
+npx prisma migrate dev   # Run migrations
+npx prisma generate      # Generate Prisma client
+npx prisma studio        # Open Prisma Studio
+npx prisma db push       # Push schema changes
+
+# Database Seeding
+npm run db:seed          # Basic seeding
+npm run db:seed:simple   # Simple test data
+npm run db:seed:mock     # Mock data with Faker
+npm run db:seed:full     # Complete dataset
+```
+
+### Testing Commands
+```bash
+# Testing
+npm run test            # Run all tests
+npm run test:watch      # Watch mode testing
+npm run test:coverage   # Test with coverage
+npm run test:e2e        # Run E2E tests
+npm run test:routes     # Test API routes
+npm run test:all        # Comprehensive testing
+```
+
+### Code Generation
+```bash
+# Module Generation
+npm run generate:module  # Generate new module
+npm run module:new       # Create new module (v2)
+npm run module:v3        # Advanced module generator
+npm run gen              # Quick generator script
+
+# Smart Generation
+npm run smart:generate   # Smart code generator
+npm run smart:component  # Generate component
+npm run smart:api        # Generate API endpoint
+npm run smart:model      # Generate database model
+```
+
+### Development Scripts
+```bash
+# Quick Operations
+./quick-restart.sh       # Quick restart development
+./rebuild.sh             # Full rebuild
+./scripts/optimize-for-claude.sh  # Optimize for Claude Code
+
+# AI Assistant
+npm run ai:start         # Start with AI integration
+npm run ai:terminal      # Claude terminal integration
+npm run assistant        # AI assistant mode
+
+# Specialized Scripts
+./scripts/start-with-ai.sh     # AI-integrated startup
+./scripts/claude-terminal.sh   # Claude terminal session
+./start-with-claude.sh         # Claude Code integration
+```
+
+### Server Management
+```bash
+# Server Control
+node server.js           # Manual server start
+npm run dev:server       # Development server
+npm run build:server     # Build server TypeScript
+npm run watch:server     # Watch server changes
+```
+
+## Known Issues & Solutions
+
+### Database Connection Issues
+**Problem**: Database timeout or connection failures
+**Solution**: 
+1. Check `DATABASE_URL` in `.env.local`
+2. Verify database server is running
+3. Use cache fallback: `cacheManager.withCacheAndTimeout()`
+4. Check network connectivity to DigitalOcean database
+
+### Cache Memory Issues
+**Problem**: High memory usage from cache
+**Solution**:
+1. Monitor cache size: `cacheManager.getStats()`
+2. Adjust TTL values for frequently updated data
+3. Use pattern clearing: `cacheManager.clearByPattern('user:*')`
+4. Implement cache size limits
+
+### Claude AI Integration Issues
+**Problem**: Claude API timeouts or key issues
+**Solution**:
+1. Check `CLAUDE_API_KEY` environment variable
+2. Verify API key permissions with Anthropic
+3. Use fallback mode: Set `CLAUDE_REALTIME=false`
+4. Check Claude service initialization in logs
+
+### Authentication Token Issues
+**Problem**: JWT token expiration or invalid tokens
+**Solution**:
+1. Check token expiry settings in environment
+2. Clear browser cookies and localStorage
+3. Use refresh token endpoint: `/api/ums/auth/refresh`
+4. Verify `JWT_SECRET` consistency across restarts
+
+### Build Issues
+**Problem**: TypeScript compilation errors
+**Solution**:
+1. Run `npm run type-check` to identify issues
+2. Clear `.next` directory: `rm -rf .next`
+3. Regenerate Prisma client: `npx prisma generate`
+4. Check for missing type definitions
+
+### WebSocket Connection Issues
+**Problem**: Terminal or real-time features not working
+**Solution**:
+1. Check WebSocket server on ports 4001, 4002
+2. Verify firewall settings for WebSocket ports
+3. Use fallback HTTP polling mode
+4. Check browser console for WebSocket errors
+
+### File Upload Issues
+**Problem**: File upload failures or permission errors
+**Solution**:
+1. Check `public/uploads` directory permissions
+2. Verify file size limits in configuration
+3. Check storage provider settings (local/S3)
+4. Validate file type restrictions
+
+## Recent Changes
+
+### Cache Implementation (Latest)
+- **Enhanced Cache Manager**: Added timeout handling and fallback values
+- **Database Timeout Protection**: 5-second timeout with graceful degradation
+- **Offline Mode Support**: LocalStorage-based offline capability
+- **Pattern-based Cache Clearing**: Clear related cache entries efficiently
+- **Cache Statistics**: Monitor cache performance and memory usage
+
+### AI Assistant Improvements
+- **Folder Organization**: Chat sessions can be organized in folders
+- **Session Management**: Enhanced session persistence and retrieval
+- **Real-time Features**: WebSocket-based real-time chat
+- **Command Registry**: Structured command handling system
+- **Context Management**: Better conversation context preservation
+
+### Workspace Module
+- **Project Management**: Multi-project workspace support
+- **File Explorer**: Browse and edit project files
+- **Terminal Integration**: Multiple terminal sessions per project
+- **Claude Integration**: AI-assisted development workflows
+- **Git Configuration**: Automatic git repository detection
+
+### Security Enhancements
+- **JWT Token Management**: Secure token handling with refresh mechanism
+- **Rate Limiting**: API rate limiting implementation
+- **Login Attempt Tracking**: Brute force protection
+- **Session Security**: IP address and user agent tracking
+- **API Token System**: Granular API access control
+
+### Performance Optimizations
+- **Lazy Loading**: Component lazy loading for better performance
+- **Code Splitting**: Optimized bundle sizes
+- **Database Indexing**: Enhanced database query performance
+- **Memory Management**: Improved cache and memory usage
+- **Background Processing**: Offloaded heavy operations
+
+## Key Files Mapping
+
+### Authentication & User Management
+- **Login System**: `src/app/login/page.tsx`, `src/app/api/ums/auth/login/route.ts`
+- **User Service**: `src/modules/ums/services/user.service.ts`
+- **Auth Middleware**: `src/middleware/auth.ts`, `src/core/auth/auth-middleware.ts`
+- **Session Management**: `src/core/auth/auth.ts`
+
+### AI Assistant
+- **Chat Interface**: `src/modules/personal-assistant/components/ChatInterfaceWithFolders.tsx`
+- **Claude Service**: `src/services/claude-direct.service.ts`
+- **API Endpoints**: `src/app/api/assistant/chat/route.ts`
+- **Session Storage**: `src/modules/personal-assistant/services/conversation-storage.ts`
+
+### Database
+- **Schema**: `prisma/schema.prisma`
+- **Connection**: `src/core/database/prisma.ts`
+- **Migrations**: Run `npx prisma migrate dev`
+
+### Page Builder
+- **Main Component**: `src/modules/page-builder/components/PageBuilder.tsx`
+- **Component Definitions**: `src/modules/page-builder/data/component-definitions.ts`
+- **Page Service**: `src/modules/page-builder/services/pageService.ts`
+
+### Terminal
+- **Web Terminal**: `src/modules/terminal/components/WebTerminal.tsx`
+- **Socket Handler**: `src/modules/terminal/handlers/terminal.socket.ts`
+
+## Module-Specific Tests
+
+### User Management System (UMS)
+```bash
+# Test authentication with sankaz account
+curl -X POST http://localhost:4000/api/ums/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"sankaz@admin.com","password":"Sankaz#3E25167B@2025"}'
+
+# Test with default admin
+curl -X POST http://localhost:4000/api/ums/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"Admin@123"}'
+
+# Test user endpoints
+npm run test -- src/modules/ums/**/*.test.ts
+```
+
+### AI Assistant
+```bash
+# Test chat API
+curl -X POST http://localhost:4000/api/assistant/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hello","sessionId":"test-session"}'
+
+# Test assistant module
+npm run test -- src/modules/personal-assistant/**/*.test.ts
+```
+
+### Page Builder
+```bash
+# Test page rendering
+npm run test -- src/modules/page-builder/**/*.test.ts
+
+# Test component definitions
+node -e "const defs = require('./src/modules/page-builder/data/component-definitions.ts'); console.log(defs);"
+```
+
+## Troubleshooting Patterns
+
+### Common Issues & Solutions
+
+#### Database Connection Errors
+```bash
+# Check database URL
+cat .env.local | grep DATABASE_URL
+
+# Reset database
+npx prisma migrate reset --force
+
+# Generate Prisma client
+npx prisma generate
+```
+
+#### Build Errors
+```bash
+# Clear cache and rebuild
+rm -rf .next node_modules/.cache
+npm run build
+
+# Check TypeScript errors
+npm run typecheck
+
+# Fix ESLint issues
+npm run lint -- --fix
+```
+
+#### Authentication Issues
+```bash
+# Check session
+curl http://localhost:3000/api/ums/users/me \
+  -H "Cookie: [session-cookie]"
+
+# Clear sessions
+rm -rf data/sessions/*
+```
+
+#### Module Import Errors
+```bash
+# Check module exports
+grep -r "export" src/modules/[module-name]/index.ts
+
+# Verify import paths
+npm run build -- --debug
+```
+
+### Performance Optimization
+```bash
+# Analyze bundle size
+npm run build && npm run analyze
+
+# Check for circular dependencies
+npx madge --circular src/
+
+# Profile runtime performance
+NODE_OPTIONS='--inspect' npm run dev
+```
+
+## Project Standards
+
+### Code Style
+- Use TypeScript for type safety
+- Follow ESLint and Prettier configurations
+- Use functional components with hooks in React
+- Implement proper error handling
+- Maximum file size: 200 lines
+
+### Git Workflow
+- Feature branches from `dev`
+- Branch naming: `feature/[feature-name]`, `fix/[bug-name]`
+- Conventional commits: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
+- PR reviews required before merge
+- Squash merge to main
+
+### Testing Requirements
+- Unit tests for utilities and services
+- Integration tests for API endpoints
+- E2E tests for critical user flows
+- Minimum 80% code coverage
+- Test files: `*.test.ts`, `*.spec.ts`
+
+### Documentation Standards
+- JSDoc comments for functions
+- README.md for each module
+- API documentation with examples
+- Architecture decision records (ADR)
+- Update CLAUDE.md for AI-specific guidance
+
+## Project-Specific Rules
+
+1. **Imports**: Always use absolute imports (`@/` or from `src/`)
+2. **Components**: Keep under 200 lines, extract logic to hooks/services
+3. **Services**: Business logic in service files, not components
+4. **Environment**: Use `.env.local` for development, `.env.production` for production
+5. **Logging**: Use `src/core/utils/logger.ts` for consistent logging
+6. **Security**: Never commit secrets, use environment variables
+7. **Database**: Always use Prisma ORM, no raw SQL
+8. **API Routes**: Follow RESTful conventions, use proper HTTP status codes
+9. **Error Handling**: Wrap async operations in try-catch blocks
+10. **State Management**: Use React hooks for local state, Context for global state
+
+## File Naming Conventions
+- Components: `PascalCase.tsx`
+- Services: `kebab-case.service.ts`
+- Utilities: `kebab-case.ts`
+- Types: `PascalCase.types.ts` or in `types/index.ts`
+- Tests: `[filename].test.ts` or `[filename].spec.ts`
+- Styles: `[component].module.scss` or `[feature].css`
+
+## Quick Start for New Features
+
+1. **Create feature branch**: `git checkout -b feature/[name]`
+2. **Generate module**: `npm run generate:module [name]`
+3. **Implement feature**: Follow module structure in `src/modules/`
+4. **Add tests**: Create `*.test.ts` files
+5. **Update documentation**: Add to module README.md
+6. **Run checks**: `npm run lint && npm run typecheck && npm run test`
+7. **Commit changes**: `git commit -m "feat: [description]"`
+8. **Create PR**: Push and create pull request to `dev` branch
+
+## Project Statistics
+
+_Last updated: Sun Aug 11 12:30:00 +07 2025_
+
+- TypeScript files: 140+
+- JavaScript files: 0
+- CSS/SCSS files: 4
+- Documentation files: 52+
+- Total source files: 140+
+- API endpoints: 35+
+- Services: 16+
+- UI components: 25+
+- Database models: 50+
+
+### Module Sizes
+- i18n: 11 files
+- page-builder: 20 files
+- personal-assistant: 23 files
+- terminal: 3 files
+- ums: 6 files
+- user: 4 files
+- workspace: 10 files
+
+## Critical Services & Ports
+
+- **Development Server**: http://localhost:4000 (Main app - NOT 3000)
+- **WebSocket Terminal**: ws://localhost:4001 (Terminal PTY)
+- **Claude Terminal WS**: ws://localhost:4002 (Claude integration)
+- **Database**: PostgreSQL on DigitalOcean (port 25060)
+- **Prisma Studio**: http://localhost:5555
+
+## AI Agent System
+
+### Available Agents (in .claude/agents/)
+- **sop-compliance-guardian**: Validates code changes against SOPs
+- **dev-life-consultant**: Development and life management assistance
+- **devops-maturity-auditor**: DevOps practices assessment
+
+### Agent Usage
+- Agents are triggered via Task tool, not automatic
+- Use before commits, creating routes, or when builds fail
+- Each agent has specific expertise areas
+
+## Performance Best Practices
+
+1. **File Search**: Use Grep/Glob for specific searches, Agent for complex exploration
+2. **Batch Operations**: Run multiple commands in parallel when possible
+3. **Context Management**: Provide specific file paths and module names
+4. **Testing**: Always run lint and type-check after code changes
+5. **Git Operations**: Check SOP compliance before commits
+
+## Security Reminders
+
+- Never commit `.env` files or secrets
+- Use environment variables for sensitive data
+- Validate all user inputs
+- Use Prisma parameterized queries only
+- Check authentication on all protected routes
+
+## Development Workflow
+
+1. **Start Development**: `npm run dev` or `./quick-restart.sh`
+2. **Make Changes**: Follow module structure and conventions
+3. **Test Changes**: Run relevant tests and linters
+4. **Check SOPs**: Use sop-compliance-guardian agent
+5. **Commit**: Use conventional commit messages
+6. **Document**: Update CLAUDE.md if adding new patterns
+
+## Test Accounts
+
+### Admin Account
+- **Email**: sankaz@admin.com
+- **Username**: sankaz
+- **Password**: Sankaz#3E25167B@2025
+- **Role**: Admin (Full access)
+
+### Default Admin (from README)
+- **Email**: admin@example.com
+- **Password**: Admin@123
+
+### Test Users (from seed)
+- **Email**: admin@personalai.com
+- **Password**: Check seed.ts or run setup script
+
+### Create New Test User
+```bash
+# Run sankaz setup script (generates new password)
+tsx scripts/database/cleanup-and-setup-sankaz.ts
+
+# Or create admin manually
+tsx scripts/create-admin.ts
+```
