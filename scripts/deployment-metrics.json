@@ -325,9 +325,61 @@
       },
       "circuitBreaker": true,
       "memoryUsage": 6.2844085693359375
+    },
+    {
+      "timestamp": "2025-08-11T12:00:40.415Z",
+      "systemTerminal": {
+        "status": "healthy",
+        "latency": 3002
+      },
+      "claudeTerminal": {
+        "status": "partial",
+        "latency": 3000
+      },
+      "circuitBreaker": true,
+      "memoryUsage": 5.817207336425781
+    },
+    {
+      "timestamp": "2025-08-11T12:01:40.415Z",
+      "systemTerminal": {
+        "status": "healthy",
+        "latency": 3002
+      },
+      "claudeTerminal": {
+        "status": "partial",
+        "latency": 3002
+      },
+      "circuitBreaker": true,
+      "memoryUsage": 6.125511169433594
+    },
+    {
+      "timestamp": "2025-08-11T12:02:40.414Z",
+      "systemTerminal": {
+        "status": "healthy",
+        "latency": 3001
+      },
+      "claudeTerminal": {
+        "status": "partial",
+        "latency": 3003
+      },
+      "circuitBreaker": true,
+      "memoryUsage": 6.418098449707031
+    },
+    {
+      "timestamp": "2025-08-11T12:03:40.415Z",
+      "systemTerminal": {
+        "status": "healthy",
+        "latency": 3001
+      },
+      "claudeTerminal": {
+        "status": "partial",
+        "latency": 3002
+      },
+      "circuitBreaker": true,
+      "memoryUsage": 5.948272705078125
     }
   ],
-  "connectionSuccesses": 25,
+  "connectionSuccesses": 29,
   "connectionFailures": 0,
   "circuitBreakerTriggers": 0,
   "sessionReuses": 0,
@@ -381,7 +433,15 @@
     3,
     2,
     1,
-    1
+    1,
+    3,
+    2,
+    4,
+    4,
+    2,
+    3,
+    3,
+    4
   ],
   "memoryUsage": [
     {
@@ -533,6 +593,30 @@
       "heapUsed": 6.2844085693359375,
       "heapTotal": 7.296875,
       "rss": 60.09375
+    },
+    {
+      "timestamp": "2025-08-11T12:00:46.420Z",
+      "heapUsed": 5.817207336425781,
+      "heapTotal": 7.296875,
+      "rss": 60.171875
+    },
+    {
+      "timestamp": "2025-08-11T12:01:46.422Z",
+      "heapUsed": 6.125511169433594,
+      "heapTotal": 7.296875,
+      "rss": 60.84375
+    },
+    {
+      "timestamp": "2025-08-11T12:02:46.426Z",
+      "heapUsed": 6.418098449707031,
+      "heapTotal": 7.296875,
+      "rss": 60.859375
+    },
+    {
+      "timestamp": "2025-08-11T12:03:46.429Z",
+      "heapUsed": 5.948272705078125,
+      "heapTotal": 7.296875,
+      "rss": 60.875
     }
   ],
   "errors": [],
