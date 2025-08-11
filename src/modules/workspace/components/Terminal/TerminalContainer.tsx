@@ -1,82 +1,250 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Project, TerminalSession } from '../../types';
 import TerminalTabs from './TerminalTabs';
 import TerminalView from './TerminalView';
 import XTermView from './XTermView';
 import ClaudeXTermView from './ClaudeXTermView';
+import { useTerminalStore } from '../../stores/terminal.store';
+import { authClient } from '@/core/auth/auth-client';
+import { Maximize2, Minimize2, Columns, Rows, Grid, Terminal } from 'lucide-react';
 
 interface TerminalContainerProps {
   project: Project;
 }
 
 const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
-  // Use stable session IDs based on project ID to maintain persistence
-  const systemSessionId = `system_${project.id}`;
-  const claudeSessionId = `claude_${project.id}`;
+  // Use terminal store for state management
+  const {
+    projectSessions,
+    activeTabs,
+    layout,
+    preferences,
+    connectionStatus,
+    addSession,
+    removeSession,
+    setActiveTab,
+    setLayout,
+    toggleMaximize,
+    loadProjectSessions,
+    setConnectionStatus,
+  } = useTerminalStore();
+
+  // Get sessions for current project
+  const sessions = projectSessions[project.id] || { system: [], claude: [] };
+  const activeTab = activeTabs[project.id] || { system: null, claude: null };
   
-  const [systemSessions, setSystemSessions] = useState<TerminalSession[]>([]);
-  const [claudeSessions, setClaudeSessions] = useState<TerminalSession[]>([]);
-  const [activeSystemTab, setActiveSystemTab] = useState<string | null>(null);
-  const [activeClaudeTab, setActiveClaudeTab] = useState<string | null>(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [newSessionName, setNewSessionName] = useState('');
+  const [backgroundActivity, setBackgroundActivity] = useState<Record<string, boolean>>({});
 
-  const handleCreateSystemSession = async (name: string) => {
-    // Create new system terminal session with stable ID
-    const sessionNum = systemSessions.length + 1;
-    const newSession: TerminalSession = {
-      id: `${systemSessionId}_tab${sessionNum}`,
-      projectId: project.id,
-      type: 'system',
-      tabName: name,
-      active: true,
-      output: [],
-      currentPath: project.path,
-      createdAt: new Date(),
+  // Load existing sessions on mount
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        setIsLoadingSessions(true);
+        const response = await authClient.fetch(`/api/workspace/projects/${project.id}/terminals`);
+        if (response.ok) {
+          const existingSessions = await response.json();
+          loadProjectSessions(project.id, existingSessions);
+        }
+      } catch (error) {
+        console.error('Failed to load terminal sessions:', error);
+      } finally {
+        setIsLoadingSessions(false);
+      }
     };
-    
-    setSystemSessions([...systemSessions, newSession]);
-    setActiveSystemTab(newSession.id);
-  };
 
-  const handleCreateClaudeSession = async (name: string) => {
-    // Create new Claude terminal session with stable ID
-    const sessionNum = claudeSessions.length + 1;
-    const newSession: TerminalSession = {
-      id: `${claudeSessionId}_tab${sessionNum}`,
-      projectId: project.id,
-      type: 'claude',
-      tabName: name,
-      active: true,
-      output: [],
-      currentPath: project.path,
-      createdAt: new Date(),
+    loadSessions();
+  }, [project.id, loadProjectSessions]);
+
+  // Track background activity for inactive terminals
+  useEffect(() => {
+    const checkBackgroundActivity = () => {
+      const allSessions = [...sessions.system, ...sessions.claude];
+      const activityMap: Record<string, boolean> = {};
+      
+      allSessions.forEach(session => {
+        // Session has background activity if it's active but not the current active tab
+        const isSystemActive = session.type === 'system' && activeTab.system === session.id;
+        const isClaudeActive = session.type === 'claude' && activeTab.claude === session.id;
+        const isCurrentlyActive = isSystemActive || isClaudeActive;
+        
+        activityMap[session.id] = session.active && !isCurrentlyActive;
+      });
+      
+      setBackgroundActivity(activityMap);
     };
-    
-    setClaudeSessions([...claudeSessions, newSession]);
-    setActiveClaudeTab(newSession.id);
-  };
 
-  const handleCloseSystemSession = (sessionId: string) => {
-    setSystemSessions(systemSessions.filter(s => s.id !== sessionId));
-    if (activeSystemTab === sessionId) {
-      setActiveSystemTab(systemSessions[0]?.id || null);
+    checkBackgroundActivity();
+    
+    // Check every 2 seconds for background activity
+    const interval = setInterval(checkBackgroundActivity, 2000);
+    return () => clearInterval(interval);
+  }, [sessions, activeTab]);
+
+  const handleCreateSystemSession = async (name?: string) => {
+    try {
+      const sessionName = name || `Terminal ${sessions.system.length + 1}`;
+      const response = await authClient.fetch(`/api/workspace/projects/${project.id}/terminals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'system',
+          tabName: sessionName,
+          projectPath: project.path,
+        }),
+      });
+
+      if (response.ok) {
+        const newSession = await response.json();
+        addSession(project.id, newSession);
+        setActiveTab(project.id, 'system', newSession.id);
+      }
+    } catch (error) {
+      console.error('Failed to create system session:', error);
     }
   };
 
-  const handleCloseClaudeSession = (sessionId: string) => {
-    setClaudeSessions(claudeSessions.filter(s => s.id !== sessionId));
-    if (activeClaudeTab === sessionId) {
-      setActiveClaudeTab(claudeSessions[0]?.id || null);
+  const handleCreateClaudeSession = async (name?: string) => {
+    try {
+      const sessionName = name || `Claude ${sessions.claude.length + 1}`;
+      const response = await authClient.fetch(`/api/workspace/projects/${project.id}/terminals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'claude',
+          tabName: sessionName,
+          projectPath: project.path,
+        }),
+      });
+
+      if (response.ok) {
+        const newSession = await response.json();
+        addSession(project.id, newSession);
+        setActiveTab(project.id, 'claude', newSession.id);
+      }
+    } catch (error) {
+      console.error('Failed to create Claude session:', error);
     }
   };
+
+  const handleCloseSession = async (sessionId: string, type: 'system' | 'claude') => {
+    try {
+      // Call API to close session
+      await authClient.fetch(`/api/workspace/terminals/${sessionId}`, {
+        method: 'DELETE',
+      });
+      
+      // Remove from store
+      removeSession(project.id, sessionId);
+    } catch (error) {
+      console.error('Failed to close session:', error);
+    }
+  };
+
+  const handleRenameSession = async (sessionId: string) => {
+    if (!newSessionName.trim()) return;
+    
+    try {
+      const response = await authClient.fetch(`/api/workspace/terminals/${sessionId}/rename`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newSessionName }),
+      });
+
+      if (response.ok) {
+        const updatedSession = await response.json();
+        addSession(project.id, updatedSession);
+        setRenameSessionId(null);
+        setNewSessionName('');
+      }
+    } catch (error) {
+      console.error('Failed to rename session:', error);
+    }
+  };
+
+  // Layout controls
+  const handleLayoutChange = (newLayout: 'single' | 'split-horizontal' | 'split-vertical' | 'grid') => {
+    setLayout({ type: newLayout, maximized: null });
+  };
+
+  // Determine panel sizes based on layout
+  const getPanelSizes = useMemo(() => {
+    if (layout.maximized === 'system') return { system: 90, claude: 10 };
+    if (layout.maximized === 'claude') return { system: 10, claude: 90 };
+    return { system: 50, claude: 50 };
+  }, [layout.maximized]);
+
+  // Show loading state
+  if (isLoadingSessions) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gradient-to-b from-gray-900 to-gray-950">
+        <div className="text-center">
+          <Terminal className="w-16 h-16 mx-auto text-gray-600 animate-pulse mb-4" />
+          <p className="text-gray-400">Loading terminal sessions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <PanelGroup direction="vertical" className="h-full">
-      {/* System Terminal */}
-      <Panel defaultSize={50} minSize={15} maxSize={70} className="bg-gradient-to-b from-gray-900 to-gray-950 overflow-hidden">
+    <div className="h-full flex flex-col bg-gradient-to-b from-gray-900 to-gray-950">
+      {/* Layout Controls Bar */}
+      <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleLayoutChange('single')}
+            className={`p-1.5 rounded transition-colors ${
+              layout.type === 'single' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`}
+            title="Single view"
+          >
+            <Terminal className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleLayoutChange('split-horizontal')}
+            className={`p-1.5 rounded transition-colors ${
+              layout.type === 'split-horizontal' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`}
+            title="Split horizontal"
+          >
+            <Columns className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleLayoutChange('split-vertical')}
+            className={`p-1.5 rounded transition-colors ${
+              layout.type === 'split-vertical' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`}
+            title="Split vertical"
+          >
+            <Rows className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleLayoutChange('grid')}
+            className={`p-1.5 rounded transition-colors ${
+              layout.type === 'grid' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`}
+            title="Grid view"
+          >
+            <Grid className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex items-center space-x-2 text-xs text-gray-400">
+          <span>Project: {project.name}</span>
+          <span>•</span>
+          <span>{sessions.system.length + sessions.claude.length} sessions</span>
+        </div>
+      </div>
+
+      {/* Terminal Panels */}
+      <PanelGroup direction={layout.type === 'split-vertical' ? 'horizontal' : 'vertical'} className="flex-1">
+        {/* System Terminal */}
+        <Panel defaultSize={getPanelSizes.system} minSize={15} maxSize={85} className="bg-gradient-to-b from-gray-900 to-gray-950 overflow-hidden">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -90,47 +258,63 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                   <span className="text-sm font-semibold text-gray-300">System Terminal</span>
                 </div>
                 <TerminalTabs
-                  sessions={systemSessions}
-                  activeTab={activeSystemTab}
-                  onTabSelect={setActiveSystemTab}
-                  onTabClose={handleCloseSystemSession}
-                  onNewTab={() => {
-                    const name = `Terminal ${systemSessions.length + 1}`;
-                    handleCreateSystemSession(name);
+                  sessions={sessions.system}
+                  activeTab={activeTab.system}
+                  onTabSelect={(id) => setActiveTab(project.id, 'system', id)}
+                  onTabClose={(id) => handleCloseSession(id, 'system')}
+                  onNewTab={() => handleCreateSystemSession()}
+                  onRenameTab={(id) => {
+                    const session = sessions.system.find(s => s.id === id);
+                    if (session) {
+                      setRenameSessionId(id);
+                      setNewSessionName(session.tabName);
+                    }
                   }}
+                  connectionStatus={connectionStatus}
+                  backgroundActivity={backgroundActivity}
                 />
               </div>
               <div className="flex items-center space-x-2">
-                <button className="p-1 hover:bg-gray-700 rounded transition-colors" title="Clear">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                <button 
+                  onClick={() => toggleMaximize(layout.maximized === 'system' ? null : 'system')}
+                  className="p-1 hover:bg-gray-700 rounded transition-colors" 
+                  title={layout.maximized === 'system' ? 'Restore' : 'Maximize'}
+                >
+                  {layout.maximized === 'system' ? (
+                    <Minimize2 className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <Maximize2 className="w-4 h-4 text-gray-400" />
+                  )}
                 </button>
-                <button className="p-1 hover:bg-gray-700 rounded transition-colors" title="Settings">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
+                <div className={`w-2 h-2 rounded-full ${
+                  connectionStatus[activeTab.system || ''] === 'connected' ? 'bg-green-500' : 
+                  connectionStatus[activeTab.system || ''] === 'reconnecting' ? 'bg-yellow-500 animate-pulse' : 
+                  'bg-red-500'
+                }`} title={connectionStatus[activeTab.system || ''] || 'disconnected'} />
               </div>
             </div>
           </div>
           <div className="flex-1 overflow-hidden min-h-0 relative">
-            {activeSystemTab && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="h-full"
-              >
-                <XTermView
-                  sessionId={activeSystemTab}
-                  projectPath={project.path}
-                  projectId={project.id}
-                  type="system"
-                />
-              </motion.div>
-            )}
-            {!activeSystemTab && systemSessions.length === 0 && (
+            <AnimatePresence mode="wait">
+              {activeTab.system && (
+                <motion.div
+                  key={activeTab.system}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="h-full"
+                >
+                  <XTermView
+                    sessionId={activeTab.system}
+                    projectPath={project.path}
+                    projectId={project.id}
+                    type="system"
+                    onConnectionChange={(status) => setConnectionStatus(activeTab.system!, status)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {!activeTab.system && sessions.system.length === 0 && (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -143,7 +327,7 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                     </svg>
                   </div>
                   <button
-                    onClick={() => handleCreateSystemSession('Terminal 1')}
+                    onClick={() => handleCreateSystemSession()}
                     className="px-6 py-2.5 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 rounded-lg text-sm font-medium transition-all transform hover:scale-105 shadow-lg"
                   >
                     Open Terminal
@@ -164,7 +348,7 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
       </PanelResizeHandle>
 
       {/* Claude Terminal */}
-      <Panel defaultSize={50} minSize={15} maxSize={70} className="bg-gradient-to-b from-purple-950 to-purple-900 overflow-hidden">
+      <Panel defaultSize={getPanelSizes.claude} minSize={15} maxSize={85} className="bg-gradient-to-b from-purple-950 to-purple-900 overflow-hidden">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -179,47 +363,63 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                   <span className="px-2 py-0.5 bg-purple-700/50 text-purple-300 text-xs rounded-full">AI-Powered</span>
                 </div>
                 <TerminalTabs
-                  sessions={claudeSessions}
-                  activeTab={activeClaudeTab}
-                  onTabSelect={setActiveClaudeTab}
-                  onTabClose={handleCloseClaudeSession}
-                  onNewTab={() => {
-                    const name = `Claude ${claudeSessions.length + 1}`;
-                    handleCreateClaudeSession(name);
+                  sessions={sessions.claude}
+                  activeTab={activeTab.claude}
+                  onTabSelect={(id) => setActiveTab(project.id, 'claude', id)}
+                  onTabClose={(id) => handleCloseSession(id, 'claude')}
+                  onNewTab={() => handleCreateClaudeSession()}
+                  onRenameTab={(id) => {
+                    const session = sessions.claude.find(s => s.id === id);
+                    if (session) {
+                      setRenameSessionId(id);
+                      setNewSessionName(session.tabName);
+                    }
                   }}
+                  connectionStatus={connectionStatus}
+                  backgroundActivity={backgroundActivity}
                 />
               </div>
               <div className="flex items-center space-x-2">
-                <button className="p-1 hover:bg-purple-700 rounded transition-colors" title="Clear">
-                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                <button 
+                  onClick={() => toggleMaximize(layout.maximized === 'claude' ? null : 'claude')}
+                  className="p-1 hover:bg-purple-700 rounded transition-colors" 
+                  title={layout.maximized === 'claude' ? 'Restore' : 'Maximize'}
+                >
+                  {layout.maximized === 'claude' ? (
+                    <Minimize2 className="w-4 h-4 text-purple-400" />
+                  ) : (
+                    <Maximize2 className="w-4 h-4 text-purple-400" />
+                  )}
                 </button>
-                <button className="p-1 hover:bg-purple-700 rounded transition-colors" title="Settings">
-                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
+                <div className={`w-2 h-2 rounded-full ${
+                  connectionStatus[activeTab.claude || ''] === 'connected' ? 'bg-green-500' : 
+                  connectionStatus[activeTab.claude || ''] === 'reconnecting' ? 'bg-yellow-500 animate-pulse' : 
+                  'bg-red-500'
+                }`} title={connectionStatus[activeTab.claude || ''] || 'disconnected'} />
               </div>
             </div>
           </div>
           <div className="flex-1 overflow-hidden min-h-0 relative">
-            {activeClaudeTab && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="h-full"
-              >
-                <ClaudeXTermView
-                  sessionId={activeClaudeTab}
-                  projectPath={project.path}
-                  projectId={project.id}
-                  type="claude"
-                />
-              </motion.div>
-            )}
-            {!activeClaudeTab && claudeSessions.length === 0 && (
+            <AnimatePresence mode="wait">
+              {activeTab.claude && (
+                <motion.div
+                  key={activeTab.claude}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="h-full"
+                >
+                  <ClaudeXTermView
+                    sessionId={activeTab.claude}
+                    projectPath={project.path}
+                    projectId={project.id}
+                    type="claude"
+                    onConnectionChange={(status) => setConnectionStatus(activeTab.claude!, status)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {!activeTab.claude && sessions.claude.length === 0 && (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -232,7 +432,7 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                     </svg>
                   </div>
                   <button
-                    onClick={() => handleCreateClaudeSession('Claude 1')}
+                    onClick={() => handleCreateClaudeSession()}
                     className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 rounded-lg text-sm font-medium transition-all transform hover:scale-105 shadow-lg text-white"
                   >
                     Open Claude Terminal
@@ -244,7 +444,63 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
           </div>
         </motion.div>
       </Panel>
-    </PanelGroup>
+      </PanelGroup>
+
+      {/* Rename Session Dialog */}
+      {renameSessionId && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => {
+            setRenameSessionId(null);
+            setNewSessionName('');
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            className="bg-gray-800 rounded-lg p-6 w-96"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-white mb-4">Rename Terminal Session</h3>
+            <input
+              type="text"
+              value={newSessionName}
+              onChange={(e) => setNewSessionName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRenameSession(renameSessionId);
+                } else if (e.key === 'Escape') {
+                  setRenameSessionId(null);
+                  setNewSessionName('');
+                }
+              }}
+              className="w-full px-3 py-2 bg-gray-900 text-white rounded border border-gray-700 focus:border-blue-500 focus:outline-none"
+              autoFocus
+            />
+            <div className="flex justify-end space-x-2 mt-4">
+              <button
+                onClick={() => {
+                  setRenameSessionId(null);
+                  setNewSessionName('');
+                }}
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRenameSession(renameSessionId)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+              >
+                Rename
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </div>
   );
 };
 

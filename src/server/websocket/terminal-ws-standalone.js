@@ -143,55 +143,26 @@ class TerminalWebSocketServer {
         console.log(`Current working directory: ${workingDir}`);
         console.log(`Process cwd: ${process.cwd()}`);
         
-        // โหลด .env จาก project directory ถ้ามี
-        let baseEnv = { ...process.env };
-        let projectSpecificEnv = {};
+        // โหลด .env จาก project directory ถ้ามี (ปรับปรุงเพื่อลดการโหลดซ้ำ)
+        let projectEnv = { ...process.env };
         const loadedEnvFiles = [];
         
-        // Load port project env first (as fallback)
-        const portProjectRoots = [
-          process.cwd(),
-          path.join(__dirname, '../../..'), // From websocket dir to project root
-          '/Users/sem4pro/Stock/port' // Fallback to absolute path
-        ];
-        
+        // Load project-specific environment files only once
         const envFileNames = ['.env', '.env.local', '.env.development', '.env.production'];
         
-        // Load base environment from port project
-        for (const root of portProjectRoots) {
-          if (root === workingDir) continue; // Skip if same as working dir
-          
-          for (const fileName of envFileNames) {
-            const envFile = path.join(root, fileName);
-            if (fs.existsSync(envFile)) {
-              console.log(`Loading base environment from: ${envFile}`);
-              try {
-                const envConfig = dotenv.parse(fs.readFileSync(envFile));
-                baseEnv = { ...baseEnv, ...envConfig };
-              } catch (error) {
-                console.error(`Failed to parse env file ${envFile}:`, error);
-              }
-            }
-          }
-        }
-        
-        // Load project-specific environment (higher priority)
         for (const fileName of envFileNames) {
           const envFile = path.join(workingDir, fileName);
           if (fs.existsSync(envFile)) {
             console.log(`Loading project environment from: ${envFile}`);
             try {
               const envConfig = dotenv.parse(fs.readFileSync(envFile));
-              projectSpecificEnv = { ...projectSpecificEnv, ...envConfig };
+              projectEnv = { ...projectEnv, ...envConfig };
               loadedEnvFiles.push(fileName);
             } catch (error) {
               console.error(`Failed to parse env file ${envFile}:`, error);
             }
           }
         }
-        
-        // Merge with project env having highest priority
-        const projectEnv = { ...baseEnv, ...projectSpecificEnv };
         
         // Debug: Check if DATABASE_URL was loaded
         if (projectEnv.DATABASE_URL) {
@@ -460,11 +431,11 @@ class TerminalWebSocketServer {
           });
         }
         
-        // Clean up session on close to ensure fresh start next time
-        if (session && session.process) {
-          console.log(`Cleaning up session ${session.id}`);
-          session.process.kill();
-          this.sessions.delete(session.id);
+        // DON'T kill process on WebSocket close - keep session alive for reconnection
+        // Only clean up the WebSocket connection
+        if (session) {
+          session.ws = null;
+          console.log(`WebSocket disconnected for session ${session.id}, keeping process alive`);
         }
       });
 

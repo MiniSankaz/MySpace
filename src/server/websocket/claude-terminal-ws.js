@@ -127,7 +127,7 @@ class ClaudeTerminalWebSocketServer {
         
         console.log(`Creating new Claude shell session with: ${shell}`);
         
-        // โหลด .env จาก project directory ถ้ามี
+        // โหลด .env จาก project directory ถ้ามี (ปรับปรุงเพื่อลดการโหลดซ้ำ)
         let projectEnv = { ...process.env };
         const envFiles = [
           path.join(workingDir, '.env'),
@@ -135,12 +135,18 @@ class ClaudeTerminalWebSocketServer {
           path.join(workingDir, '.env.development'),
           path.join(workingDir, '.env.production')
         ];
+        const loadedEnvs = [];
         
         for (const envFile of envFiles) {
           if (fs.existsSync(envFile)) {
-            console.log(`Loading environment from: ${envFile}`);
-            const envConfig = dotenv.parse(fs.readFileSync(envFile));
-            projectEnv = { ...projectEnv, ...envConfig };
+            console.log(`Loading Claude environment from: ${envFile}`);
+            try {
+              const envConfig = dotenv.parse(fs.readFileSync(envFile));
+              projectEnv = { ...projectEnv, ...envConfig };
+              loadedEnvs.push(path.basename(envFile));
+            } catch (error) {
+              console.error(`Failed to parse env file ${envFile}:`, error);
+            }
           }
         }
         
@@ -272,9 +278,8 @@ class ClaudeTerminalWebSocketServer {
         }));
 
         // แสดงข้อความเมื่อโหลด environment แล้ว
-        const loadedEnvs = envFiles.filter(f => fs.existsSync(f)).map(f => path.basename(f));
         if (loadedEnvs.length > 0) {
-          const envMessage = `\r\n\x1b[32m✓ Loaded environment: ${loadedEnvs.join(', ')}\x1b[0m\r\n`;
+          const envMessage = `\r\n\x1b[32m✓ Loaded Claude environment: ${loadedEnvs.join(', ')}\x1b[0m\r\n`;
           shellProcess.write(envMessage);
         }
 
@@ -396,11 +401,19 @@ class ClaudeTerminalWebSocketServer {
       // Handle WebSocket close
       ws.on('close', (code, reason) => {
         console.log('Claude Terminal WebSocket closed:', code, reason?.toString());
-        // Clean up session on close to ensure fresh start next time
-        if (session && session.process) {
-          console.log(`Cleaning up Claude session ${session.id}`);
-          session.process.kill();
-          this.sessions.delete(session.id);
+        
+        // End logging session if available
+        if (workspaceTerminalLogger && session && session.loggingSessionId) {
+          workspaceTerminalLogger.endSession(session.loggingSessionId).catch(err => {
+            console.error('Failed to end logging session on close:', err);
+          });
+        }
+        
+        // DON'T kill process on WebSocket close - keep session alive for reconnection
+        // Only clean up the WebSocket connection
+        if (session) {
+          session.ws = null;
+          console.log(`Claude WebSocket disconnected for session ${session.id}, keeping process alive`);
         }
       });
 

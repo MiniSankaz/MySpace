@@ -10,6 +10,10 @@ interface TerminalTabsProps {
   onTabSelect: (sessionId: string) => void;
   onTabClose: (sessionId: string) => void;
   onNewTab: () => void;
+  onRenameTab?: (sessionId: string) => void;
+  maxTabs?: number;
+  connectionStatus?: Record<string, 'connected' | 'disconnected' | 'reconnecting'>;
+  backgroundActivity?: Record<string, boolean>; // New prop to track background activity
 }
 
 const TerminalTabs: React.FC<TerminalTabsProps> = ({
@@ -18,6 +22,10 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
   onTabSelect,
   onTabClose,
   onNewTab,
+  onRenameTab,
+  maxTabs = 10,
+  connectionStatus = {},
+  backgroundActivity = {},
 }) => {
   return (
     <div className="flex items-center space-x-1 flex-1 overflow-x-auto scrollbar-none">
@@ -29,7 +37,7 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.9, x: -20 }}
             transition={{ duration: 0.2 }}
-            className={`flex items-center px-3 py-1 rounded-md text-xs cursor-pointer transition-all min-w-fit ${
+            className={`flex items-center px-3 py-1 rounded-md text-xs cursor-pointer transition-all min-w-fit group ${
               activeTab === session.id
                 ? 'bg-gray-700 text-white shadow-md'
                 : 'bg-gray-800/50 text-gray-400 hover:bg-gray-750 hover:text-gray-300'
@@ -37,13 +45,38 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
             onClick={() => onTabSelect(session.id)}
           >
             <div className="flex items-center space-x-2">
-              {/* Session indicator */}
+              {/* Session indicator with activity status */}
               <div className={`w-1.5 h-1.5 rounded-full ${
-                activeTab === session.id ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
+                activeTab === session.id 
+                  ? 'bg-green-400 animate-pulse' 
+                  : connectionStatus[session.id] === 'connected'
+                  ? 'bg-blue-400'
+                  : connectionStatus[session.id] === 'reconnecting'
+                  ? 'bg-yellow-400 animate-pulse'
+                  : backgroundActivity[session.id]
+                  ? 'bg-orange-400 animate-pulse'  // Background activity indicator
+                  : 'bg-gray-500'
               }`} />
               
-              {/* Tab name */}
-              <span className="whitespace-nowrap font-medium">{session.tabName}</span>
+              {/* Tab name with activity badge */}
+              <div className="flex items-center space-x-1">
+                <span 
+                  className="whitespace-nowrap font-medium"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    onRenameTab?.(session.id);
+                  }}
+                  title="Double-click to rename"
+                >
+                  {session.tabName}
+                </span>
+                
+                {/* Background activity badge */}
+                {activeTab !== session.id && backgroundActivity[session.id] && (
+                  <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse" 
+                       title="Background activity detected" />
+                )}
+              </div>
               
               {/* Close button */}
               {sessions.length > 1 && (
@@ -75,7 +108,7 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
       </AnimatePresence>
       
       {/* New tab button */}
-      {sessions.length < 5 && (
+      {sessions.length < maxTabs && (
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -100,9 +133,9 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
       )}
 
       {/* Tab overflow indicator */}
-      {sessions.length >= 5 && (
+      {sessions.length >= maxTabs && (
         <div className="px-2 py-1 text-xs text-gray-500">
-          {sessions.length} tabs
+          Max tabs ({maxTabs})
         </div>
       )}
     </div>

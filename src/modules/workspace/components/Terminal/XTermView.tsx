@@ -11,13 +11,15 @@ interface XTermViewProps {
   projectPath: string;
   projectId: string;
   type: 'system' | 'claude';
+  onConnectionChange?: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
 }
 
 const XTermView: React.FC<XTermViewProps> = ({
   sessionId,
   projectPath,
   projectId,
-  type
+  type,
+  onConnectionChange
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
@@ -139,6 +141,7 @@ const XTermView: React.FC<XTermViewProps> = ({
     websocket.onopen = () => {
       console.log('Terminal WebSocket connected');
       setIsConnected(true);
+      onConnectionChange?.('connected');
       term.write('\r\n\x1b[32m● Terminal Connected\x1b[0m\r\n');
     };
 
@@ -183,6 +186,7 @@ const XTermView: React.FC<XTermViewProps> = ({
     websocket.onclose = () => {
       console.log('WebSocket closed');
       setIsConnected(false);
+      onConnectionChange?.('disconnected');
       term.write('\r\n\x1b[31m○ Disconnected\x1b[0m\r\n');
     };
 

@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import { TerminalSession, TerminalCommand, TerminalMessage } from '../types';
+import { terminalSessionManager } from './terminal-session-manager';
 import prisma from '@/core/database/prisma';
 import * as pty from 'node-pty';
 import os from 'os';
@@ -37,26 +38,25 @@ export class TerminalService extends EventEmitter {
     projectId: string,
     type: 'system' | 'claude',
     tabName: string,
-    projectPath: string
+    projectPath: string,
+    userId?: string
   ): Promise<TerminalSession> {
-    const session = await prisma.terminalSession.create({
-      data: {
-        projectId,
-        type,
-        tabName,
-        active: true,
-        output: [],
-        currentPath: projectPath,
-      },
-    });
-
-    const terminalSession = this.formatSession(session);
+    // Use the session manager to create or restore session
+    const terminalSession = await terminalSessionManager.createOrRestoreSession(
+      projectId,
+      type,
+      tabName,
+      projectPath,
+      userId
+    );
     
     try {
       await this.startTerminal(terminalSession, projectPath);
+      // Mark as connected in session manager
+      terminalSessionManager.markConnected(terminalSession.id, terminalSession.id);
     } catch (error) {
       console.error('Failed to start terminal:', error);
-      await this.updateSession(terminalSession.id, { active: false });
+      await terminalSessionManager.updateSessionStatus(terminalSession.id, false);
     }
 
     return terminalSession;
@@ -166,14 +166,11 @@ export class TerminalService extends EventEmitter {
       this.terminals.delete(sessionId);
     }
 
-    // Update database
-    await prisma.terminalSession.update({
-      where: { id: sessionId },
-      data: {
-        active: false,
-        updatedAt: new Date(),
-      },
-    });
+    // Mark as disconnected in session manager
+    terminalSessionManager.markDisconnected(sessionId);
+    
+    // Close session in session manager
+    await terminalSessionManager.closeSession(sessionId);
   }
 
   async getSession(sessionId: string): Promise<TerminalSession | null> {
@@ -219,19 +216,28 @@ export class TerminalService extends EventEmitter {
   }
 
   async reconnectSession(sessionId: string): Promise<TerminalSession> {
-    const session = await this.getSession(sessionId);
+    // Get session from session manager
+    const session = terminalSessionManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      // Try to get from database
+      const dbSession = await this.getSession(sessionId);
+      if (!dbSession) {
+        throw new Error('Session not found');
+      }
+      return dbSession;
     }
 
     // Check if terminal is already running
     if (this.terminals.has(sessionId)) {
+      // Mark as connected in session manager
+      terminalSessionManager.markConnected(sessionId, sessionId);
       return session;
     }
 
     // Restart terminal
     await this.startTerminal(session, session.currentPath);
-    await this.updateSession(sessionId, { active: true });
+    await terminalSessionManager.updateSessionStatus(sessionId, true);
+    terminalSessionManager.markConnected(sessionId, sessionId);
 
     return session;
   }
@@ -246,6 +252,9 @@ export class TerminalService extends EventEmitter {
       data,
       type: 'output',
     } as TerminalMessage);
+
+    // Add output to session manager
+    terminalSessionManager.addOutput(sessionId, data);
 
     // Append to session output (limit to last 1000 lines)
     const output = [...terminal.session.output, data];

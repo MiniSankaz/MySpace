@@ -11,13 +11,15 @@ interface ClaudeXTermViewProps {
   projectPath: string;
   projectId: string;
   type: 'claude';
+  onConnectionChange?: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
 }
 
 const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
   sessionId,
   projectPath,
   projectId,
-  type
+  type,
+  onConnectionChange
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
@@ -140,6 +142,7 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
     websocket.onopen = () => {
       console.log('Claude Terminal WebSocket connected');
       setIsConnected(true);
+      onConnectionChange?.('connected');
       term.write('\r\n\x1b[35m● Claude Terminal Connected\x1b[0m\r\n');
       term.write('\x1b[33mInitializing Claude Code CLI...\x1b[0m\r\n');
     };
@@ -197,6 +200,7 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
       console.log('Claude WebSocket closed');
       setIsConnected(false);
       setIsClaudeReady(false);
+      onConnectionChange?.('disconnected');
       term.write('\r\n\x1b[31m○ Disconnected from Claude Terminal\x1b[0m\r\n');
     };
 
