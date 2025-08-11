@@ -10,6 +10,48 @@ const loginSchema = z.object({
 
 const authService = new AuthService();
 
+// GET method to check login status or return login requirements
+export async function GET(request: NextRequest) {
+  try {
+    // Check if user is already authenticated
+    const authHeader = request.headers.get('authorization');
+    const accessToken = request.cookies.get('accessToken')?.value;
+    
+    if (authHeader || accessToken) {
+      // Try to verify token
+      try {
+        const token = authHeader?.replace('Bearer ', '') || accessToken;
+        if (token) {
+          // Return current auth status (this could be extended to verify the token)
+          return NextResponse.json({
+            authenticated: true,
+            message: 'Already authenticated'
+          });
+        }
+      } catch (error) {
+        // Token invalid, continue to show login requirements
+      }
+    }
+    
+    return NextResponse.json({
+      authenticated: false,
+      message: 'Login required',
+      fields: {
+        emailOrUsername: 'Email or username',
+        password: 'Password',
+        rememberMe: 'Remember me (optional)'
+      },
+      endpoint: 'POST /api/ums/auth/login'
+    });
+  } catch (error: any) {
+    console.error('Login status check error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to check login status' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

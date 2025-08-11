@@ -64,6 +64,9 @@ class WorkspaceTerminalLoggingService {
     currentPath?: string;
   }): Promise<TerminalSession> {
     try {
+      // Ensure project exists before creating session
+      await this.ensureProjectExists(data.projectId, data.currentPath || process.cwd());
+      
       const session = await this.db.terminalSession.create({
         data: {
           id: data.tabId, // Use tabId as the session ID
@@ -89,7 +92,54 @@ class WorkspaceTerminalLoggingService {
       return this.mapPrismaSessionToTerminalSession(session);
     } catch (error) {
       console.error('Error creating terminal session:', error);
-      throw error;
+      
+      // Fallback: return in-memory session if database fails
+      return {
+        id: data.tabId,
+        tabId: data.tabId,
+        tabName: data.tabName,
+        type: data.type || 'system',
+        active: true,
+        currentPath: data.currentPath || process.cwd(),
+        projectId: data.projectId,
+        userId: data.userId,
+        startedAt: new Date(),
+        _count: { commands: 0, logs: 0 }
+      };
+    }
+  }
+
+  // Ensure project exists in database, create if not found
+  private async ensureProjectExists(projectId: string, projectPath: string): Promise<void> {
+    try {
+      // Check if project exists
+      const existingProject = await this.db.project.findUnique({
+        where: { id: projectId }
+      });
+
+      if (!existingProject) {
+        // Create project with fallback data
+        await this.db.project.create({
+          data: {
+            id: projectId,
+            name: `Project ${projectId}`,
+            description: `Auto-created project for terminal logging`,
+            path: projectPath,
+            structure: {},
+            envVariables: {},
+            scripts: [],
+            settings: {
+              autoCreated: true,
+              createdBy: 'workspace-terminal-logging',
+              createdAt: new Date().toISOString()
+            }
+          }
+        });
+        console.log(`Created project ${projectId} for workspace terminal logging`);
+      }
+    } catch (error) {
+      console.error(`Failed to ensure project ${projectId} exists:`, error);
+      // Continue with graceful degradation
     }
   }
 
@@ -304,15 +354,29 @@ class WorkspaceTerminalLoggingService {
   // Mark session as ended
   async endSession(sessionId: string): Promise<void> {
     try {
-      await this.db.terminalSession.update({
-        where: { id: sessionId },
-        data: {
-          active: false,
-          endedAt: new Date(),
-        }
+      // First check if session exists
+      const existingSession = await this.db.terminalSession.findUnique({
+        where: { id: sessionId }
       });
-    } catch (error) {
-      console.error('Error ending terminal session:', error);
+
+      if (existingSession) {
+        await this.db.terminalSession.update({
+          where: { id: sessionId },
+          data: {
+            active: false,
+            endedAt: new Date(),
+          }
+        });
+      } else {
+        console.warn(`Session ${sessionId} not found in database, skipping endSession`);
+      }
+    } catch (error: any) {
+      // Handle P2025 error (record not found) gracefully
+      if (error.code === 'P2025') {
+        console.warn(`Session ${sessionId} not found when ending:`, error.message);
+      } else {
+        console.error('Error ending terminal session:', error);
+      }
     }
   }
 

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { TerminalSession, TerminalMessage } from '../types';
-import prisma from '@/core/database/prisma';
+import { prisma } from '@/core/database/prisma';
 import { v4 as uuidv4 } from 'uuid';
 
 interface SessionMetadata {
@@ -87,27 +87,111 @@ export class TerminalSessionManager extends EventEmitter {
       return existingSession;
     }
 
+    // Ensure project exists in database before creating session
+    // Use try-catch to handle potential database issues gracefully
+    try {
+      await this.ensureProjectExists(projectId, projectPath);
+    } catch (error) {
+      console.warn(`Project creation check failed, continuing with session creation:`, error);
+    }
+
     // Create new session with simple ID format for WebSocket compatibility
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
     
-    const dbSession = await prisma.terminalSession.create({
-      data: {
+    let session: TerminalSession;
+    
+    try {
+      // First attempt: try with projectId
+      const dbSession = await prisma.terminalSession.create({
+        data: {
+          id: sessionId,
+          projectId,
+          userId,
+          type,
+          tabName,
+          active: true,
+          output: [],
+          currentPath: projectPath,
+          metadata: {
+            environment: process.env,
+            createdAt: new Date().toISOString()
+          }
+        }
+      });
+
+      session = this.formatSession(dbSession);
+    } catch (error: any) {
+      // Check if it's a foreign key constraint error
+      if (error.code === 'P2003' || error.message?.includes('foreign key')) {
+        console.warn(`Foreign key constraint error, attempting to create project and retry...`);
+        
+        // Try one more time to create the project
+        try {
+          await prisma.project.create({
+            data: {
+              id: projectId,
+              name: `Project ${projectId}`,
+              description: `Emergency project creation for terminal session`,
+              path: projectPath,
+              structure: {},
+              envVariables: {},
+              scripts: [],
+              settings: {
+                autoCreated: true,
+                createdBy: 'terminal-session-manager-emergency',
+                createdAt: new Date().toISOString()
+              }
+            }
+          });
+          
+          // Retry session creation
+          const dbSession = await prisma.terminalSession.create({
+            data: {
+              id: sessionId,
+              projectId,
+              userId,
+              type,
+              tabName,
+              active: true,
+              output: [],
+              currentPath: projectPath,
+              metadata: {
+                environment: process.env,
+                createdAt: new Date().toISOString()
+              }
+            }
+          });
+          
+          session = this.formatSession(dbSession);
+        } catch (retryError) {
+          console.error(`Failed to create terminal session even after project creation:`, retryError);
+          throw error; // Re-throw original error if retry fails
+        }
+      } else {
+        console.error(`Failed to create terminal session in database:`, error);
+        throw error;
+      }
+    }
+    
+    // If we still don't have a session, fall back to in-memory
+    if (!session) {
+      console.error(`Database creation failed completely, falling back to in-memory session`);
+      
+      // Fallback: create session in memory only
+      session = {
         id: sessionId,
         projectId,
-        userId,
         type,
         tabName,
         active: true,
         output: [],
         currentPath: projectPath,
-        metadata: {
-          environment: process.env,
-          createdAt: new Date().toISOString()
-        }
-      }
-    });
+        pid: null,
+        createdAt: new Date()
+      };
 
-    const session = this.formatSession(dbSession);
+      console.log(`Created fallback in-memory session ${sessionId}`);
+    }
     
     const state: SessionState = {
       session,
@@ -132,6 +216,62 @@ export class TerminalSessionManager extends EventEmitter {
     this.emit('session:created', session);
     
     return session;
+  }
+
+  /**
+   * Ensure project exists in database, create if not found
+   */
+  private async ensureProjectExists(projectId: string, projectPath: string): Promise<void> {
+    try {
+      // Check if project exists
+      const existingProject = await prisma.project.findUnique({
+        where: { id: projectId }
+      });
+
+      if (!existingProject) {
+        // Retry logic for project creation
+        let retries = 3;
+        let lastError: any;
+        
+        while (retries > 0) {
+          try {
+            // Create project with fallback data
+            await prisma.project.create({
+              data: {
+                id: projectId,
+                name: `Project ${projectId}`,
+                description: `Auto-created project for terminal session`,
+                path: projectPath,
+                structure: {},
+                envVariables: {},
+                scripts: [],
+                settings: {
+                  autoCreated: true,
+                  createdBy: 'terminal-session-manager',
+                  createdAt: new Date().toISOString()
+                }
+              }
+            });
+            console.log(`Created project ${projectId} for terminal session`);
+            return; // Success, exit function
+          } catch (createError) {
+            lastError = createError;
+            retries--;
+            if (retries > 0) {
+              console.warn(`Retrying project creation (${retries} attempts left)...`);
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+            }
+          }
+        }
+        
+        // If all retries failed, log the error but continue
+        console.error(`Failed to create project ${projectId} after 3 attempts:`, lastError);
+      }
+    } catch (error) {
+      console.error(`Failed to ensure project ${projectId} exists:`, error);
+      // If we can't create project, we'll still try to create session and handle the error
+      // This provides graceful degradation
+    }
   }
 
   /**
@@ -209,22 +349,31 @@ export class TerminalSessionManager extends EventEmitter {
   }
 
   /**
-   * Update session status
+   * Update session status with error handling
    */
   async updateSessionStatus(sessionId: string, active: boolean): Promise<void> {
     const state = this.sessions.get(sessionId);
-    if (!state) return;
+    if (!state) {
+      console.warn(`Attempted to update non-existent session: ${sessionId}`);
+      return;
+    }
 
     state.session.active = active;
     state.metadata.lastActivity = new Date();
 
-    await prisma.terminalSession.update({
-      where: { id: sessionId },
-      data: { 
-        active,
-        updatedAt: new Date()
-      }
-    });
+    try {
+      await prisma.terminalSession.update({
+        where: { id: sessionId },
+        data: { 
+          active,
+          updatedAt: new Date()
+        }
+      });
+    } catch (error) {
+      console.error(`Failed to update session ${sessionId} in database:`, error);
+      // Continue with in-memory update even if database update fails
+      // This provides graceful degradation
+    }
 
     this.emit('session:updated', state.session);
   }

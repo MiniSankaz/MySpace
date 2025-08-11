@@ -1,5 +1,10 @@
 import { EventEmitter } from 'events';
-import { io, Socket } from 'socket.io-client';
+import { 
+  CircuitBreakerConfig, 
+  CircuitBreakerState, 
+  DEFAULT_CIRCUIT_BREAKER_CONFIG,
+  SessionValidator 
+} from '../types/terminal.types';
 
 interface ConnectionOptions {
   url: string;
@@ -7,90 +12,174 @@ interface ConnectionOptions {
   auth?: Record<string, any>;
   reconnectionAttempts?: number;
   reconnectionDelay?: number;
+  circuitBreakerConfig?: CircuitBreakerConfig;
 }
 
 interface TerminalConnection {
   sessionId: string;
-  socket: Socket;
+  socket: WebSocket | null;
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
   lastActivity: Date;
   reconnectAttempts: number;
   messageQueue: any[];
+  type: 'system' | 'claude';
+  projectId: string;
+  circuitBreaker: CircuitBreaker;
+}
+
+/**
+ * Circuit Breaker implementation to prevent infinite reconnection loops
+ * Tracks failures and opens the circuit when threshold is exceeded
+ */
+class CircuitBreaker {
+  private state: CircuitBreakerState;
+  private config: CircuitBreakerConfig;
+  private failureTimes: Date[] = [];
+  private stateChangeCallback?: (state: CircuitBreakerState) => void;
+
+  constructor(config?: CircuitBreakerConfig, onStateChange?: (state: CircuitBreakerState) => void) {
+    this.config = { ...DEFAULT_CIRCUIT_BREAKER_CONFIG, ...config };
+    this.state = {
+      state: 'closed',
+      failures: 0,
+      lastFailureTime: null,
+      nextRetryTime: null
+    };
+    this.stateChangeCallback = onStateChange;
+  }
+
+  /**
+   * Record a successful operation
+   */
+  recordSuccess(): void {
+    if (this.state.state === 'half-open') {
+      // Success in half-open state closes the circuit
+      this.changeState('closed');
+      this.failureTimes = [];
+      this.state.failures = 0;
+      this.state.lastFailureTime = null;
+      console.log('[CircuitBreaker] Circuit closed after successful recovery');
+    }
+  }
+
+  /**
+   * Record a failed operation
+   */
+  recordFailure(): void {
+    const now = new Date();
+    this.failureTimes.push(now);
+    this.state.lastFailureTime = now;
+    
+    // Remove failures outside the time window
+    const windowStart = new Date(now.getTime() - this.config.failureWindow);
+    this.failureTimes = this.failureTimes.filter(time => time > windowStart);
+    
+    this.state.failures = this.failureTimes.length;
+    
+    // Check if we should open the circuit
+    if (this.state.failures >= this.config.failureThreshold && this.state.state === 'closed') {
+      this.changeState('open');
+      this.state.nextRetryTime = new Date(now.getTime() + this.config.recoveryTimeout);
+      console.log(`[CircuitBreaker] Circuit opened after ${this.state.failures} failures. Next retry at ${this.state.nextRetryTime.toISOString()}`);
+    }
+  }
+
+  /**
+   * Check if an operation should be allowed
+   */
+  shouldAllow(): boolean {
+    const now = new Date();
+    
+    switch (this.state.state) {
+      case 'closed':
+        return true;
+        
+      case 'open':
+        // Check if recovery timeout has passed
+        if (this.state.nextRetryTime && now >= this.state.nextRetryTime) {
+          this.changeState('half-open');
+          console.log('[CircuitBreaker] Circuit entering half-open state for testing');
+          return true;
+        }
+        return false;
+        
+      case 'half-open':
+        // Allow one attempt in half-open state
+        return true;
+        
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Get current circuit breaker state
+   */
+  getState(): CircuitBreakerState {
+    return { ...this.state };
+  }
+
+  /**
+   * Calculate backoff delay based on attempt number
+   */
+  getBackoffDelay(attempt: number): number {
+    const exponentialDelay = this.config.reconnectBaseDelay * Math.pow(2, attempt - 1);
+    return Math.min(exponentialDelay, this.config.reconnectMaxDelay);
+  }
+
+  /**
+   * Reset the circuit breaker
+   */
+  reset(): void {
+    this.changeState('closed');
+    this.failureTimes = [];
+    this.state.failures = 0;
+    this.state.lastFailureTime = null;
+    this.state.nextRetryTime = null;
+  }
+
+  private changeState(newState: 'closed' | 'open' | 'half-open'): void {
+    const oldState = this.state.state;
+    this.state.state = newState;
+    if (oldState !== newState && this.stateChangeCallback) {
+      this.stateChangeCallback(this.state);
+    }
+  }
 }
 
 export class TerminalWebSocketMultiplexer extends EventEmitter {
   private connections: Map<string, TerminalConnection> = new Map();
-  private primarySocket: Socket | null = null;
   private options: ConnectionOptions;
   private reconnectTimers: Map<string, NodeJS.Timeout> = new Map();
+  private isShuttingDown: boolean = false;
 
   constructor(options: ConnectionOptions) {
     super();
     this.options = {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      circuitBreakerConfig: DEFAULT_CIRCUIT_BREAKER_CONFIG,
       ...options,
     };
     this.initializePrimaryConnection();
   }
 
   /**
-   * Initialize primary WebSocket connection for control messages
+   * Initialize multiplexer (no primary socket needed for standalone servers)
    */
   private initializePrimaryConnection(): void {
-    const socketUrl = this.options.namespace 
-      ? `${this.options.url}/${this.options.namespace}`
-      : this.options.url;
-
-    this.primarySocket = io(socketUrl, {
-      auth: this.options.auth,
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: this.options.reconnectionAttempts,
-      reconnectionDelay: this.options.reconnectionDelay,
-    });
-
-    this.setupPrimarySocketListeners();
+    console.log('Terminal WebSocket Multiplexer initialized for standalone servers');
+    // For standalone WebSocket servers, we don't need a primary socket
+    // Each session will connect directly to its respective standalone server
   }
 
   /**
-   * Setup listeners for primary socket
+   * Setup listeners for primary socket (not needed for standalone servers)
    */
   private setupPrimarySocketListeners(): void {
-    if (!this.primarySocket) return;
-
-    this.primarySocket.on('connect', () => {
-      console.log('Primary terminal WebSocket connected');
-      this.emit('primary:connected');
-      
-      // Reconnect all terminal sessions
-      for (const [sessionId, connection] of this.connections) {
-        if (connection.status === 'disconnected') {
-          this.reconnectSession(sessionId);
-        }
-      }
-    });
-
-    this.primarySocket.on('disconnect', (reason) => {
-      console.log('Primary terminal WebSocket disconnected:', reason);
-      this.emit('primary:disconnected', reason);
-      
-      // Mark all connections as disconnected
-      for (const [sessionId, connection] of this.connections) {
-        this.updateConnectionStatus(sessionId, 'disconnected');
-      }
-    });
-
-    this.primarySocket.on('error', (error) => {
-      console.error('Primary terminal WebSocket error:', error);
-      this.emit('primary:error', error);
-    });
-
-    // Handle multiplexed messages
-    this.primarySocket.on('terminal:multiplex', (data) => {
-      const { sessionId, type, payload } = data;
-      this.handleMultiplexedMessage(sessionId, type, payload);
-    });
+    // Not needed for standalone WebSocket servers
+    console.log('Using standalone WebSocket servers - no primary socket needed');
+    this.emit('primary:connected');
   }
 
   /**
@@ -104,47 +193,109 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
     // Check if already connected
     if (this.connections.has(sessionId)) {
       const connection = this.connections.get(sessionId)!;
-      if (connection.status === 'connected') {
+      if (connection.status === 'connected' && connection.socket?.readyState === WebSocket.OPEN) {
         console.log(`Session ${sessionId} already connected`);
         return;
+      } else {
+        // Clean up existing connection
+        this.cleanupConnection(sessionId);
       }
     }
+
+    // Validate session ID format
+    if (!SessionValidator.isValidSessionId(sessionId)) {
+      console.error(`Invalid session ID format: ${sessionId}. Expected format: session_{timestamp}_{random}`);
+      // Generate a new valid session ID instead
+      const newSessionId = SessionValidator.generateSessionId();
+      console.log(`Generated new valid session ID: ${newSessionId}`);
+      sessionId = newSessionId;
+    }
+
+    // Create circuit breaker for this connection
+    const circuitBreaker = new CircuitBreaker(
+      this.options.circuitBreakerConfig,
+      (state) => {
+        console.log(`[${sessionId}] Circuit breaker state changed:`, state);
+        this.emit('session:circuit-breaker', { sessionId, state });
+      }
+    );
 
     // Create connection record
     const connection: TerminalConnection = {
       sessionId,
-      socket: this.primarySocket!,
+      socket: null,
       status: 'connecting',
       lastActivity: new Date(),
       reconnectAttempts: 0,
       messageQueue: [],
+      type,
+      projectId,
+      circuitBreaker,
     };
 
     this.connections.set(sessionId, connection);
     this.updateConnectionStatus(sessionId, 'connecting');
 
-    // Send connection request
-    this.primarySocket!.emit('terminal:connect', {
-      sessionId,
-      projectId,
-      type,
-    });
-
-    // Setup session-specific listeners
-    this.setupSessionListeners(sessionId);
+    // Connect to appropriate standalone server
+    await this.createWebSocketConnection(sessionId, projectId, type);
   }
 
   /**
-   * Setup listeners for a specific session
+   * Create WebSocket connection to standalone server
    */
-  private setupSessionListeners(sessionId: string): void {
+  private async createWebSocketConnection(
+    sessionId: string,
+    projectId: string,
+    type: 'system' | 'claude'
+  ): Promise<void> {
     const connection = this.connections.get(sessionId);
     if (!connection) return;
 
-    // Session connected
-    this.primarySocket!.once(`terminal:connected:${sessionId}`, (data) => {
+    // Check circuit breaker before attempting connection
+    if (!connection.circuitBreaker.shouldAllow()) {
+      const cbState = connection.circuitBreaker.getState();
+      console.warn(`[${sessionId}] Circuit breaker is OPEN. Not attempting connection. Next retry: ${cbState.nextRetryTime}`);
+      this.updateConnectionStatus(sessionId, 'error');
+      this.emit('session:circuit-open', { sessionId, state: cbState });
+      
+      // Schedule a retry when circuit might be ready
+      if (cbState.nextRetryTime) {
+        const delay = cbState.nextRetryTime.getTime() - Date.now();
+        if (delay > 0) {
+          setTimeout(() => this.scheduleReconnect(sessionId), delay);
+        }
+      }
+      return;
+    }
+
+    const token = this.options.auth?.token || localStorage.getItem('accessToken');
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // Determine the correct port based on terminal type
+    const port = type === 'system' ? '4001' : '4002';
+    const wsHost = `127.0.0.1:${port}`;
+    
+    const params = new URLSearchParams({
+      projectId,
+      token: token || '',
+      sessionId: sessionId,
+      path: process.cwd(), // You might want to get this from project context
+    });
+
+    const wsUrl = `${protocol}//${wsHost}/?${params.toString()}`;
+    console.log(`Connecting to ${type} terminal WebSocket:`, wsUrl);
+    
+    const websocket = new WebSocket(wsUrl);
+    connection.socket = websocket;
+
+    // Setup WebSocket event handlers
+    websocket.onopen = () => {
+      console.log(`${type} terminal WebSocket connected for session ${sessionId}`);
       this.updateConnectionStatus(sessionId, 'connected');
       connection.reconnectAttempts = 0;
+      
+      // Record success in circuit breaker
+      connection.circuitBreaker.recordSuccess();
       
       // Flush message queue
       while (connection.messageQueue.length > 0) {
@@ -152,32 +303,77 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
         this.sendToSession(sessionId, message.type, message.data);
       }
       
-      this.emit('session:connected', { sessionId, ...data });
-    });
+      this.emit('session:connected', { sessionId, type });
+    };
 
-    // Session data
-    this.primarySocket!.on(`terminal:data:${sessionId}`, (data) => {
-      connection.lastActivity = new Date();
-      this.emit('session:data', { sessionId, data });
-    });
+    websocket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        connection.lastActivity = new Date();
+        
+        // Always emit data immediately for real-time streaming
+        if (message.type === 'stream' || message.type === 'data') {
+          this.emit('session:data', { sessionId, data: message.data });
+        }
+        
+        switch (message.type) {
+          case 'connected':
+          case 'reconnected':
+            this.emit('session:connected', { sessionId, ...message });
+            break;
+          case 'stream':
+          case 'history':
+            this.emit('session:data', { sessionId, data: message.data });
+            break;
+          case 'exit':
+            this.emit('session:data', { sessionId, data: `\r\n\x1b[33m[Process exited with code ${message.code}]\x1b[0m\r\n` });
+            break;
+          case 'error':
+            this.emit('session:error', { sessionId, error: message.message });
+            break;
+          default:
+            this.emit(`session:${message.type}`, { sessionId, ...message });
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+        this.emit('session:error', { sessionId, error: 'Failed to parse message' });
+      }
+    };
 
-    // Session error
-    this.primarySocket!.on(`terminal:error:${sessionId}`, (error) => {
-      console.error(`Terminal session ${sessionId} error:`, error);
+    websocket.onerror = (error) => {
+      console.error(`${type} WebSocket error for session ${sessionId}:`, error);
       this.updateConnectionStatus(sessionId, 'error');
-      this.emit('session:error', { sessionId, error });
-    });
+      
+      // Record failure in circuit breaker
+      connection.circuitBreaker.recordFailure();
+      
+      this.emit('session:error', { sessionId, error: 'WebSocket connection error' });
+    };
 
-    // Session closed
-    this.primarySocket!.on(`terminal:closed:${sessionId}`, () => {
-      this.disconnectSession(sessionId);
-      this.emit('session:closed', { sessionId });
-    });
-
-    // Session status updates
-    this.primarySocket!.on(`terminal:status:${sessionId}`, (status) => {
-      this.emit('session:status', { sessionId, status });
-    });
+    websocket.onclose = (event) => {
+      console.log(`${type} WebSocket closed for session ${sessionId}:`, event.code, event.reason);
+      this.updateConnectionStatus(sessionId, 'disconnected');
+      this.emit('session:disconnected', { sessionId, code: event.code, reason: event.reason });
+      
+      // Only attempt reconnection if:
+      // 1. Not shutting down
+      // 2. Not a clean closure (1000 = normal closure, 1001 = going away)
+      // 3. Not a server error that indicates session doesn't exist (1005 can be ambiguous)
+      if (!this.isShuttingDown && event.code !== 1000 && event.code !== 1001) {
+        // For code 1005 (no status code), check if we should reconnect
+        if (event.code === 1005) {
+          // If we're getting repeated 1005 errors, it might mean the session doesn't exist on server
+          if (connection.reconnectAttempts >= 2) {
+            console.warn(`Session ${sessionId} repeatedly failing with code 1005, stopping reconnection`);
+            this.emit('session:closed', { sessionId, code: event.code, reason: 'Session not found on server' });
+            return;
+          }
+        }
+        this.scheduleReconnect(sessionId);
+      } else {
+        console.log(`Session ${sessionId} closed cleanly or during shutdown, not reconnecting`);
+      }
+    };
   }
 
   /**
@@ -190,13 +386,13 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
       return;
     }
 
-    if (connection.status !== 'connected') {
+    if (connection.status !== 'connected' || !connection.socket || connection.socket.readyState !== WebSocket.OPEN) {
       // Queue message if not connected
       connection.messageQueue.push({ type: 'input', data });
       return;
     }
 
-    this.sendToSession(sessionId, 'input', { data });
+    connection.socket.send(JSON.stringify({ type: 'input', data }));
     connection.lastActivity = new Date();
   }
 
@@ -204,20 +400,8 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
    * Send command to a terminal session
    */
   sendCommand(sessionId: string, command: string): void {
-    const connection = this.connections.get(sessionId);
-    if (!connection) {
-      console.error(`No connection for session ${sessionId}`);
-      return;
-    }
-
-    if (connection.status !== 'connected') {
-      // Queue message if not connected
-      connection.messageQueue.push({ type: 'command', data: command });
-      return;
-    }
-
-    this.sendToSession(sessionId, 'command', { command });
-    connection.lastActivity = new Date();
+    // For standalone servers, send as input with carriage return
+    this.sendInput(sessionId, command + '\r');
   }
 
   /**
@@ -225,11 +409,11 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
    */
   resizeSession(sessionId: string, cols: number, rows: number): void {
     const connection = this.connections.get(sessionId);
-    if (!connection || connection.status !== 'connected') {
+    if (!connection || connection.status !== 'connected' || !connection.socket || connection.socket.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    this.sendToSession(sessionId, 'resize', { cols, rows });
+    connection.socket.send(JSON.stringify({ type: 'resize', cols, rows }));
   }
 
   /**
@@ -237,27 +421,32 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
    */
   clearSession(sessionId: string): void {
     const connection = this.connections.get(sessionId);
-    if (!connection || connection.status !== 'connected') {
+    if (!connection || connection.status !== 'connected' || !connection.socket || connection.socket.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    this.sendToSession(sessionId, 'clear', {});
+    // Send clear command (Ctrl+L)
+    connection.socket.send(JSON.stringify({ type: 'input', data: '\x0c' }));
   }
 
   /**
-   * Send message to specific session
+   * Clean up connection resources
    */
-  private sendToSession(sessionId: string, type: string, data: any): void {
-    if (!this.primarySocket || !this.primarySocket.connected) {
-      console.error('Primary socket not connected');
-      return;
+  private cleanupConnection(sessionId: string): void {
+    const connection = this.connections.get(sessionId);
+    if (!connection) return;
+
+    // Clear reconnect timer
+    const timer = this.reconnectTimers.get(sessionId);
+    if (timer) {
+      clearTimeout(timer);
+      this.reconnectTimers.delete(sessionId);
     }
 
-    this.primarySocket.emit('terminal:multiplex', {
-      sessionId,
-      type,
-      data,
-    });
+    // Close WebSocket if exists
+    if (connection.socket && connection.socket.readyState !== WebSocket.CLOSED) {
+      connection.socket.close();
+    }
   }
 
   /**
@@ -286,33 +475,74 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
   }
 
   /**
-   * Reconnect a disconnected session
+   * Schedule reconnection for a disconnected session
    */
-  private reconnectSession(sessionId: string): void {
+  private scheduleReconnect(sessionId: string): void {
     const connection = this.connections.get(sessionId);
     if (!connection) return;
+
+    // Don't reconnect if we're shutting down
+    if (this.isShuttingDown) {
+      console.log(`Not reconnecting session ${sessionId} - shutting down`);
+      return;
+    }
+
+    // Check circuit breaker state
+    if (!connection.circuitBreaker.shouldAllow()) {
+      const cbState = connection.circuitBreaker.getState();
+      console.warn(`[${sessionId}] Circuit breaker preventing reconnection. State: ${cbState.state}`);
+      this.emit('session:circuit-open', { sessionId, state: cbState });
+      
+      // Schedule retry when circuit might allow
+      if (cbState.nextRetryTime) {
+        const delay = cbState.nextRetryTime.getTime() - Date.now();
+        if (delay > 0) {
+          setTimeout(() => this.scheduleReconnect(sessionId), delay);
+        }
+      }
+      return;
+    }
 
     if (connection.reconnectAttempts >= this.options.reconnectionAttempts!) {
       console.error(`Max reconnection attempts reached for session ${sessionId}`);
       this.updateConnectionStatus(sessionId, 'error');
+      
+      // Record final failure in circuit breaker
+      connection.circuitBreaker.recordFailure();
+      
       this.emit('session:reconnect-failed', { sessionId });
+      // Clean up the failed session
+      this.closeSession(sessionId);
       return;
     }
 
     connection.reconnectAttempts++;
     this.updateConnectionStatus(sessionId, 'connecting');
+    this.emit('session:reconnecting', { sessionId, attempt: connection.reconnectAttempts });
 
-    const delay = this.options.reconnectionDelay! * Math.pow(2, connection.reconnectAttempts - 1);
+    // Use circuit breaker's backoff delay calculation
+    const delay = connection.circuitBreaker.getBackoffDelay(connection.reconnectAttempts);
+    console.log(`Scheduling reconnect for session ${sessionId} in ${delay}ms (attempt ${connection.reconnectAttempts})`);
     
-    const timer = setTimeout(() => {
-      if (!this.primarySocket || !this.primarySocket.connected) {
-        // Wait for primary socket to reconnect
-        this.reconnectSession(sessionId);
+    const timer = setTimeout(async () => {
+      this.reconnectTimers.delete(sessionId);
+      
+      // Check again if we should reconnect
+      if (this.isShuttingDown) {
+        console.log(`Cancelling reconnect for session ${sessionId} - shutting down`);
         return;
       }
-
-      this.primarySocket.emit('terminal:reconnect', { sessionId });
-      this.reconnectTimers.delete(sessionId);
+      
+      // Clean up old connection
+      this.cleanupConnection(sessionId);
+      
+      // Attempt reconnection
+      try {
+        await this.createWebSocketConnection(sessionId, connection.projectId, connection.type);
+      } catch (error) {
+        console.error(`Reconnection failed for session ${sessionId}:`, error);
+        this.scheduleReconnect(sessionId);
+      }
     }, delay);
 
     this.reconnectTimers.set(sessionId, timer);
@@ -325,6 +555,8 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
     const connection = this.connections.get(sessionId);
     if (!connection) return;
 
+    console.log(`Disconnecting UI for session ${sessionId} (keeping process alive)`);
+
     // Clear reconnect timer if exists
     const timer = this.reconnectTimers.get(sessionId);
     if (timer) {
@@ -332,22 +564,14 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
       this.reconnectTimers.delete(sessionId);
     }
 
-    // Mark as disconnected but keep connection record for background processing
-    connection.status = 'disconnected';
-
-    // Remove session-specific listeners for UI
-    if (this.primarySocket) {
-      this.primarySocket.off(`terminal:connected:${sessionId}`);
-      this.primarySocket.off(`terminal:data:${sessionId}`);
-      this.primarySocket.off(`terminal:error:${sessionId}`);
-      this.primarySocket.off(`terminal:closed:${sessionId}`);
-      this.primarySocket.off(`terminal:status:${sessionId}`);
-      
-      // Send UI disconnect message but keep session alive on server
-      if (this.primarySocket.connected) {
-        this.primarySocket.emit('terminal:ui-disconnect', { sessionId });
-      }
+    // Keep connection record for background processing but close WebSocket
+    // The standalone servers will keep the shell process alive
+    if (connection.socket && connection.socket.readyState !== WebSocket.CLOSED) {
+      connection.socket.close(1000, 'UI disconnect'); // Normal closure
     }
+    
+    connection.socket = null;
+    connection.status = 'disconnected';
 
     this.emit('session:disconnected', { sessionId });
   }
@@ -359,26 +583,10 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
     const connection = this.connections.get(sessionId);
     if (!connection) return;
 
-    // Clear reconnect timer if exists
-    const timer = this.reconnectTimers.get(sessionId);
-    if (timer) {
-      clearTimeout(timer);
-      this.reconnectTimers.delete(sessionId);
-    }
+    console.log(`Permanently closing session ${sessionId}`);
 
-    // Remove session-specific listeners
-    if (this.primarySocket) {
-      this.primarySocket.off(`terminal:connected:${sessionId}`);
-      this.primarySocket.off(`terminal:data:${sessionId}`);
-      this.primarySocket.off(`terminal:error:${sessionId}`);
-      this.primarySocket.off(`terminal:closed:${sessionId}`);
-      this.primarySocket.off(`terminal:status:${sessionId}`);
-      
-      // Send permanent close message
-      if (this.primarySocket.connected) {
-        this.primarySocket.emit('terminal:close', { sessionId });
-      }
-    }
+    // Clean up connection resources
+    this.cleanupConnection(sessionId);
 
     // Remove connection completely
     this.connections.delete(sessionId);
@@ -422,18 +630,21 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
     connectedSessions: number;
     disconnectedSessions: number;
     queuedMessages: number;
+    circuitBreakerStates: { [key: string]: CircuitBreakerState };
   } {
     let connectedSessions = 0;
     let disconnectedSessions = 0;
     let queuedMessages = 0;
+    const circuitBreakerStates: { [key: string]: CircuitBreakerState } = {};
 
-    for (const connection of this.connections.values()) {
+    for (const [sessionId, connection] of this.connections.entries()) {
       if (connection.status === 'connected') {
         connectedSessions++;
       } else if (connection.status === 'disconnected') {
         disconnectedSessions++;
       }
       queuedMessages += connection.messageQueue.length;
+      circuitBreakerStates[sessionId] = connection.circuitBreaker.getState();
     }
 
     return {
@@ -441,13 +652,28 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
       connectedSessions,
       disconnectedSessions,
       queuedMessages,
+      circuitBreakerStates,
     };
+  }
+
+  /**
+   * Reset circuit breaker for a specific session
+   */
+  resetCircuitBreaker(sessionId: string): void {
+    const connection = this.connections.get(sessionId);
+    if (connection) {
+      connection.circuitBreaker.reset();
+      console.log(`[${sessionId}] Circuit breaker reset`);
+      this.emit('session:circuit-reset', { sessionId });
+    }
   }
 
   /**
    * Cleanup and disconnect all sessions
    */
   destroy(): void {
+    this.isShuttingDown = true;
+    
     // Clear all reconnect timers
     for (const timer of this.reconnectTimers.values()) {
       clearTimeout(timer);
@@ -459,12 +685,6 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
       this.disconnectSession(sessionId);
     }
 
-    // Disconnect primary socket
-    if (this.primarySocket) {
-      this.primarySocket.disconnect();
-      this.primarySocket = null;
-    }
-
     this.removeAllListeners();
   }
 
@@ -472,6 +692,8 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
    * Force close all sessions (for shutdown)
    */
   forceCloseAllSessions(): void {
+    this.isShuttingDown = true;
+    
     // Clear all reconnect timers
     for (const timer of this.reconnectTimers.values()) {
       clearTimeout(timer);
@@ -481,12 +703,6 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
     // Permanently close all sessions
     for (const sessionId of this.connections.keys()) {
       this.closeSession(sessionId);
-    }
-
-    // Disconnect primary socket
-    if (this.primarySocket) {
-      this.primarySocket.disconnect();
-      this.primarySocket = null;
     }
 
     this.removeAllListeners();

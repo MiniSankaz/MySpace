@@ -24,6 +24,7 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
     layout,
     preferences,
     connectionStatus,
+    sessionMetadata,
     addSession,
     removeSession,
     setActiveTab,
@@ -82,8 +83,8 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
 
     checkBackgroundActivity();
     
-    // Check every 2 seconds for background activity
-    const interval = setInterval(checkBackgroundActivity, 2000);
+    // Check every 500ms for more responsive background activity detection
+    const interval = setInterval(checkBackgroundActivity, 500);
     return () => clearInterval(interval);
   }, [sessions, activeTab]);
 
@@ -272,6 +273,9 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
                   }}
                   connectionStatus={connectionStatus}
                   backgroundActivity={backgroundActivity}
+                  hasNewOutput={Object.fromEntries(
+                    sessions.system.map(s => [s.id, sessionMetadata[s.id]?.hasNewOutput || false])
+                  )}
                 />
               </div>
               <div className="flex items-center space-x-2">

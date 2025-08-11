@@ -1,0 +1,18 @@
+{
+  "passed": [
+    "SystemTerminal-Connection",
+    "SystemTerminal-Commands",
+    "ClaudeTerminal-Connection",
+    "ClaudeTerminal-Initialization",
+    "Session-Persistence",
+    "Performance-Metrics"
+  ],
+  "failed": [
+    "API-Health",
+    "CircuitBreaker-Protection"
+  ],
+  "startTime": 1754912043930,
+  "passRate": "75.0",
+  "duration": "18.50",
+  "timestamp": "2025-08-11T11:34:22.428Z"
+}

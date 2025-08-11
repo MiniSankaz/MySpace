@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
+import { TerminalWebSocketMultiplexer } from '../../services/terminal-websocket-multiplexer';
+import { useTerminalStore } from '../../stores/terminal.store';
+import { SessionValidator } from '../../types/terminal.types';
 
 interface XTermViewProps {
   sessionId: string;
@@ -13,6 +16,9 @@ interface XTermViewProps {
   type: 'system' | 'claude';
   onConnectionChange?: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
 }
+
+// Global multiplexer instance for all terminals
+let globalMultiplexer: TerminalWebSocketMultiplexer | null = null;
 
 const XTermView: React.FC<XTermViewProps> = ({
   sessionId,
@@ -23,17 +29,83 @@ const XTermView: React.FC<XTermViewProps> = ({
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
-  const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const scrollPositionRef = useRef<number>(0);
+  const multiplexerRef = useRef<TerminalWebSocketMultiplexer | null>(null);
+  
+  // Get store actions for buffer management
+  const { sessionMetadata, addToOutputBuffer, clearOutputBuffer, markOutputAsRead, activeTabs } = useTerminalStore();
+
+  // Initialize multiplexer
+  const getMultiplexer = useCallback(() => {
+    if (!globalMultiplexer) {
+      const token = localStorage.getItem('accessToken');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = '127.0.0.1:4001';
+      
+      globalMultiplexer = new TerminalWebSocketMultiplexer({
+        url: `${protocol}//${wsHost}`,
+        auth: { token },
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
+      
+      // Global multiplexer event handlers
+      globalMultiplexer.on('primary:connected', () => {
+        console.log('Terminal multiplexer primary connection established');
+      });
+      
+      globalMultiplexer.on('primary:disconnected', (reason) => {
+        console.log('Terminal multiplexer primary connection lost:', reason);
+      });
+    }
+    return globalMultiplexer;
+  }, []);
+
+  // Flush buffered output when tab becomes active
+  useEffect(() => {
+    const isActiveTab = activeTabs[projectId] && 
+      ((type === 'system' && activeTabs[projectId].system === sessionId) ||
+       (type === 'claude' && activeTabs[projectId].claude === sessionId));
+    
+    if (isActiveTab && terminal) {
+      const metadata = sessionMetadata[sessionId];
+      if (metadata?.outputBuffer && metadata.outputBuffer.length > 0) {
+        // Flush buffered output to terminal
+        metadata.outputBuffer.forEach(data => {
+          terminal.write(data);
+        });
+        
+        // Clear buffer and mark as read
+        clearOutputBuffer(sessionId);
+        markOutputAsRead(sessionId);
+        
+        // Scroll to bottom after flushing
+        if (!isUserScrolledUp) {
+          terminal.scrollToBottom();
+        }
+      }
+    }
+  }, [activeTabs, projectId, sessionId, type, terminal, sessionMetadata, clearOutputBuffer, markOutputAsRead, isUserScrolledUp]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Use stable session ID based on provided sessionId and projectId
-    const uniqueSessionId = `${sessionId}_${projectId}`;
+    // Validate and standardize session ID format
+    // The session ID should be in format: session_{timestamp}_{random}
+    // This prevents the session ID format mismatch that causes reconnection loops
+    let standardSessionId = sessionId;
+    if (!SessionValidator.isValidSessionId(sessionId)) {
+      console.warn(`Non-standard session ID format detected: ${sessionId}`);
+      standardSessionId = SessionValidator.generateSessionId();
+      console.log(`Generated new standard session ID: ${standardSessionId}`);
+    }
+    
+    // Get or create multiplexer
+    const multiplexer = getMultiplexer();
+    multiplexerRef.current = multiplexer;
 
     // Create xterm.js instance
     const term = new Terminal({
@@ -121,94 +193,92 @@ const XTermView: React.FC<XTermViewProps> = ({
       }
     }, 100);
 
-    // Connect to WebSocket
-    const token = localStorage.getItem('accessToken');
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = '127.0.0.1:4001';
-    
-    const params = new URLSearchParams({
-      projectId,
-      token: token || '',
-      sessionId: uniqueSessionId,
-      path: projectPath,
-    });
-
-    const wsUrl = `${protocol}//${wsHost}/?${params.toString()}`;
-    console.log('Connecting to terminal WebSocket:', wsUrl);
-    
-    const websocket = new WebSocket(wsUrl);
-    
-    websocket.onopen = () => {
-      console.log('Terminal WebSocket connected');
-      setIsConnected(true);
-      onConnectionChange?.('connected');
-      term.write('\r\n\x1b[32m● Terminal Connected\x1b[0m\r\n');
-    };
-
-    websocket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        
-        switch (message.type) {
-          case 'connected':
-            console.log('Terminal session started:', message.sessionId);
-            term.write(`Working directory: ${message.workingDir}\r\n`);
-            break;
-            
-          case 'stream':
-            // Stream output directly to terminal
-            term.write(message.data);
-            
-            // Auto-scroll to bottom only if user hasn't scrolled up
-            if (!isUserScrolledUp) {
-              term.scrollToBottom();
-            }
-            break;
-            
-          case 'exit':
-            term.write(`\r\n\x1b[33m[Process exited with code ${message.code}]\x1b[0m\r\n`);
-            break;
-            
-          case 'error':
-            term.write(`\r\n\x1b[31mError: ${message.message}\x1b[0m\r\n`);
-            break;
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+    // Setup multiplexer event handlers for this session
+    const handleSessionConnected = ({ sessionId: connectedSessionId }: any) => {
+      if (connectedSessionId === standardSessionId) {
+        console.log('Terminal session connected:', connectedSessionId);
+        setIsConnected(true);
+        onConnectionChange?.('connected');
+        term.write('\r\n\x1b[32m● Terminal Connected (Multiplexed)\x1b[0m\r\n');
       }
     };
 
-    websocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      term.write('\r\n\x1b[31mWebSocket connection error\x1b[0m\r\n');
+    const handleSessionData = ({ sessionId: dataSessionId, data }: any) => {
+      if (dataSessionId === standardSessionId) {
+        // Check if this is the active tab
+        const isActiveTab = activeTabs[projectId] && 
+          ((type === 'system' && activeTabs[projectId].system === sessionId) ||
+           (type === 'claude' && activeTabs[projectId].claude === sessionId));
+        
+        if (isActiveTab) {
+          // Stream output directly to terminal for active tab
+          term.write(data);
+          
+          // Auto-scroll to bottom only if user hasn't scrolled up
+          if (!isUserScrolledUp) {
+            term.scrollToBottom();
+          }
+        } else {
+          // Buffer output for background tabs
+          addToOutputBuffer(sessionId, data);
+        }
+      }
     };
 
-    websocket.onclose = () => {
-      console.log('WebSocket closed');
-      setIsConnected(false);
-      onConnectionChange?.('disconnected');
-      term.write('\r\n\x1b[31m○ Disconnected\x1b[0m\r\n');
+    const handleSessionError = ({ sessionId: errorSessionId, error }: any) => {
+      if (errorSessionId === standardSessionId) {
+        console.error('Terminal session error:', error);
+        term.write(`\r\n\x1b[31mError: ${error.message || error}\x1b[0m\r\n`);
+      }
     };
+
+    const handleSessionDisconnected = ({ sessionId: disconnectedSessionId }: any) => {
+      if (disconnectedSessionId === standardSessionId) {
+        console.log('Terminal session disconnected:', disconnectedSessionId);
+        setIsConnected(false);
+        onConnectionChange?.('disconnected');
+        term.write('\r\n\x1b[31m○ Disconnected\x1b[0m\r\n');
+      }
+    };
+
+    const handleSessionClosed = ({ sessionId: closedSessionId }: any) => {
+      if (closedSessionId === standardSessionId) {
+        console.log('Terminal session closed:', closedSessionId);
+        setIsConnected(false);
+        onConnectionChange?.('disconnected');
+        term.write('\r\n\x1b[33m[Session closed]\x1b[0m\r\n');
+      }
+    };
+
+    // Add event listeners
+    multiplexer.on('session:connected', handleSessionConnected);
+    multiplexer.on('session:data', handleSessionData);
+    multiplexer.on('session:error', handleSessionError);
+    multiplexer.on('session:disconnected', handleSessionDisconnected);
+    multiplexer.on('session:closed', handleSessionClosed);
+
+    // Connect to session
+    multiplexer.connectSession(standardSessionId, projectId, type)
+      .then(() => {
+        console.log(`Terminal session ${standardSessionId} connection initiated`);
+      })
+      .catch((error) => {
+        console.error('Failed to connect terminal session:', error);
+        term.write(`\r\n\x1b[31mFailed to connect: ${error.message}\x1b[0m\r\n`);
+      });
 
     // Handle terminal input
     term.onData((data: string) => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        // Send raw input to WebSocket
-        websocket.send(JSON.stringify({
-          type: 'input',
-          data: data
-        }));
+      if (multiplexer && isConnected) {
+        // Send input through multiplexer
+        multiplexer.sendInput(standardSessionId, data);
       }
     });
 
     // Handle terminal resize
     term.onResize((size: { cols: number; rows: number }) => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        websocket.send(JSON.stringify({
-          type: 'resize',
-          cols: size.cols,
-          rows: size.rows
-        }));
+      if (multiplexer && isConnected) {
+        multiplexer.resizeSession(standardSessionId, size.cols, size.rows);
       }
     });
 
@@ -237,7 +307,6 @@ const XTermView: React.FC<XTermViewProps> = ({
     window.addEventListener('resize', handleResize);
 
     setTerminal(term);
-    setWs(websocket);
 
     // Cleanup
     return () => {
@@ -246,7 +315,19 @@ const XTermView: React.FC<XTermViewProps> = ({
         term.element.removeEventListener('scroll', handleScroll);
       }
       observer.disconnect();
-      websocket.close();
+      
+      // Remove event listeners
+      if (multiplexer) {
+        multiplexer.off('session:connected', handleSessionConnected);
+        multiplexer.off('session:data', handleSessionData);
+        multiplexer.off('session:error', handleSessionError);
+        multiplexer.off('session:disconnected', handleSessionDisconnected);
+        multiplexer.off('session:closed', handleSessionClosed);
+        
+        // Disconnect session (but keep process alive for background)
+        multiplexer.disconnectSession(standardSessionId);
+      }
+      
       term.dispose();
     };
   }, [projectId, sessionId, projectPath]);
@@ -266,10 +347,13 @@ const XTermView: React.FC<XTermViewProps> = ({
   };
 
   const handleRestart = () => {
-    if (ws) {
-      ws.close();
-      // Reload the component
-      window.location.reload();
+    if (multiplexerRef.current && sessionId) {
+      const standardSessionId = SessionValidator.isValidSessionId(sessionId) ? sessionId : SessionValidator.generateSessionId();
+      // Close and reconnect session
+      multiplexerRef.current.closeSession(standardSessionId);
+      setTimeout(() => {
+        multiplexerRef.current?.connectSession(standardSessionId, projectId, type);
+      }, 1000);
     }
   };
 

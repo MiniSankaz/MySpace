@@ -49,13 +49,25 @@ class TerminalWebSocketServer {
     const now = Date.now();
     const maxAge = 30 * 60 * 1000; // 30 minutes
     
-    for (const [sessionId, session] of this.sessions) {
+    for (const [sessionKey, session] of this.sessions) {
       if (!session.ws || session.ws.readyState !== 1) { // Not OPEN
-        console.log(`Cleaning up disconnected session: ${sessionId}`);
-        if (session.process) {
-          session.process.kill();
+        // Check if session has been disconnected for too long
+        const disconnectedTime = Date.now() - (session.lastDisconnectTime || Date.now());
+        
+        // Keep sessions alive for 30 minutes for reconnection
+        if (disconnectedTime > maxAge) {
+          console.log(`Cleaning up long-disconnected session: ${sessionKey}`);
+          if (session.process) {
+            session.process.kill();
+          }
+          this.sessions.delete(sessionKey);
+        } else if (!session.lastDisconnectTime) {
+          // Mark disconnection time
+          session.lastDisconnectTime = Date.now();
         }
-        this.sessions.delete(sessionId);
+      } else {
+        // Session is connected, clear disconnect time
+        session.lastDisconnectTime = null;
       }
     }
   }
@@ -67,8 +79,12 @@ class TerminalWebSocketServer {
     try {
       const url = new URL(request.url, `http://localhost:${this.port}`);
       const projectId = url.searchParams.get('projectId');
-      const sessionId = url.searchParams.get('sessionId') || `session_${Date.now()}`;
+      let rawSessionId = url.searchParams.get('sessionId') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
       let workingDir = url.searchParams.get('path');
+      
+      // Parse session ID to handle both legacy and new formats
+      let sessionId = this.parseSessionId(rawSessionId, projectId);
+      const sessionKey = this.getSessionKey(sessionId, projectId);
       
       console.log('Connection params:', { projectId, sessionId, workingDir });
       
@@ -101,12 +117,12 @@ class TerminalWebSocketServer {
 
       console.log(`Starting terminal session in: ${workingDir}`);
 
-      // Check if session exists
-      let session = this.sessions.get(sessionId);
+      // Check if session exists using composite key
+      let session = this.sessions.get(sessionKey);
       
       // Reuse existing session if it exists and is still alive
       if (session && session.process && !session.process.killed) {
-        console.log(`Reusing existing session: ${sessionId}`);
+        console.log(`Reusing existing session: ${sessionKey} (ID: ${sessionId})`);
         // Update WebSocket connection
         session.ws = ws;
         
@@ -119,8 +135,8 @@ class TerminalWebSocketServer {
         }
       } else if (session) {
         // Clean up dead session
-        console.log(`Session ${sessionId} exists but process is dead. Creating new session.`);
-        this.sessions.delete(sessionId);
+        console.log(`Session ${sessionKey} exists but process is dead. Creating new session.`);
+        this.sessions.delete(sessionKey);
         session = null;
       }
       
@@ -209,7 +225,7 @@ class TerminalWebSocketServer {
           currentCommand: '',
         };
         
-        this.sessions.set(sessionId, session);
+        this.sessions.set(sessionKey, session);
         
         // Create database session for logging
         if (this.loggingService && projectId) {
@@ -297,7 +313,7 @@ class TerminalWebSocketServer {
             }));
             session.ws.close();
           }
-          this.sessions.delete(sessionId);
+          this.sessions.delete(sessionKey);
         });
 
         // Send initial connection success
@@ -318,7 +334,7 @@ class TerminalWebSocketServer {
         }
       } else {
         // Reconnect to existing session
-        console.log(`Reconnecting to session: ${sessionId}`);
+        console.log(`Reconnecting to session: ${sessionKey} (ID: ${sessionId})`);
         session.ws = ws;
         
         // Send reconnection success with history
@@ -424,18 +440,47 @@ class TerminalWebSocketServer {
       ws.on('close', (code, reason) => {
         console.log('Terminal WebSocket closed:', code, reason?.toString());
         
-        // End logging session
-        if (this.loggingService && session && session.dbSessionId) {
-          this.loggingService.endSession(session.dbSessionId).catch(err => {
-            console.error('Failed to end DB session on close:', err);
-          });
-        }
+        // Check close code to determine if we should keep the session alive
+        // 1000 = Normal closure, 1001 = Going away (page refresh/navigation)
+        // 1006 = Abnormal closure (network failure, browser crash)
+        // 4000-4999 = Application-specific codes
+        const isCleanClose = code === 1000 || code === 1001;
+        const isCircuitBreakerClose = code >= 4000 && code <= 4099;
         
-        // DON'T kill process on WebSocket close - keep session alive for reconnection
-        // Only clean up the WebSocket connection
-        if (session) {
-          session.ws = null;
-          console.log(`WebSocket disconnected for session ${session.id}, keeping process alive`);
+        if (isCleanClose) {
+          // Clean close - end the session properly
+          console.log(`Clean close for session ${sessionKey}, ending session`);
+          
+          // End logging session
+          if (this.loggingService && session && session.dbSessionId) {
+            this.loggingService.endSession(session.dbSessionId).catch(err => {
+              console.error('Failed to end DB session on close:', err);
+            });
+          }
+          
+          // Kill the process on clean close
+          if (session && session.process && !session.process.killed) {
+            session.process.kill();
+          }
+          this.sessions.delete(sessionKey);
+        } else if (isCircuitBreakerClose) {
+          // Circuit breaker triggered - log but keep session for recovery
+          console.warn(`Circuit breaker close (code ${code}) for session ${sessionKey}, keeping session for recovery`);
+          
+          // Track circuit breaker state
+          if (session) {
+            session.ws = null;
+            session.circuitBreakerTriggered = true;
+            session.lastCircuitBreakerTime = Date.now();
+          }
+        } else {
+          // Unexpected close - keep session alive for potential reconnection
+          console.log(`Unexpected close (code ${code}) for session ${sessionKey}, keeping process alive for reconnection`);
+          
+          // Only clean up the WebSocket connection, keep session alive
+          if (session) {
+            session.ws = null;
+          }
         }
       });
 
@@ -474,8 +519,42 @@ class TerminalWebSocketServer {
     return controlChars[key.toLowerCase()];
   }
 
-  closeSession(sessionId) {
-    const session = this.sessions.get(sessionId);
+  parseSessionId(rawId, projectId) {
+    // Handle different session ID formats
+    // New format: session_{timestamp}_{random}
+    // Legacy format with project: {sessionId}_{projectId}
+    // Legacy format simple: {sessionId}
+    
+    if (!rawId) {
+      return `session_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+    }
+    
+    // Check if it's already in new format
+    if (rawId.startsWith('session_') && rawId.split('_').length === 3) {
+      return rawId;
+    }
+    
+    // Check if it's legacy composite format
+    const parts = rawId.split('_');
+    if (parts.length > 1 && parts[parts.length - 1] === projectId) {
+      // Extract base session ID (everything except last part)
+      const baseId = parts.slice(0, -1).join('_');
+      console.log(`Migrating legacy composite session ID: ${rawId} -> ${baseId}`);
+      return baseId;
+    }
+    
+    // Return as-is for other formats
+    return rawId;
+  }
+  
+  getSessionKey(sessionId, projectId) {
+    // Use composite key for session storage
+    return projectId ? `${sessionId}:${projectId}` : sessionId;
+  }
+  
+  closeSession(sessionId, projectId) {
+    const sessionKey = this.getSessionKey(sessionId, projectId);
+    const session = this.sessions.get(sessionKey);
     if (session) {
       if (session.process && !session.process.killed) {
         session.process.kill();
@@ -483,16 +562,23 @@ class TerminalWebSocketServer {
       if (session.ws) {
         session.ws.close();
       }
-      this.sessions.delete(sessionId);
+      this.sessions.delete(sessionKey);
     }
   }
 
   closeAllSessions() {
     console.log('Closing all terminal sessions...');
     this.sessions.forEach((session, sessionId) => {
+      // End logging session first
+      if (this.loggingService && session.dbSessionId) {
+        this.loggingService.endSession(session.dbSessionId).catch(err => {
+          console.error(`Failed to end DB session ${session.dbSessionId}:`, err);
+        });
+      }
       this.closeSession(sessionId);
     });
     this.sessions.clear();
+    console.log('All terminal sessions closed');
   }
 }
 

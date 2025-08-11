@@ -14,6 +14,7 @@ interface TerminalTabsProps {
   maxTabs?: number;
   connectionStatus?: Record<string, 'connected' | 'disconnected' | 'reconnecting'>;
   backgroundActivity?: Record<string, boolean>; // New prop to track background activity
+  hasNewOutput?: Record<string, boolean>; // Track sessions with new output
 }
 
 const TerminalTabs: React.FC<TerminalTabsProps> = ({
@@ -26,6 +27,7 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
   maxTabs = 10,
   connectionStatus = {},
   backgroundActivity = {},
+  hasNewOutput = {},
 }) => {
   return (
     <div className="flex items-center space-x-1 flex-1 overflow-x-auto scrollbar-none">
@@ -49,10 +51,12 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
               <div className={`w-1.5 h-1.5 rounded-full ${
                 activeTab === session.id 
                   ? 'bg-green-400 animate-pulse' 
+                  : hasNewOutput[session.id]
+                  ? 'bg-yellow-400 animate-pulse'  // New output indicator
                   : connectionStatus[session.id] === 'connected'
                   ? 'bg-blue-400'
                   : connectionStatus[session.id] === 'reconnecting'
-                  ? 'bg-yellow-400 animate-pulse'
+                  ? 'bg-orange-400 animate-pulse'
                   : backgroundActivity[session.id]
                   ? 'bg-orange-400 animate-pulse'  // Background activity indicator
                   : 'bg-gray-500'
@@ -71,10 +75,12 @@ const TerminalTabs: React.FC<TerminalTabsProps> = ({
                   {session.tabName}
                 </span>
                 
-                {/* Background activity badge */}
-                {activeTab !== session.id && backgroundActivity[session.id] && (
-                  <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse" 
-                       title="Background activity detected" />
+                {/* Background activity or new output badge */}
+                {activeTab !== session.id && (backgroundActivity[session.id] || hasNewOutput[session.id]) && (
+                  <div className={`w-1 h-1 rounded-full animate-pulse ${
+                    hasNewOutput[session.id] ? 'bg-yellow-400' : 'bg-orange-400'
+                  }`}
+                       title={hasNewOutput[session.id] ? "New output available" : "Background activity detected"} />
                 )}
               </div>
               

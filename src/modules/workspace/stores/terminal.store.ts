@@ -48,6 +48,8 @@ export interface TerminalState {
     lastActivity: Date;
     commandCount: number;
     errorCount: number;
+    outputBuffer?: string[]; // Buffer for background session output
+    hasNewOutput?: boolean; // Flag for new output in background
   }>;
 }
 
@@ -74,6 +76,11 @@ export interface TerminalActions {
   
   // Session metadata
   updateMetadata: (sessionId: string, metadata: Partial<TerminalState['sessionMetadata'][string]>) => void;
+  
+  // Output buffer management
+  addToOutputBuffer: (sessionId: string, data: string) => void;
+  clearOutputBuffer: (sessionId: string) => void;
+  markOutputAsRead: (sessionId: string) => void;
   
   // Bulk operations
   clearProjectSessions: (projectId: string) => void;
@@ -308,6 +315,48 @@ export const useTerminalStore = create<TerminalState & TerminalActions>()(
               [sessionId]: {
                 ...state.sessionMetadata[sessionId],
                 ...metadata,
+              },
+            },
+          }));
+        },
+
+        addToOutputBuffer: (sessionId, data) => {
+          set((state) => ({
+            sessionMetadata: {
+              ...state.sessionMetadata,
+              [sessionId]: {
+                ...state.sessionMetadata[sessionId],
+                outputBuffer: [
+                  ...(state.sessionMetadata[sessionId]?.outputBuffer || []),
+                  data
+                ].slice(-500), // Keep last 500 entries
+                hasNewOutput: true,
+                lastActivity: new Date(),
+              },
+            },
+          }));
+        },
+
+        clearOutputBuffer: (sessionId) => {
+          set((state) => ({
+            sessionMetadata: {
+              ...state.sessionMetadata,
+              [sessionId]: {
+                ...state.sessionMetadata[sessionId],
+                outputBuffer: [],
+                hasNewOutput: false,
+              },
+            },
+          }));
+        },
+
+        markOutputAsRead: (sessionId) => {
+          set((state) => ({
+            sessionMetadata: {
+              ...state.sessionMetadata,
+              [sessionId]: {
+                ...state.sessionMetadata[sessionId],
+                hasNewOutput: false,
               },
             },
           }));

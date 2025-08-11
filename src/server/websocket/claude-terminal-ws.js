@@ -18,6 +18,58 @@ try {
   workspaceTerminalLogger = null;
 }
 
+// Import Knowledge Base integration
+let terminalKBIntegration;
+try {
+  const kbModulePath = path.join(__dirname, '../..', 'modules/knowledge-base/services/terminal-integration.service.ts');
+  if (fs.existsSync(kbModulePath.replace('.ts', '.js'))) {
+    const kbModule = require(kbModulePath.replace('.ts', '.js'));
+    terminalKBIntegration = kbModule.terminalKBIntegration || kbModule.default;
+    console.log('Claude Terminal: Knowledge Base integration loaded successfully');
+  } else {
+    console.log('Claude Terminal: Knowledge Base integration not compiled yet (will work after build)');
+    terminalKBIntegration = null;
+  }
+} catch (error) {
+  console.warn('Claude Terminal: Knowledge Base integration not available (optional):', error.message);
+  terminalKBIntegration = null;
+}
+
+// Helper function to format KB suggestions
+function formatKBSuggestions(suggestions) {
+  const lines = [
+    '\x1b[36m╔════════════════════════════════════════════════════════════╗\x1b[0m',
+    '\x1b[36m║  💡 Knowledge Base: Found similar issues with solutions    ║\x1b[0m',
+    '\x1b[36m╚════════════════════════════════════════════════════════════╝\x1b[0m',
+    ''
+  ];
+
+  if (suggestions.issues && suggestions.issues.length > 0) {
+    const issue = suggestions.issues[0];
+    lines.push(`\x1b[33m📋 Issue:\x1b[0m ${issue.title}`);
+    lines.push(`\x1b[33m🔍 Status:\x1b[0m ${issue.status} | \x1b[33mSeverity:\x1b[0m ${issue.severity}`);
+    lines.push('');
+  }
+
+  if (suggestions.solutions && suggestions.solutions.length > 0) {
+    lines.push('\x1b[32m✅ Suggested Solutions:\x1b[0m');
+    suggestions.solutions.slice(0, 3).forEach((solution, index) => {
+      lines.push(`${index + 1}. ${solution.title}`);
+      if (solution.effectivenessScore) {
+        lines.push(`   \x1b[35mEffectiveness: ${solution.effectivenessScore}%\x1b[0m`);
+      }
+    });
+  }
+
+  if (suggestions.confidence) {
+    lines.push('');
+    lines.push(`\x1b[33m🎯 Confidence:\x1b[0m ${suggestions.confidence}%`);
+  }
+
+  lines.push('');
+  return lines.join('\r\n');
+}
+
 class ClaudeTerminalWebSocketServer {
   constructor(port = 4002) {
     this.port = port;
@@ -48,13 +100,25 @@ class ClaudeTerminalWebSocketServer {
     const now = Date.now();
     const maxAge = 30 * 60 * 1000; // 30 minutes
     
-    for (const [sessionId, session] of this.sessions) {
+    for (const [sessionKey, session] of this.sessions) {
       if (!session.ws || session.ws.readyState !== 1) { // Not OPEN
-        console.log(`Cleaning up disconnected Claude session: ${sessionId}`);
-        if (session.process) {
-          session.process.kill();
+        // Check if session has been disconnected for too long
+        const disconnectedTime = Date.now() - (session.lastDisconnectTime || Date.now());
+        
+        // Keep sessions alive for 30 minutes for reconnection
+        if (disconnectedTime > maxAge) {
+          console.log(`Cleaning up long-disconnected Claude session: ${sessionKey}`);
+          if (session.process) {
+            session.process.kill();
+          }
+          this.sessions.delete(sessionKey);
+        } else if (!session.lastDisconnectTime) {
+          // Mark disconnection time
+          session.lastDisconnectTime = Date.now();
         }
-        this.sessions.delete(sessionId);
+      } else {
+        // Session is connected, clear disconnect time
+        session.lastDisconnectTime = null;
       }
     }
   }
@@ -67,10 +131,14 @@ class ClaudeTerminalWebSocketServer {
       const url = new URL(request.url, `http://localhost:${this.port}`);
       const projectId = url.searchParams.get('projectId') || 'default';
       const userId = url.searchParams.get('userId') || 'anonymous';
-      const sessionId = url.searchParams.get('sessionId') || `claude_session_${Date.now()}`;
+      let rawSessionId = url.searchParams.get('sessionId') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
       let workingDir = url.searchParams.get('path');
       
-      console.log('Connection params:', { projectId, userId, sessionId, workingDir });
+      // Parse session ID to handle both legacy and new formats
+      let sessionId = this.parseSessionId(rawSessionId, projectId);
+      const sessionKey = this.getSessionKey(sessionId, projectId);
+      
+      console.log('Connection params:', { projectId, userId, sessionId: sessionKey, workingDir });
       
       // Decode path if provided
       if (workingDir) {
@@ -97,16 +165,16 @@ class ClaudeTerminalWebSocketServer {
       console.log(`Starting Claude terminal session in: ${workingDir}`);
 
       // Check if session exists and has matching working directory
-      let session = this.sessions.get(sessionId);
+      let session = this.sessions.get(sessionKey);
       
       // Validate existing session
       if (session && session.workingDir !== workingDir) {
-        console.log(`Session ${sessionId} exists but with different path. Creating new session.`);
+        console.log(`Session ${sessionKey} exists but with different path. Creating new session.`);
         // Remove old session if path doesn't match
         if (session.process) {
           session.process.kill();
         }
-        this.sessions.delete(sessionId);
+        this.sessions.delete(sessionKey);
         session = null;
       }
       
@@ -181,9 +249,9 @@ class ClaudeTerminalWebSocketServer {
           loggingSessionId: null
         };
         
-        this.sessions.set(sessionId, session);
+        this.sessions.set(sessionKey, session);
         
-        // Create logging session if service is available
+        // Create logging session if service is available (with graceful degradation)
         if (workspaceTerminalLogger) {
           try {
             const loggingSession = await workspaceTerminalLogger.createSession({
@@ -197,7 +265,26 @@ class ClaudeTerminalWebSocketServer {
             session.loggingSessionId = loggingSession.id;
             console.log(`Created logging session: ${loggingSession.id} for Claude terminal`);
           } catch (error) {
-            console.error('Failed to create logging session:', error);
+            console.warn('Logging session creation failed, continuing without logging:', error.message);
+            // Continue without logging - this is not critical for terminal functionality
+            session.loggingSessionId = null;
+          }
+        }
+
+        // Register session with Knowledge Base integration
+        if (terminalKBIntegration) {
+          try {
+            await terminalKBIntegration.registerSession({
+              sessionId: sessionId,
+              projectId: projectId,
+              userId: userId || 'anonymous',
+              type: 'claude',
+              workingDir: workingDir,
+              environment: projectEnv
+            });
+            console.log(`Registered Claude terminal with Knowledge Base: ${sessionId}`);
+          } catch (error) {
+            console.error('Failed to register KB session:', error);
           }
         }
 
@@ -210,6 +297,12 @@ class ClaudeTerminalWebSocketServer {
               data: data,
             }));
           }
+          
+          // Accumulate output for command result
+          if (session.commandOutput === undefined) {
+            session.commandOutput = '';
+          }
+          session.commandOutput += data;
           
           // Log output to database if logging is available
           if (workspaceTerminalLogger && session.loggingSessionId) {
@@ -231,10 +324,83 @@ class ClaudeTerminalWebSocketServer {
             }
           }
           
-          // Check if Claude is ready
-          if (!session.isClaudeReady && data.includes('Claude>')) {
-            session.isClaudeReady = true;
-            console.log('Claude CLI is ready');
+          // Process output for Knowledge Base after command completes
+          if (terminalKBIntegration && session.lastCommand) {
+            // Detect command completion (look for prompt)
+            if (data.includes('Claude>') || data.includes('$') || data.includes('#') || data.includes('>')) {
+              const command = session.lastCommand;
+              const output = session.commandOutput || '';
+              
+              // Clean ANSI codes for KB processing
+              const cleanOutput = output.replace(/\x1b\[[0-9;]*m/g, '');
+              
+              // Determine exit code (0 if no error patterns detected)
+              const hasError = cleanOutput.match(/error|failed|exception|not found|denied/i);
+              const exitCode = hasError ? 1 : 0;
+              
+              // Process terminal output in KB
+              try {
+                await terminalKBIntegration.processTerminalOutput(
+                  sessionId,
+                  command,
+                  cleanOutput,
+                  exitCode
+                );
+                
+                // If error detected, get suggestions
+                if (hasError) {
+                  const suggestions = await terminalKBIntegration.getSuggestionsForError(
+                    sessionId,
+                    cleanOutput
+                  );
+                  
+                  if (suggestions && suggestions.hasSuggestions) {
+                    // Send suggestions to terminal
+                    const message = formatKBSuggestions(suggestions);
+                    shellProcess.write(`\r\n${message}\r\n`);
+                  }
+                }
+              } catch (error) {
+                console.error('Failed to process terminal output in KB:', error);
+              }
+              
+              // Reset for next command
+              session.lastCommand = null;
+              session.commandOutput = '';
+            }
+          }
+          
+          // Enhanced Claude ready detection with multiple patterns
+          if (!session.isClaudeReady) {
+            // Check for various Claude CLI prompts and ready indicators
+            const readyPatterns = [
+              'Claude>', 
+              'claude>',
+              'Claude Code>',
+              'Welcome to Claude',
+              'claude code',
+              'Type your message',
+              'How can I help you',
+              'What would you like',
+              '>>>', // Python-style prompt
+              'Ready', // Generic ready message
+            ];
+            
+            const isReady = readyPatterns.some(pattern => data.toLowerCase().includes(pattern.toLowerCase()));
+            
+            if (isReady) {
+              session.isClaudeReady = true;
+              console.log('Claude CLI is ready (detected prompt)');
+              
+              // Send ready notification
+              if (session.ws && session.ws.readyState === ws.OPEN) {
+                session.ws.send(JSON.stringify({
+                  type: 'claude_ready',
+                  message: 'Claude CLI is now ready for commands',
+                  detectedPrompt: data.trim().slice(-50) // Send last 50 chars for debugging
+                }));
+              }
+            }
           }
           
           // Also buffer for history
@@ -260,6 +426,16 @@ class ClaudeTerminalWebSocketServer {
             }
           }
           
+          // Unregister from Knowledge Base
+          if (terminalKBIntegration) {
+            try {
+              await terminalKBIntegration.unregisterSession(sessionId);
+              console.log(`Unregistered KB session: ${sessionId}`);
+            } catch (error) {
+              console.error('Failed to unregister KB session:', error);
+            }
+          }
+          
           if (session.ws && session.ws.readyState === ws.OPEN) {
             session.ws.send(JSON.stringify({
               type: 'exit',
@@ -267,7 +443,7 @@ class ClaudeTerminalWebSocketServer {
             }));
             session.ws.close();
           }
-          this.sessions.delete(sessionId);
+          this.sessions.delete(sessionKey);
         });
 
         // Send initial connection success
@@ -283,16 +459,56 @@ class ClaudeTerminalWebSocketServer {
           shellProcess.write(envMessage);
         }
 
-        // รัน claude command อัตโนมัติ
-        setTimeout(() => {
-          console.log('Starting Claude CLI...');
-          shellProcess.write('\r\n\x1b[35m🤖 Starting Claude Code CLI...\x1b[0m\r\n');
-          shellProcess.write('claude\r');
-        }, 500); // รอให้ terminal พร้อมก่อนรัน claude
+        // Enhanced Claude CLI startup with better command handling
+        setTimeout(async () => {
+          console.log('Initializing Claude CLI...');
+          
+          try {
+            // Clear any initial output and show status
+            shellProcess.write('\r\n\x1b[36m╔════════════════════════════════════════╗\x1b[0m\r\n');
+            shellProcess.write('\x1b[36m║  🤖 Initializing Claude Code CLI...    ║\x1b[0m\r\n');
+            shellProcess.write('\x1b[36m╚════════════════════════════════════════╝\x1b[0m\r\n\r\n');
+            
+            // Start Claude CLI with proper command sequencing
+            setTimeout(() => {
+              console.log('Starting Claude CLI with enhanced startup sequence...');
+              
+              // First, clear the screen
+              shellProcess.write('clear\r');
+              
+              // Wait for clear to complete, then start Claude
+              setTimeout(() => {
+                shellProcess.write('claude\r');
+                
+                // Set up a more robust ready detection
+                let readyCheckInterval = setInterval(() => {
+                  if (session.isClaudeReady) {
+                    clearInterval(readyCheckInterval);
+                    console.log('Claude CLI is confirmed ready');
+                  }
+                }, 500);
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                  clearInterval(readyCheckInterval);
+                  if (!session.isClaudeReady) {
+                    console.warn('Claude CLI did not report ready state, but may still be functional');
+                    // Send a test command to verify
+                    shellProcess.write('\r\n');
+                  }
+                }, 10000);
+              }, 500);
+            }, 1000);
+            
+          } catch (error) {
+            console.error('Error during Claude CLI initialization:', error);
+            shellProcess.write('\r\n\x1b[31m❌ Error initializing Claude CLI. You can run "claude" manually.\x1b[0m\r\n');
+          }
+        }, 2000); // Give terminal time to fully initialize
 
       } else {
         // Reconnect to existing session
-        console.log(`Reconnecting to Claude session: ${sessionId}`);
+        console.log(`Reconnecting to Claude session: ${sessionKey} (ID: ${sessionId})`);
         session.ws = ws;
         
         // Send reconnection success with history
@@ -330,11 +546,18 @@ class ClaudeTerminalWebSocketServer {
                     if (data.data === '\r' || data.data === '\n') {
                       // Command execution - log the complete command
                       if (session.currentCommand.trim()) {
+                        const command = session.currentCommand.trim();
                         await workspaceTerminalLogger.logCommand({
                           sessionId: session.loggingSessionId,
-                          command: session.currentCommand.trim(),
+                          command: command,
                           workingDir: session.workingDir
                         });
+                        
+                        // Track command for Knowledge Base
+                        if (terminalKBIntegration) {
+                          session.lastCommand = command;
+                          session.commandStartTime = Date.now();
+                        }
                       }
                       session.currentCommand = '';
                     } else if (data.data === '\x7f' || data.data === '\b') {
@@ -402,18 +625,54 @@ class ClaudeTerminalWebSocketServer {
       ws.on('close', (code, reason) => {
         console.log('Claude Terminal WebSocket closed:', code, reason?.toString());
         
-        // End logging session if available
-        if (workspaceTerminalLogger && session && session.loggingSessionId) {
-          workspaceTerminalLogger.endSession(session.loggingSessionId).catch(err => {
-            console.error('Failed to end logging session on close:', err);
-          });
-        }
+        // Check close code to determine if we should keep the session alive
+        // 1000 = Normal closure, 1001 = Going away (page refresh/navigation)
+        // 1006 = Abnormal closure (network failure, browser crash)
+        // 4000-4999 = Application-specific codes
+        const isCleanClose = code === 1000 || code === 1001;
+        const isCircuitBreakerClose = code >= 4000 && code <= 4099;
         
-        // DON'T kill process on WebSocket close - keep session alive for reconnection
-        // Only clean up the WebSocket connection
-        if (session) {
-          session.ws = null;
-          console.log(`Claude WebSocket disconnected for session ${session.id}, keeping process alive`);
+        if (isCleanClose) {
+          // Clean close - end the session properly
+          console.log(`Clean close for Claude session ${sessionKey}, ending session`);
+          
+          // End logging session if available
+          if (workspaceTerminalLogger && session && session.loggingSessionId) {
+            workspaceTerminalLogger.endSession(session.loggingSessionId).catch(err => {
+              console.error('Failed to end logging session on close:', err);
+            });
+          }
+          
+          // Unregister from Knowledge Base
+          if (terminalKBIntegration) {
+            terminalKBIntegration.unregisterSession(sessionId).catch(err => {
+              console.error('Failed to unregister KB session on close:', err);
+            });
+          }
+          
+          // Kill the process on clean close
+          if (session && session.process && !session.process.killed) {
+            session.process.kill();
+          }
+          this.sessions.delete(sessionKey);
+        } else if (isCircuitBreakerClose) {
+          // Circuit breaker triggered - log but keep session for recovery
+          console.warn(`Circuit breaker close (code ${code}) for session ${sessionKey}, keeping session for recovery`);
+          
+          // Track circuit breaker state
+          if (session) {
+            session.ws = null;
+            session.circuitBreakerTriggered = true;
+            session.lastCircuitBreakerTime = Date.now();
+          }
+        } else {
+          // Unexpected close - keep session alive for potential reconnection
+          console.log(`Unexpected close (code ${code}) for Claude session ${sessionKey}, keeping process alive for reconnection`);
+          
+          // Only clean up the WebSocket connection, keep session alive
+          if (session) {
+            session.ws = null;
+          }
         }
       });
 
@@ -436,6 +695,39 @@ class ClaudeTerminalWebSocketServer {
     }
   }
 
+  parseSessionId(rawId, projectId) {
+    // Handle different session ID formats
+    // New format: session_{timestamp}_{random}
+    // Legacy format with project: {sessionId}_{projectId}
+    // Legacy format simple: {sessionId}
+    
+    if (!rawId) {
+      return `session_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+    }
+    
+    // Check if it's already in new format
+    if (rawId.startsWith('session_') && rawId.split('_').length === 3) {
+      return rawId;
+    }
+    
+    // Check if it's legacy composite format
+    const parts = rawId.split('_');
+    if (parts.length > 1 && parts[parts.length - 1] === projectId) {
+      // Extract base session ID (everything except last part)
+      const baseId = parts.slice(0, -1).join('_');
+      console.log(`Migrating legacy composite session ID: ${rawId} -> ${baseId}`);
+      return baseId;
+    }
+    
+    // Return as-is for other formats
+    return rawId;
+  }
+  
+  getSessionKey(sessionId, projectId) {
+    // Use composite key for session storage
+    return projectId ? `${sessionId}:${projectId}` : sessionId;
+  }
+
   getControlCharacter(key) {
     const controlChars = {
       'c': '\x03',     // Ctrl+C (SIGINT)
@@ -453,12 +745,29 @@ class ClaudeTerminalWebSocketServer {
   }
 
   cleanup() {
+    console.log('Cleaning up all Claude terminal sessions...');
     for (const [sessionId, session] of this.sessions) {
+      // End logging session if available
+      if (workspaceTerminalLogger && session.loggingSessionId) {
+        workspaceTerminalLogger.endSession(session.loggingSessionId).catch(err => {
+          console.error(`Failed to end logging session ${session.loggingSessionId}:`, err);
+        });
+      }
+      
+      // Unregister from Knowledge Base
+      if (terminalKBIntegration) {
+        terminalKBIntegration.unregisterSession(sessionId).catch(err => {
+          console.error(`Failed to unregister KB session ${sessionId}:`, err);
+        });
+      }
+      
+      // Kill the process
       if (session.process) {
         session.process.kill();
       }
     }
     this.sessions.clear();
+    console.log('All Claude terminal sessions cleaned up');
   }
 }
 

@@ -738,6 +738,13 @@ model User {
   WorkspaceTerminalCommands         WorkspaceTerminalCommand[]
   WorkspaceTerminalLogs             WorkspaceTerminalLog[]
   WorkspaceTerminalSessions         WorkspaceTerminalSession[]
+  // Knowledge Base Relations
+  KBIssuesCreated                   KBIssue[]                  @relation("KBIssueCreator")
+  KBIssuesAssigned                  KBIssue[]                  @relation("KBIssueAssignee")
+  KBSolutionsCreated                KBSolution[]               @relation("KBSolutionCreator")
+  KBSolutionFeedback                KBSolutionFeedback[]
+  KBIssueRelations                  KBIssueRelation[]
+  KBAttachments                     KBAttachment[]
 
   @@index([createdAt])
   @@index([email])
@@ -1659,4 +1666,186 @@ model GitConfigHistory {
   @@index([projectId])
   @@index([userId])
   @@index([timestamp])
+}
+
+// ==================== Knowledge Base Models ====================
+
+model KBIssue {
+  id                String              @id @default(uuid())
+  title             String
+  description       String
+  errorMessage      String?
+  stackTrace        String?
+  severity          String              @default("medium") // critical, high, medium, low, info
+  status            String              @default("open") // open, in_progress, resolved, closed, reopened
+  categoryId        String?
+  environment       String?
+  affectedComponents String[]
+  reproductionSteps String?
+  businessImpact    String?
+  createdBy         String
+  assignedTo        String?
+  resolvedAt        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relations
+  Category          KBCategory?         @relation(fields: [categoryId], references: [id])
+  Creator           User                @relation("KBIssueCreator", fields: [createdBy], references: [id])
+  Assignee          User?               @relation("KBIssueAssignee", fields: [assignedTo], references: [id])
+  Solutions         KBSolution[]
+  Tags              KBIssueTag[]
+  Relationships     KBIssueRelation[]   @relation("ParentIssue")
+  RelatedTo         KBIssueRelation[]   @relation("RelatedIssue")
+  Attachments       KBAttachment[]
+  SearchIndex       KBSearchIndex[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([categoryId])
+  @@index([createdBy])
+  @@index([assignedTo])
+  @@index([createdAt])
+}
+
+model KBSolution {
+  id                String              @id @default(uuid())
+  issueId           String
+  title             String
+  description       String
+  codeSnippet       String?
+  rootCause         String?
+  preventionSteps   String?
+  effectivenessScore Int               @default(0)
+  verified          Boolean             @default(false)
+  verificationCount Int                @default(0)
+  createdBy         String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  Issue             KBIssue             @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  Creator           User                @relation("KBSolutionCreator", fields: [createdBy], references: [id])
+  Feedback          KBSolutionFeedback[]
+  SearchIndex       KBSearchIndex[]
+
+  @@index([issueId])
+  @@index([createdBy])
+  @@index([effectivenessScore])
+}
+
+model KBCategory {
+  id                String              @id @default(uuid())
+  name              String              @unique
+  description       String?
+  parentId          String?
+  color             String?             // hex color code
+  icon              String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  Parent            KBCategory?         @relation("KBCategoryHierarchy", fields: [parentId], references: [id])
+  Children          KBCategory[]        @relation("KBCategoryHierarchy")
+  Issues            KBIssue[]
+
+  @@index([parentId])
+}
+
+model KBTag {
+  id                String              @id @default(uuid())
+  name              String              @unique
+  description       String?
+  color             String?             // hex color code
+  createdAt         DateTime            @default(now())
+
+  // Relations
+  Issues            KBIssueTag[]
+
+  @@index([name])
+}
+
+model KBIssueTag {
+  id                String              @id @default(uuid())
+  issueId           String
+  tagId             String
+
+  // Relations
+  Issue             KBIssue             @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  Tag               KBTag               @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, tagId])
+  @@index([issueId])
+  @@index([tagId])
+}
+
+model KBSolutionFeedback {
+  id                String              @id @default(uuid())
+  solutionId        String
+  userId            String
+  rating            Int                 // 1-5
+  comment           String?
+  resolvedIssue     Boolean
+  timeToResolve     Int?                // in minutes
+  createdAt         DateTime            @default(now())
+
+  // Relations
+  Solution          KBSolution          @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  User              User                @relation(fields: [userId], references: [id])
+
+  @@index([solutionId])
+  @@index([userId])
+  @@index([rating])
+}
+
+model KBIssueRelation {
+  id                String              @id @default(uuid())
+  parentIssueId     String
+  relatedIssueId    String
+  relationshipType  String              // duplicate, related, depends_on, blocks, caused_by
+  createdBy         String
+  createdAt         DateTime            @default(now())
+
+  // Relations
+  ParentIssue       KBIssue             @relation("ParentIssue", fields: [parentIssueId], references: [id], onDelete: Cascade)
+  RelatedIssue      KBIssue             @relation("RelatedIssue", fields: [relatedIssueId], references: [id], onDelete: Cascade)
+  Creator           User                @relation(fields: [createdBy], references: [id])
+
+  @@unique([parentIssueId, relatedIssueId, relationshipType])
+  @@index([parentIssueId])
+  @@index([relatedIssueId])
+}
+
+model KBAttachment {
+  id                String              @id @default(uuid())
+  issueId           String
+  filename          String
+  filePath          String
+  fileSize          Int
+  mimeType          String
+  uploadedBy        String
+  uploadedAt        DateTime            @default(now())
+
+  // Relations
+  Issue             KBIssue             @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  Uploader          User                @relation(fields: [uploadedBy], references: [id])
+
+  @@index([issueId])
+}
+
+model KBSearchIndex {
+  id                String              @id @default(uuid())
+  issueId           String?
+  solutionId        String?
+  contentVector     String?             // Will use for pgvector embedding later
+  contentText       String
+  lastIndexed       DateTime            @default(now())
+
+  // Relations
+  Issue             KBIssue?            @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  Solution          KBSolution?         @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+  @@index([solutionId])
+  @@index([lastIndexed])
 }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { terminalIntegration } from '@/modules/workspace/services/terminal-integration.service';
 import { terminalSessionManager } from '@/modules/workspace/services/terminal-session-manager';
-import { authClient } from '@/core/auth/auth-client';
-import prisma from '@/core/database/prisma';
+import { verifyAuth } from '@/middleware/auth';
+import { prisma } from '@/core/database/prisma';
 
 // GET /api/workspace/projects/[id]/terminals - Get all terminal sessions for a project
 export async function GET(
@@ -13,23 +13,29 @@ export async function GET(
     const { id } = await params;
     
     // Verify user is authenticated
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    const user = await verifyAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get sessions from manager (includes active sessions)
     const sessions = terminalSessionManager.getProjectSessions(id);
     
-    // Also get any inactive sessions from database
-    const dbSessions = await prisma.terminalSession.findMany({
-      where: {
-        projectId: id,
-        active: false,
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: 10, // Limit to recent 10 inactive sessions
-    });
+    // Also get any inactive sessions from database with error handling
+    let dbSessions = [];
+    try {
+      dbSessions = await prisma.terminalSession.findMany({
+        where: {
+          projectId: id,
+          active: false,
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 10, // Limit to recent 10 inactive sessions
+      });
+    } catch (error) {
+      console.error('Failed to fetch inactive sessions from database:', error);
+      // Continue with just the active sessions from memory
+    }
 
     // Combine and deduplicate
     const allSessions = [...sessions];
@@ -70,14 +76,13 @@ export async function POST(
     const { id: projectId } = await params;
     
     // Verify user is authenticated
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    const user = await verifyAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user info from auth
-    const user = await authClient.getCurrentUser(request);
-    const userId = user?.id;
+    // Get user info from auth (already verified above)
+    const userId = user.id;
 
     const body = await request.json();
     const { type, tabName, projectPath } = body;
@@ -124,8 +129,8 @@ export async function DELETE(
     const { id: projectId } = await params;
     
     // Verify user is authenticated
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    const user = await verifyAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

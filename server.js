@@ -79,16 +79,28 @@ app.prepare().then(() => {
     // Next.js will handle HMR WebSocket internally
     
     // Graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM signal received: closing servers');
-      if (terminalWS) terminalWS.closeAllSessions();
-      if (claudeTerminalWS) claudeTerminalWS.cleanup();
-      if (claudeWS) claudeWS.closeAllSessions();
+    const shutdownHandler = () => {
+      console.log('Shutdown signal received: closing servers');
+      if (terminalWS) {
+        console.log('Closing terminal WebSocket sessions...');
+        terminalWS.closeAllSessions();
+      }
+      if (claudeTerminalWS) {
+        console.log('Closing Claude terminal sessions...');
+        claudeTerminalWS.cleanup();
+      }
+      if (claudeWS) {
+        console.log('Closing Claude WebSocket sessions...');
+        claudeWS.closeAllSessions();
+      }
       server.close(() => {
         console.log('HTTP server closed');
         process.exit(0);
       });
-    });
+    };
+
+    process.on('SIGTERM', shutdownHandler);
+    process.on('SIGINT', shutdownHandler);  // Handle Ctrl+C
   } catch (error) {
     console.error('Failed to initialize WebSocket servers:', error.message);
   }

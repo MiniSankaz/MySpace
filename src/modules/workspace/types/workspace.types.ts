@@ -1,3 +1,6 @@
+// Re-export terminal types for convenience
+export * from './terminal.types';
+
 export interface Project {
   id: string;
   name: string;

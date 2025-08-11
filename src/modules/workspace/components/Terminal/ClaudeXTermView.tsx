@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
+import { TerminalWebSocketMultiplexer } from '../../services/terminal-websocket-multiplexer';
+import { useTerminalStore } from '../../stores/terminal.store';
+import { SessionValidator } from '../../types/terminal.types';
 
 interface ClaudeXTermViewProps {
   sessionId: string;
@@ -13,6 +16,9 @@ interface ClaudeXTermViewProps {
   type: 'claude';
   onConnectionChange?: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
 }
+
+// Global multiplexer instance for all Claude terminals
+let claudeMultiplexer: TerminalWebSocketMultiplexer | null = null;
 
 const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
   sessionId,
@@ -23,18 +29,58 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
-  const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isClaudeReady, setIsClaudeReady] = useState(false);
+  
+  // Get store actions for buffer management  
+  const { sessionMetadata, addToOutputBuffer, clearOutputBuffer, markOutputAsRead, activeTabs } = useTerminalStore();
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const scrollPositionRef = useRef<number>(0);
+  const multiplexerRef = useRef<TerminalWebSocketMultiplexer | null>(null);
+
+  // Initialize Claude multiplexer
+  const getClaudeMultiplexer = useCallback(() => {
+    if (!claudeMultiplexer) {
+      const token = localStorage.getItem('accessToken');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = '127.0.0.1:4002'; // Claude terminal port
+      
+      claudeMultiplexer = new TerminalWebSocketMultiplexer({
+        url: `${protocol}//${wsHost}`,
+        auth: { token },
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
+      
+      // Global multiplexer event handlers
+      claudeMultiplexer.on('primary:connected', () => {
+        console.log('Claude multiplexer primary connection established');
+      });
+      
+      claudeMultiplexer.on('primary:disconnected', (reason) => {
+        console.log('Claude multiplexer primary connection lost:', reason);
+      });
+    }
+    return claudeMultiplexer;
+  }, []);
 
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Use stable session ID for Claude terminal based on provided sessionId and projectId
-    const uniqueSessionId = `${sessionId}_${projectId}`;
+    // Validate and standardize session ID format for Claude terminal
+    // The session ID should be in format: session_{timestamp}_{random}
+    // This prevents the session ID format mismatch that causes reconnection loops
+    let standardSessionId = sessionId;
+    if (!SessionValidator.isValidSessionId(sessionId)) {
+      console.warn(`[Claude] Non-standard session ID format detected: ${sessionId}`);
+      standardSessionId = SessionValidator.generateSessionId();
+      console.log(`[Claude] Generated new standard session ID: ${standardSessionId}`);
+    }
+    
+    // Get or create Claude multiplexer
+    const multiplexer = getClaudeMultiplexer();
+    multiplexerRef.current = multiplexer;
 
     // Create xterm.js instance with Claude theme
     const term = new Terminal({
@@ -122,107 +168,95 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
       }
     }, 100);
 
-    // Connect to Claude WebSocket on port 4002
-    const token = localStorage.getItem('accessToken');
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = '127.0.0.1:4002';  // Claude Terminal port
-    
-    const params = new URLSearchParams({
-      projectId,
-      token: token || '',
-      sessionId: uniqueSessionId,
-      path: projectPath,
-    });
-
-    const wsUrl = `${protocol}//${wsHost}/?${params.toString()}`;
-    console.log('Connecting to Claude terminal WebSocket:', wsUrl);
-    
-    const websocket = new WebSocket(wsUrl);
-    
-    websocket.onopen = () => {
-      console.log('Claude Terminal WebSocket connected');
-      setIsConnected(true);
-      onConnectionChange?.('connected');
-      term.write('\r\n\x1b[35m● Claude Terminal Connected\x1b[0m\r\n');
-      term.write('\x1b[33mInitializing Claude Code CLI...\x1b[0m\r\n');
-    };
-
-    websocket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        
-        switch (message.type) {
-          case 'connected':
-            console.log('Claude terminal session started:', message.sessionId);
-            term.write(`Working directory: ${message.workingDir}\r\n`);
-            break;
-            
-          case 'stream':
-            // Stream output directly to terminal
-            term.write(message.data);
-            
-            // Auto-scroll to bottom only if user hasn't scrolled up
-            if (!isUserScrolledUp) {
-              term.scrollToBottom();
-            }
-            
-            // Check if Claude CLI is ready
-            if (message.data.includes('Claude>') || message.data.includes('claude>')) {
-              if (!isClaudeReady) {
-                setIsClaudeReady(true);
-                term.write('\r\n\x1b[32m✓ Claude Code CLI is ready!\x1b[0m\r\n');
-                // Always scroll to show the ready message
-                term.scrollToBottom();
-              }
-            }
-            break;
-            
-          case 'exit':
-            term.write(`\r\n\x1b[33m[Process exited with code ${message.code}]\x1b[0m\r\n`);
-            setIsClaudeReady(false);
-            break;
-            
-          case 'error':
-            term.write(`\r\n\x1b[31mError: ${message.message}\x1b[0m\r\n`);
-            break;
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+    // Setup multiplexer event handlers for this Claude session
+    const handleSessionConnected = ({ sessionId: connectedSessionId }: any) => {
+      if (connectedSessionId === standardSessionId) {
+        console.log('Claude terminal session connected:', connectedSessionId);
+        setIsConnected(true);
+        onConnectionChange?.('connected');
+        term.write('\r\n\x1b[35m● Claude Terminal Connected (Multiplexed)\x1b[0m\r\n');
+        term.write('\x1b[33mInitializing Claude Code CLI...\x1b[0m\r\n');
       }
     };
 
-    websocket.onerror = (error) => {
-      console.error('Claude WebSocket error:', error);
-      term.write('\r\n\x1b[31mWebSocket connection error\x1b[0m\r\n');
+    const handleSessionData = ({ sessionId: dataSessionId, data }: any) => {
+      if (dataSessionId === standardSessionId) {
+        // Stream output directly to terminal
+        term.write(data);
+        
+        // Auto-scroll to bottom only if user hasn't scrolled up
+        if (!isUserScrolledUp) {
+          term.scrollToBottom();
+        }
+        
+        // Check if Claude CLI is ready
+        if (data.includes('Claude>') || data.includes('claude>')) {
+          if (!isClaudeReady) {
+            setIsClaudeReady(true);
+            term.write('\r\n\x1b[32m✓ Claude Code CLI is ready!\x1b[0m\r\n');
+            // Always scroll to show the ready message
+            term.scrollToBottom();
+          }
+        }
+      }
     };
 
-    websocket.onclose = () => {
-      console.log('Claude WebSocket closed');
-      setIsConnected(false);
-      setIsClaudeReady(false);
-      onConnectionChange?.('disconnected');
-      term.write('\r\n\x1b[31m○ Disconnected from Claude Terminal\x1b[0m\r\n');
+    const handleSessionError = ({ sessionId: errorSessionId, error }: any) => {
+      if (errorSessionId === standardSessionId) {
+        console.error('Claude terminal session error:', error);
+        term.write(`\r\n\x1b[31mClaude Error: ${error.message || error}\x1b[0m\r\n`);
+      }
     };
+
+    const handleSessionDisconnected = ({ sessionId: disconnectedSessionId }: any) => {
+      if (disconnectedSessionId === standardSessionId) {
+        console.log('Claude terminal session disconnected:', disconnectedSessionId);
+        setIsConnected(false);
+        setIsClaudeReady(false);
+        onConnectionChange?.('disconnected');
+        term.write('\r\n\x1b[31m○ Disconnected from Claude Terminal\x1b[0m\r\n');
+      }
+    };
+
+    const handleSessionClosed = ({ sessionId: closedSessionId }: any) => {
+      if (closedSessionId === standardSessionId) {
+        console.log('Claude terminal session closed:', closedSessionId);
+        setIsConnected(false);
+        setIsClaudeReady(false);
+        onConnectionChange?.('disconnected');
+        term.write('\r\n\x1b[33m[Claude session closed]\x1b[0m\r\n');
+      }
+    };
+
+    // Add event listeners
+    multiplexer.on('session:connected', handleSessionConnected);
+    multiplexer.on('session:data', handleSessionData);
+    multiplexer.on('session:error', handleSessionError);
+    multiplexer.on('session:disconnected', handleSessionDisconnected);
+    multiplexer.on('session:closed', handleSessionClosed);
+
+    // Connect to Claude session
+    multiplexer.connectSession(standardSessionId, projectId, type)
+      .then(() => {
+        console.log(`Claude terminal session ${standardSessionId} connection initiated`);
+      })
+      .catch((error) => {
+        console.error('Failed to connect Claude terminal session:', error);
+        term.write(`\r\n\x1b[31mFailed to connect Claude: ${error.message}\x1b[0m\r\n`);
+      });
 
     // Handle terminal input
     term.onData((data: string) => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        // Send raw input to WebSocket
-        websocket.send(JSON.stringify({
-          type: 'input',
-          data: data
-        }));
+      if (multiplexer && isConnected) {
+        // Send input through multiplexer
+        multiplexer.sendInput(standardSessionId, data);
       }
     });
 
     // Handle terminal resize
     term.onResize((size: { cols: number; rows: number }) => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        websocket.send(JSON.stringify({
-          type: 'resize',
-          cols: size.cols,
-          rows: size.rows
-        }));
+      if (multiplexer && isConnected) {
+        multiplexer.resizeSession(standardSessionId, size.cols, size.rows);
       }
     });
 
@@ -251,7 +285,6 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
     window.addEventListener('resize', handleResize);
 
     setTerminal(term);
-    setWs(websocket);
 
     // Cleanup
     return () => {
@@ -260,7 +293,19 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
         term.element.removeEventListener('scroll', handleScroll);
       }
       observer.disconnect();
-      websocket.close();
+      
+      // Remove event listeners
+      if (multiplexer) {
+        multiplexer.off('session:connected', handleSessionConnected);
+        multiplexer.off('session:data', handleSessionData);
+        multiplexer.off('session:error', handleSessionError);
+        multiplexer.off('session:disconnected', handleSessionDisconnected);
+        multiplexer.off('session:closed', handleSessionClosed);
+        
+        // Disconnect session (but keep process alive for background)
+        multiplexer.disconnectSession(standardSessionId);
+      }
+      
       term.dispose();
     };
   }, [projectId, sessionId, projectPath]);
@@ -280,10 +325,14 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
   };
 
   const handleRestart = () => {
-    if (ws) {
-      ws.close();
-      // Reload the component
-      window.location.reload();
+    if (multiplexerRef.current && sessionId) {
+      // Use the standard session ID format
+      const standardSessionId = SessionValidator.isValidSessionId(sessionId) ? sessionId : SessionValidator.generateSessionId();
+      // Close and reconnect Claude session
+      multiplexerRef.current.closeSession(standardSessionId);
+      setTimeout(() => {
+        multiplexerRef.current?.connectSession(standardSessionId, projectId, type);
+      }, 1000);
     }
   };
 
