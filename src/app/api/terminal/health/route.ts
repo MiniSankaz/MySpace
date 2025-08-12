@@ -1,65 +1,92 @@
 /**
  * API Route: GET /api/terminal/health
- * Check terminal system health (in-memory storage)
+ * Terminal system health check
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-// Import the compiled JavaScript version to use the same instance as WebSocket servers
-let inMemoryTerminalService;
+
+// Import the singleton terminal service
+let inMemoryTerminalService: any;
 try {
-  // Try to use the compiled version first (same as WebSocket servers)
-  const memoryModule = require('../../../../../dist/services/terminal-memory.service');
+  const memoryModule = require('@/services/terminal-memory.service');
   inMemoryTerminalService = memoryModule.inMemoryTerminalService || memoryModule.InMemoryTerminalService.getInstance();
 } catch (error) {
-  // Fallback to TypeScript version if not compiled
-  const tsModule = require('@/services/terminal-memory.service');
-  inMemoryTerminalService = tsModule.inMemoryTerminalService || tsModule.InMemoryTerminalService.getInstance();
+  console.error('[Terminal Health API] Failed to load terminal service:', error);
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // No auth required for health check
-    
-    // Get all active sessions
-    const allSessions = inMemoryTerminalService.getAllSessions();
-    
-    // Count by type
-    const systemCount = allSessions.filter(s => s.type === 'system' && s.status === 'active').length;
-    const claudeCount = allSessions.filter(s => s.type === 'claude' && s.status === 'active').length;
-    const totalCount = allSessions.length;
-    
-    // Check WebSocket servers
-    const wsStatus = {
-      system: systemCount > 0 ? 'connected' : 'ready',
-      claude: claudeCount > 0 ? 'connected' : 'ready'
-    };
-    
-    const health = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      sessions: {
-        total: totalCount,
-        system: systemCount,
-        claude: claudeCount
-      },
-      websockets: wsStatus,
-      memory: {
-        used: process.memoryUsage().heapUsed / 1024 / 1024,
-        total: process.memoryUsage().heapTotal / 1024 / 1024
-      }
-    };
-
-    return NextResponse.json(health);
-
-  } catch (error) {
-    console.error('[Terminal API] Health check failed:', error);
-    return NextResponse.json(
-      { 
+    if (!inMemoryTerminalService) {
+      return NextResponse.json({
         status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'Health check failed',
+        message: 'Terminal service not available',
         timestamp: new Date().toISOString()
+      }, { status: 503 });
+    }
+    
+    // Get all sessions
+    const allSessions = inMemoryTerminalService.getAllSessions();
+    const sessionsByProject = new Map<string, number>();
+    const sessionsByStatus = new Map<string, number>();
+    let suspendedCount = 0;
+    
+    // Analyze sessions
+    allSessions.forEach((session: any) => {
+      // Count by project
+      const count = sessionsByProject.get(session.projectId) || 0;
+      sessionsByProject.set(session.projectId, count + 1);
+      
+      // Count by status
+      const statusCount = sessionsByStatus.get(session.status) || 0;
+      sessionsByStatus.set(session.status, statusCount + 1);
+      
+      // Count suspended
+      if (inMemoryTerminalService.isSessionSuspended(session.id)) {
+        suspendedCount++;
+      }
+    });
+    
+    // Calculate memory usage (approximate)
+    const memoryUsage = process.memoryUsage();
+    const memoryUsageMB = {
+      rss: Math.round(memoryUsage.rss / 1024 / 1024),
+      heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+      heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+      external: Math.round(memoryUsage.external / 1024 / 1024)
+    };
+    
+    // Health status
+    const isHealthy = memoryUsageMB.heapUsed < 500 && allSessions.length < 100;
+    
+    return NextResponse.json({
+      status: isHealthy ? 'healthy' : 'degraded',
+      metrics: {
+        totalSessions: allSessions.length,
+        suspendedSessions: suspendedCount,
+        activeSessions: sessionsByStatus.get('active') || 0,
+        projectsWithSessions: sessionsByProject.size,
+        memoryUsageMB,
+        uptime: Math.round(process.uptime()),
       },
-      { status: 500 }
-    );
+      sessionsByStatus: Object.fromEntries(sessionsByStatus),
+      limits: {
+        maxSessions: 100,
+        maxMemoryMB: 500,
+        maxSessionsPerProject: 10
+      },
+      warnings: [
+        ...(allSessions.length > 80 ? ['High session count (>80)'] : []),
+        ...(memoryUsageMB.heapUsed > 400 ? ['High memory usage (>400MB)'] : []),
+        ...(suspendedCount > 20 ? ['Many suspended sessions (>20)'] : [])
+      ],
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Terminal Health API] Error:', error);
+    return NextResponse.json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Health check failed',
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 }

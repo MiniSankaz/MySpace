@@ -1191,25 +1191,26 @@ model Project {
 }
 
 model TerminalSession {
-  id          String            @id @default(uuid())
+  id          String                @id @default(uuid())
   projectId   String
   userId      String?
   type        String
   tabName     String
-  status      String            @default("active") // active, inactive, closed, error
-  active      Boolean           @default(true)
-  output      Json              @default("[]")
+  status      String                @default("active") // active, inactive, closed, error, suspended
+  active      Boolean               @default(true)
+  output      Json                  @default("[]")
   currentPath String
   pid         Int?
   metadata    Json?
-  startedAt   DateTime          @default(now())
+  startedAt   DateTime              @default(now())
   endedAt     DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
   commands    TerminalCommand[]
   logs        TerminalLog[]
-  Project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User        User?             @relation(fields: [userId], references: [id])
+  Project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  User        User?                 @relation(fields: [userId], references: [id])
+  sessionState TerminalSessionState?
 
   @@index([projectId])
   @@index([userId])
@@ -1217,6 +1218,27 @@ model TerminalSession {
   @@index([status])
   @@index([active])
   @@index([startedAt])
+}
+
+model TerminalSessionState {
+  id               String           @id @default(uuid())
+  sessionId        String           @unique
+  projectId        String
+  suspendedAt      DateTime?
+  resumedAt        DateTime?
+  outputBuffer     Json             @default("[]") // Last 1000 lines
+  cursorPosition   Json?            // { row: number, col: number }
+  workingDirectory String?
+  environmentVars  Json?            // Environment variables snapshot
+  uiState          Json?            // Layout, focus, etc.
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  
+  session          TerminalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@index([projectId])
+  @@index([suspendedAt])
+  @@index([resumedAt])
 }
 
 model TerminalCommand {

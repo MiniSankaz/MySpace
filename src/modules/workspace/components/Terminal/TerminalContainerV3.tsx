@@ -40,14 +40,39 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentLayout, setCurrentLayout] = useState<LayoutType>('1x1');
+  const previousProjectIdRef = useRef<string | null>(null);
+  const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(new Set());
   
   // Calculate max terminals based on layout
   const maxTerminals = LAYOUTS[currentLayout].rows * LAYOUTS[currentLayout].cols;
   
-  // Load existing sessions on mount
+  // Handle project switching with suspension/resumption
   useEffect(() => {
-    loadSessions();
-    // Sessions now persist across project switches - no cleanup on project change
+    const handleProjectSwitch = async () => {
+      // Suspend previous project if switching
+      if (previousProjectIdRef.current && previousProjectIdRef.current !== project.id) {
+        await suspendProjectSessions(previousProjectIdRef.current);
+        setSuspendedProjects(prev => new Set(prev).add(previousProjectIdRef.current!));
+      }
+      
+      // Check if current project has suspended sessions
+      if (suspendedProjects.has(project.id)) {
+        await resumeProjectSessions(project.id);
+        setSuspendedProjects(prev => {
+          const next = new Set(prev);
+          next.delete(project.id);
+          return next;
+        });
+      } else {
+        // Load fresh sessions
+        loadSessions();
+      }
+      
+      // Update previous project reference
+      previousProjectIdRef.current = project.id;
+    };
+    
+    handleProjectSwitch();
   }, [project.id]);
   
   // Track if component is truly unmounting (not React StrictMode)
@@ -219,6 +244,67 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     }
   };
 
+  // Suspend sessions for a project
+  const suspendProjectSessions = async (projectId: string) => {
+    try {
+      const response = await fetch('/api/terminal/suspend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[TerminalContainer] Suspended ${data.suspendedSessionCount} sessions for project ${projectId}`);
+      }
+    } catch (err) {
+      console.error('Failed to suspend sessions:', err);
+    }
+  };
+  
+  // Resume sessions for a project
+  const resumeProjectSessions = async (projectId: string) => {
+    try {
+      const response = await fetch('/api/terminal/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.resumed && data.sessions.length > 0) {
+          // Format sessions for state
+          const formattedSessions = data.sessions.map((s: any, index: number) => ({
+            ...s,
+            type: 'terminal' as const,
+            mode: s.mode || 'normal',
+            gridPosition: index,
+            isFocused: s.isFocused || false
+          }));
+          
+          setSessions(formattedSessions);
+          
+          // Restore UI state if available
+          if (data.uiState?.currentLayout) {
+            setCurrentLayout(data.uiState.currentLayout);
+          }
+          
+          console.log(`[TerminalContainer] Resumed ${data.sessions.length} sessions for project ${projectId}`);
+          
+          // Show buffered output if any
+          data.sessions.forEach((s: any) => {
+            if (s.bufferedOutput && s.bufferedOutput.length > 0) {
+              console.log(`[TerminalContainer] Session ${s.id} has ${s.bufferedOutput.length} buffered outputs`);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to resume sessions:', err);
+    }
+  };
+  
   // Close terminal session
   const closeSession = async (sessionId: string) => {
     try {
@@ -299,11 +385,31 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                   <span className="text-xs font-medium text-gray-300">
                     {session.tabName}
                   </span>
+                  
+                  {/* Status Indicator */}
+                  {session.status === 'suspended' ? (
+                    <span className="flex items-center px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded">
+                      <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse mr-1" />
+                      Suspended
+                    </span>
+                  ) : session.status === 'active' ? (
+                    <span className="flex items-center px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded">
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1" />
+                      Active
+                    </span>
+                  ) : session.status === 'inactive' ? (
+                    <span className="flex items-center px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[10px] rounded">
+                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1" />
+                      Idle
+                    </span>
+                  ) : null}
+                  
                   {session.mode === 'claude' && (
                     <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] rounded">
                       Claude
                     </span>
                   )}
+                  
                   <button
                     onClick={() => setFocus(session.id, !session.isFocused)}
                     className={`px-2 py-0.5 rounded text-[10px] transition-all ${
@@ -402,6 +508,14 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
             <span className="text-xs text-gray-400 font-mono ml-2 px-2 py-1 bg-black/30 rounded-md border border-gray-700/50">
               {sessions.length}/{maxTerminals} terminals
             </span>
+            
+            {/* Suspended Projects Indicator */}
+            {suspendedProjects.size > 0 && (
+              <span className="flex items-center text-xs text-yellow-400 font-mono ml-2 px-2 py-1 bg-yellow-500/10 rounded-md border border-yellow-500/30">
+                <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse mr-1.5" />
+                {suspendedProjects.size} suspended {suspendedProjects.size === 1 ? 'project' : 'projects'}
+              </span>
+            )}
           </div>
           
           <div className="flex items-center space-x-2">

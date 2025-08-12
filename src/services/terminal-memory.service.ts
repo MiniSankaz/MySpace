@@ -8,7 +8,7 @@ import { EventEmitter } from 'events';
 
 // Terminal session types
 export type TerminalType = 'terminal'; // Single terminal type
-export type TerminalStatus = 'active' | 'inactive' | 'error' | 'connecting' | 'closed';
+export type TerminalStatus = 'active' | 'inactive' | 'error' | 'connecting' | 'closed' | 'suspended';
 export type TerminalMode = 'normal' | 'claude'; // Mode for Claude CLI within terminal
 
 // Terminal session interface
@@ -66,6 +66,16 @@ export class InMemoryTerminalService extends EventEmitter {
   
   // Session counter for tab naming
   private sessionCounters: Map<string, number> = new Map();
+  
+  // Suspension state tracking
+  private suspendedSessions: Map<string, {
+    suspendedAt: Date;
+    bufferedOutput: string[];
+    lastActivity: Date;
+    cursorPosition?: { row: number; col: number };
+    workingDirectory?: string;
+    environment?: Record<string, string>;
+  }> = new Map();
   
   private constructor() {
     super();
@@ -575,6 +585,117 @@ export class InMemoryTerminalService extends EventEmitter {
     this.wsReadiness.clear();
     this.wsReadyPromises.clear();
     console.log('[InMemoryTerminalService] All sessions cleared');
+  }
+  
+  /**
+   * Suspend sessions for a project
+   */
+  public suspendProjectSessions(projectId: string): number {
+    const sessionIds = this.projectSessions.get(projectId);
+    if (!sessionIds || sessionIds.size === 0) {
+      return 0;
+    }
+    
+    let suspendedCount = 0;
+    sessionIds.forEach(sessionId => {
+      const session = this.sessions.get(sessionId);
+      if (session && session.status === 'active') {
+        // Store suspension state
+        this.suspendedSessions.set(sessionId, {
+          suspendedAt: new Date(),
+          bufferedOutput: [],
+          lastActivity: this.sessionActivity.get(sessionId) || new Date(),
+          workingDirectory: session.currentPath,
+          environment: {}
+        });
+        
+        // Update session status
+        session.status = 'suspended';
+        this.sessions.set(sessionId, session);
+        
+        console.log(`[InMemoryTerminalService] Suspended session ${sessionId}`);
+        suspendedCount++;
+      }
+    });
+    
+    return suspendedCount;
+  }
+  
+  /**
+   * Resume sessions for a project
+   */
+  public resumeProjectSessions(projectId: string): {
+    resumed: boolean;
+    sessions: any[];
+    uiState?: any;
+  } {
+    const sessionIds = this.projectSessions.get(projectId);
+    if (!sessionIds || sessionIds.size === 0) {
+      return { resumed: false, sessions: [] };
+    }
+    
+    const resumedSessions: any[] = [];
+    sessionIds.forEach(sessionId => {
+      const session = this.sessions.get(sessionId);
+      const suspendedState = this.suspendedSessions.get(sessionId);
+      
+      if (session && suspendedState) {
+        // Resume session
+        session.status = 'active';
+        this.sessions.set(sessionId, session);
+        
+        // Include suspension info in response
+        resumedSessions.push({
+          ...session,
+          suspendedAt: suspendedState.suspendedAt,
+          bufferedOutput: suspendedState.bufferedOutput,
+          workingDirectory: suspendedState.workingDirectory
+        });
+        
+        // Clear suspension state
+        this.suspendedSessions.delete(sessionId);
+        
+        console.log(`[InMemoryTerminalService] Resumed session ${sessionId}`);
+      } else if (session) {
+        // Session wasn't suspended, just return it
+        resumedSessions.push(session);
+      }
+    });
+    
+    return {
+      resumed: resumedSessions.length > 0,
+      sessions: resumedSessions,
+      uiState: { currentLayout: '1x1' } // Default layout
+    };
+  }
+  
+  /**
+   * Buffer output for suspended sessions
+   */
+  public bufferOutputForSuspended(sessionId: string, output: string): void {
+    const suspendedState = this.suspendedSessions.get(sessionId);
+    if (suspendedState) {
+      // Keep only last 1000 lines
+      suspendedState.bufferedOutput.push(output);
+      if (suspendedState.bufferedOutput.length > 1000) {
+        suspendedState.bufferedOutput = suspendedState.bufferedOutput.slice(-1000);
+      }
+      this.suspendedSessions.set(sessionId, suspendedState);
+    }
+  }
+  
+  /**
+   * Get suspension state for a session
+   */
+  public getSuspensionState(sessionId: string): any {
+    return this.suspendedSessions.get(sessionId);
+  }
+  
+  /**
+   * Check if session is suspended
+   */
+  public isSessionSuspended(sessionId: string): boolean {
+    return this.suspendedSessions.has(sessionId);
   }
 }
 

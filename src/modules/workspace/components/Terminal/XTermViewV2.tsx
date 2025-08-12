@@ -280,6 +280,18 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
               }
               break;
               
+            case 'suspended':
+              // Handle suspension notification
+              console.log(`Terminal ${sessionId} suspended: ${message.message}`);
+              xtermRef.current.write(`\r\n\x1b[33m[Session Suspended]\x1b[0m\r\n`);
+              break;
+              
+            case 'resumed':
+              // Handle resumption notification
+              console.log(`Terminal ${sessionId} resumed: ${message.message}`);
+              xtermRef.current.write(`\r\n\x1b[32m[Session Resumed]\x1b[0m\r\n`);
+              break;
+              
             case 'clear':
               xtermRef.current.clear();
               break;

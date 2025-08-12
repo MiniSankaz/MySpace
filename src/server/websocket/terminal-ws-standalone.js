@@ -555,7 +555,56 @@ class TerminalWebSocketServer {
         try {
           const data = JSON.parse(message.toString());
           
+          // Check if session is suspended
+          if (this.memoryService && this.memoryService.isSessionSuspended(sessionId)) {
+            // Buffer output for suspended session
+            if (data.type === 'input') {
+              this.memoryService.bufferOutputForSuspended(sessionId, data.data);
+              ws.send(JSON.stringify({
+                type: 'suspended',
+                message: 'Session is suspended. Input buffered.',
+                sessionId
+              }));
+              return;
+            }
+          }
+          
           switch (data.type) {
+            case 'suspend':
+              // Handle suspension request
+              if (this.memoryService) {
+                const count = this.memoryService.suspendProjectSessions(projectId);
+                ws.send(JSON.stringify({
+                  type: 'suspended',
+                  message: `Suspended ${count} sessions`,
+                  sessionId
+                }));
+              }
+              break;
+              
+            case 'resume':
+              // Handle resumption request
+              if (this.memoryService) {
+                const result = this.memoryService.resumeProjectSessions(projectId);
+                
+                // Send buffered output if any
+                const suspensionState = this.memoryService.getSuspensionState(sessionId);
+                if (suspensionState && suspensionState.bufferedOutput.length > 0) {
+                  ws.send(JSON.stringify({
+                    type: 'buffered',
+                    data: suspensionState.bufferedOutput.join(''),
+                    sessionId
+                  }));
+                }
+                
+                ws.send(JSON.stringify({
+                  type: 'resumed',
+                  message: `Resumed ${result.sessions.length} sessions`,
+                  sessionId
+                }));
+              }
+              break;
+              
             case 'input':
               if (session.process) {
                 // For PTY with xterm.js, write data exactly as received
