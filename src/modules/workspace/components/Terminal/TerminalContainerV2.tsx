@@ -751,7 +751,10 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                     className={`relative overflow-hidden bg-black rounded-lg border ${
                       session.id === activeSessionId ? 'border-blue-500' : 'border-gray-700'
                     }`}
-                    onClick={() => setActiveSessionId(session.id)}
+                    onClick={() => {
+                      // Only change active tab, don't change focus
+                      setActiveSessionId(session.id);
+                    }}
                   >
                     {/* Terminal Header */}
                     <div className={`absolute top-0 left-0 right-0 z-10 px-2 py-1 bg-gradient-to-r ${
@@ -852,17 +855,30 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                                   <button
                                     key={session.id}
                                     onClick={() => {
+                                      // Only change active tab for viewing
                                       setActiveSessionId(session.id);
-                                      setFocus(session.id, true);
+                                      // Focus button is separate
                                     }}
-                                    className={`px-3 py-1 rounded text-xs transition-all ${
-                                      session.isFocused
-                                        ? 'bg-green-600/30 text-green-300 border border-green-500/50'
+                                    className={`px-3 py-1 rounded text-xs transition-all flex items-center space-x-2 ${
+                                      session.id === activeSessionId
+                                        ? 'bg-gray-600 text-white'
                                         : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                                     }`}
                                   >
-                                    {session.tabName}
-                                    {session.isFocused && <span className="ml-2 text-[10px]">LIVE</span>}
+                                    <span>{session.tabName}</span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFocus(session.id, !session.isFocused);
+                                      }}
+                                      className={`px-2 py-0.5 rounded text-[10px] transition-all ${
+                                        session.isFocused
+                                          ? 'bg-green-600/30 text-green-300 border border-green-500/50'
+                                          : 'bg-gray-800 text-gray-500 hover:bg-gray-700 border border-gray-600'
+                                      }`}
+                                    >
+                                      {session.isFocused ? 'LIVE' : 'FOCUS'}
+                                    </button>
                                   </button>
                                 ))}
                               </div>
@@ -968,28 +984,45 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                                   <button
                                     key={session.id}
                                     onClick={() => {
+                                      // Only change active tab for viewing
                                       setActiveSessionId(session.id);
-                                      setFocus(session.id, true);
+                                      // Focus button is separate
                                     }}
-                                    className={`px-3 py-1 rounded text-xs transition-all ${
-                                      session.isFocused
-                                        ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                                    className={`px-3 py-1 rounded text-xs transition-all flex items-center space-x-2 ${
+                                      session.id === activeSessionId
+                                        ? 'bg-gray-600 text-white'
                                         : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                                     }`}
                                   >
-                                    {session.tabName}
-                                    {session.isFocused && <span className="ml-2 text-[10px]">LIVE</span>}
+                                    <span>{session.tabName}</span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFocus(session.id, !session.isFocused);
+                                      }}
+                                      className={`px-2 py-0.5 rounded text-[10px] transition-all ${
+                                        session.isFocused
+                                          ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                                          : 'bg-gray-800 text-gray-500 hover:bg-gray-700 border border-gray-600'
+                                      }`}
+                                    >
+                                      {session.isFocused ? 'LIVE' : 'FOCUS'}
+                                    </button>
                                   </button>
                                 ))}
                               </div>
                             )}
-                            <div className="flex-1">
-                              {claudeSessions.slice(0, 2).map((session) => (
-                                <div
-                                  key={session.id}
-                                  className={`h-full ${session.id === activeSessionId ? 'block' : 'hidden'}`}
-                                >
-                              <XTermViewV2
+                            <div className="flex-1 relative">
+                              {claudeSessions.slice(0, 2).map((session, index) => {
+                                // Show the active session, or the first one if no active session in this panel
+                                const isVisible = session.id === activeSessionId || 
+                                  (!claudeSessions.find(s => s.id === activeSessionId) && index === 0);
+                                return (
+                                  <div
+                                    key={session.id}
+                                    className={`absolute inset-0 ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                                  >
+                                    <XTermViewV2
                                 sessionId={session.id}
                                 projectId={project.id}
                                 type={session.type}
@@ -997,12 +1030,13 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                                 onData={(data) => {
                                   console.log(`Terminal ${session.id} input:`, data);
                                 }}
-                                onResize={(cols, rows) => {
-                                  console.log(`Terminal ${session.id} resized to ${cols}x${rows}`);
-                                }}
-                              />
-                                </div>
-                              ))}
+                                      onResize={(cols, rows) => {
+                                        console.log(`Terminal ${session.id} resized to ${cols}x${rows}`);
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         ) : (
