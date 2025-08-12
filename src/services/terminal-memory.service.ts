@@ -559,9 +559,9 @@ export class InMemoryTerminalService extends EventEmitter {
     
     console.log(`[InMemoryTerminalService] Memory: RSS=${rssMB}MB, Heap=${heapUsedMB}MB, External=${externalMB}MB, Sessions=${this.sessions.size}`);
     
-    // CRITICAL: Emergency cleanup if RSS > 900MB
-    if (rssMB > 900) {
-      console.error(`🚨 EMERGENCY: RSS memory ${rssMB}MB > 900MB - EMERGENCY CLEANUP`);
+    // CRITICAL: Emergency cleanup if RSS > 3GB (with 4GB limit)
+    if (rssMB > 3072) {
+      console.error(`🚨 EMERGENCY: RSS memory ${rssMB}MB > 3GB - EMERGENCY CLEANUP`);
       
       // Close ALL sessions immediately to prevent crash
       const sessionCount = this.sessions.size;
@@ -576,9 +576,9 @@ export class InMemoryTerminalService extends EventEmitter {
       
       console.error(`🚨 EMERGENCY: Closed ${sessionCount} sessions, forcing GC`);
     }
-    // WARNING: High memory cleanup if RSS > 700MB  
-    else if (rssMB > 700) {
-      console.warn(`⚠️ HIGH MEMORY: RSS ${rssMB}MB > 700MB - Aggressive cleanup`);
+    // WARNING: High memory cleanup if RSS > 2GB  
+    else if (rssMB > 2048) {
+      console.warn(`⚠️ HIGH MEMORY: RSS ${rssMB}MB > 2GB - Aggressive cleanup`);
       this.cleanupOldestSessions(Math.ceil(this.sessions.size / 2)); // Close half
       
       if (global.gc) {

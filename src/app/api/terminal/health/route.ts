@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
       external: Math.round(memoryUsage.external / 1024 / 1024)
     };
     
-    // Health status - increased memory limit to 1GB
-    const isHealthy = memoryUsageMB.heapUsed < 1024 && allSessions.length < 100;
+    // Health status - increased memory limit to 4GB
+    const isHealthy = memoryUsageMB.heapUsed < 4096 && allSessions.length < 100;
     
     return NextResponse.json({
       status: isHealthy ? 'healthy' : 'degraded',
@@ -71,12 +71,12 @@ export async function GET(request: NextRequest) {
       sessionsByStatus: Object.fromEntries(sessionsByStatus),
       limits: {
         maxSessions: 100,
-        maxMemoryMB: 1024,
+        maxMemoryMB: 4096,
         maxSessionsPerProject: 10
       },
       warnings: [
         ...(allSessions.length > 80 ? ['High session count (>80)'] : []),
-        ...(memoryUsageMB.heapUsed > 800 ? ['High memory usage (>800MB)'] : []),
+        ...(memoryUsageMB.heapUsed > 3000 ? ['High memory usage (>3GB)'] : []),
         ...(suspendedCount > 20 ? ['Many suspended sessions (>20)'] : [])
       ],
       timestamp: new Date().toISOString()

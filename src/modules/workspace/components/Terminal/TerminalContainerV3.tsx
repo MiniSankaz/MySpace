@@ -43,16 +43,33 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   const previousProjectIdRef = useRef<string | null>(null);
   const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(new Set());
   
-  // Clean up suspended projects on mount
+  // Load project-specific layout preference and clean up suspended projects
   useEffect(() => {
+    const loadProjectLayout = () => {
+      try {
+        const savedLayouts = localStorage.getItem('terminalLayouts');
+        if (savedLayouts) {
+          const layouts = JSON.parse(savedLayouts);
+          const projectLayout = layouts[project.id];
+          if (projectLayout && LAYOUTS[projectLayout as LayoutType]) {
+            setCurrentLayout(projectLayout as LayoutType);
+            console.log(`[Terminal] Restored layout ${projectLayout} for project ${project.id}`);
+          }
+        }
+      } catch (error) {
+        console.error('[Terminal] Failed to load project layout:', error);
+      }
+    };
+    
     // Clear any stale suspended projects on component mount
     const cleanupSuspendedProjects = () => {
       setSuspendedProjects(new Set());
       console.log('[Terminal] Cleared suspended projects on mount');
     };
     
+    loadProjectLayout();
     cleanupSuspendedProjects();
-  }, []);
+  }, [project.id]);
   
   // Calculate max terminals based on layout
   const maxTerminals = LAYOUTS[currentLayout].rows * LAYOUTS[currentLayout].cols;
@@ -360,9 +377,23 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     }
   };
 
+  // Save layout preference for current project
+  const saveProjectLayout = (layout: LayoutType) => {
+    try {
+      const savedLayouts = localStorage.getItem('terminalLayouts');
+      const layouts = savedLayouts ? JSON.parse(savedLayouts) : {};
+      layouts[project.id] = layout;
+      localStorage.setItem('terminalLayouts', JSON.stringify(layouts));
+      console.log(`[Terminal] Saved layout ${layout} for project ${project.id}`);
+    } catch (error) {
+      console.error('[Terminal] Failed to save project layout:', error);
+    }
+  };
+
   // Handle layout change
   const handleLayoutChange = (newLayout: LayoutType) => {
     setCurrentLayout(newLayout);
+    saveProjectLayout(newLayout);
     
     // If we have more terminals than the new layout supports, unfocus extras
     const newMax = LAYOUTS[newLayout].rows * LAYOUTS[newLayout].cols;
@@ -393,7 +424,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       grid.push(
         <div
           key={`grid-${i}`}
-          className="relative bg-black rounded-lg border border-gray-700 overflow-hidden"
+          className="relative bg-black rounded-lg border border-gray-700 overflow-hidden h-full min-h-0"
         >
           {session ? (
             <>
@@ -457,7 +488,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
               </div>
               
               {/* Terminal Content */}
-              <div className="h-full pt-8">
+              <div className="absolute inset-0 pt-8 overflow-hidden">
                 <Suspense fallback={
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
@@ -501,10 +532,10 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     
     return (
       <div 
-        className={`h-full grid gap-1 bg-gray-900 p-1`}
+        className={`h-full grid gap-1 bg-gray-900 p-1 overflow-hidden`}
         style={{
-          gridTemplateRows: `repeat(${rows}, 1fr)`,
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         }}
       >
         {grid}

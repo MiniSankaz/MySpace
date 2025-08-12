@@ -22,6 +22,35 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
+  // EMERGENCY FIX: Add memory monitoring and garbage collection
+  console.log('Starting memory monitoring...');
+  
+  setInterval(() => {
+    const memUsage = process.memoryUsage();
+    const memUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    const memTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    
+    // Log memory usage every 30 seconds
+    console.log(`Memory: ${memUsedMB}MB used / ${memTotalMB}MB total`);
+    
+    // Force garbage collection if memory usage is high (>1.5GB)
+    if (memUsage.heapUsed > 1.5 * 1024 * 1024 * 1024) {
+      console.warn('🚨 High memory usage detected, forcing garbage collection');
+      if (global.gc) {
+        global.gc();
+        const afterGC = process.memoryUsage();
+        const freedMB = Math.round((memUsage.heapUsed - afterGC.heapUsed) / 1024 / 1024);
+        console.log(`✓ Freed ${freedMB}MB of memory`);
+      }
+    }
+    
+    // Exit if memory usage exceeds 3GB to prevent OOM crash
+    if (memUsage.heapUsed > 3 * 1024 * 1024 * 1024) {
+      console.error('🚨 CRITICAL: Memory usage exceeded 3GB, restarting to prevent crash');
+      process.exit(1);
+    }
+  }, 30000);
+
   // In development, Next.js HMR is already handled internally
   // We don't need a separate proxy for HTTP since Next.js is handling it
   

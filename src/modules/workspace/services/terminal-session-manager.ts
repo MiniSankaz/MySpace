@@ -35,11 +35,21 @@ export class TerminalSessionManager extends EventEmitter {
    */
   private async initializeFromDatabase() {
     try {
-      // Load active sessions from database
-      const activeSessions = await prisma.terminalSession.findMany({
-        where: { active: true },
-        orderBy: { updatedAt: 'desc' }
-      });
+      // EMERGENCY FIX: Add timeout to prevent blocking on database connection failure
+      const timeout = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Database connection timeout')), 5000)
+      );
+      
+      console.log('Attempting to connect to database for terminal session initialization...');
+      
+      // Load active sessions from database with timeout
+      const activeSessions = await Promise.race([
+        prisma.terminalSession.findMany({
+          where: { active: true },
+          orderBy: { updatedAt: 'desc' }
+        }),
+        timeout
+      ]);
 
       for (const dbSession of activeSessions) {
         const session = this.formatSession(dbSession);
@@ -53,7 +63,7 @@ export class TerminalSessionManager extends EventEmitter {
           },
           isConnected: false,
           buffer: [],
-          maxBufferSize: 1000
+          maxBufferSize: 500 // REDUCED from 1000 to save memory
         };
         
         this.sessions.set(session.id, state);
@@ -63,9 +73,12 @@ export class TerminalSessionManager extends EventEmitter {
         }
       }
 
-      console.log(`Loaded ${activeSessions.length} active terminal sessions from database`);
+      console.log(`✓ Loaded ${activeSessions.length} active terminal sessions from database`);
     } catch (error) {
-      console.error('Failed to initialize terminal sessions from database:', error);
+      console.warn('⚠️ Database unavailable, starting with in-memory only mode:', error.message);
+      console.log('✓ Terminal session manager will operate without database persistence');
+      // Continue with empty session state - system will work in memory-only mode
+      return;
     }
   }
 
@@ -101,26 +114,55 @@ export class TerminalSessionManager extends EventEmitter {
     let session: TerminalSession;
     
     try {
+      // EMERGENCY FIX: Add timeout to database operations
+      const timeout = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Database operation timeout')), 3000)
+      );
+      
       // First attempt: try with projectId
-      const dbSession = await prisma.terminalSession.create({
-        data: {
+      const dbSession = await Promise.race([
+        prisma.terminalSession.create({
+          data: {
+            id: sessionId,
+            projectId,
+            userId,
+            type,
+            tabName,
+            active: true,
+            output: [],
+            currentPath: projectPath,
+            metadata: {
+              environment: process.env,
+              createdAt: new Date().toISOString()
+            }
+          }
+        }),
+        timeout
+      ]);
+
+      session = this.formatSession(dbSession);
+      console.log(`✓ Created database session ${sessionId}`);
+    } catch (error: any) {
+      console.warn(`Database session creation failed: ${error.message}`);
+      
+      // IMMEDIATE FALLBACK: Create in-memory session without database retries
+      if (error.message?.includes('timeout') || error.message?.includes('reach database')) {
+        console.log(`Database timeout detected, creating in-memory session immediately`);
+        
+        session = {
           id: sessionId,
           projectId,
-          userId,
           type,
           tabName,
           active: true,
           output: [],
           currentPath: projectPath,
-          metadata: {
-            environment: process.env,
-            createdAt: new Date().toISOString()
-          }
-        }
-      });
-
-      session = this.formatSession(dbSession);
-    } catch (error: any) {
+          pid: null,
+          createdAt: new Date()
+        };
+        
+        console.log(`✓ Created in-memory fallback session ${sessionId}`);
+      } else {
       // Check if it's a foreign key constraint error
       if (error.code === 'P2003' || error.message?.includes('foreign key')) {
         console.warn(`Foreign key constraint error, attempting to create project and retry...`);
