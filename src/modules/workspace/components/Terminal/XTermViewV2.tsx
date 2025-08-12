@@ -91,13 +91,27 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Handle resize
+    // Handle resize with safety checks
     const handleResize = () => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
-        const dimensions = fitAddonRef.current.proposeDimensions();
-        if (dimensions && onResize) {
-          onResize(dimensions.cols, dimensions.rows);
+      if (fitAddonRef.current && xtermRef.current && terminalRef.current) {
+        try {
+          fitAddonRef.current.fit();
+          const dimensions = fitAddonRef.current?.proposeDimensions();
+          if (dimensions && dimensions.cols > 0 && dimensions.rows > 0 && onResize) {
+            onResize(dimensions.cols, dimensions.rows);
+          }
+        } catch (error) {
+          console.warn('[XTerm] Resize failed, will retry:', error);
+          // Retry after a short delay
+          setTimeout(() => {
+            if (fitAddonRef.current) {
+              try {
+                fitAddonRef.current.fit();
+              } catch (e) {
+                console.error('[XTerm] Resize retry failed:', e);
+              }
+            }
+          }, 100);
         }
       }
     };
@@ -175,15 +189,19 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
         xtermRef.current.write('\r\n\x1b[32m[Reconnected successfully]\x1b[0m\r\n');
       }
       
-      // Send resize dimensions
-      if (fitAddonRef.current) {
-        const dimensions = fitAddonRef.current.proposeDimensions();
-        if (dimensions) {
-          ws.send(JSON.stringify({
-            type: 'resize',
-            cols: dimensions.cols,
-            rows: dimensions.rows,
-          }));
+      // Send resize dimensions with safety checks
+      if (fitAddonRef.current && xtermRef.current) {
+        try {
+          const dimensions = fitAddonRef.current?.proposeDimensions();
+          if (dimensions && dimensions.cols > 0 && dimensions.rows > 0) {
+            ws.send(JSON.stringify({
+              type: 'resize',
+              cols: dimensions.cols,
+              rows: dimensions.rows,
+            }));
+          }
+        } catch (error) {
+          console.warn('[XTerm] Initial resize failed:', error);
         }
       }
       

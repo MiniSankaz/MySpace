@@ -852,18 +852,18 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                             {systemSessions.length > 1 && (
                               <div className="bg-gray-800 border-b border-gray-700 px-2 py-1 flex space-x-2">
                                 {systemSessions.slice(0, 2).map((session) => (
-                                  <button
+                                  <div
                                     key={session.id}
+                                    className={`px-3 py-1 rounded text-xs transition-all flex items-center space-x-2 cursor-pointer ${
+                                      session.id === activeSessionId
+                                        ? 'bg-gray-600 text-white'
+                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                    }`}
                                     onClick={() => {
                                       // Only change active tab for viewing
                                       setActiveSessionId(session.id);
                                       // Focus button is separate
                                     }}
-                                    className={`px-3 py-1 rounded text-xs transition-all flex items-center space-x-2 ${
-                                      session.id === activeSessionId
-                                        ? 'bg-gray-600 text-white'
-                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                    }`}
                                   >
                                     <span>{session.tabName}</span>
                                     <button
@@ -879,7 +879,7 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                                     >
                                       {session.isFocused ? 'LIVE' : 'FOCUS'}
                                     </button>
-                                  </button>
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -981,18 +981,18 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                             {claudeSessions.length > 1 && (
                               <div className="bg-gray-800 border-b border-gray-700 px-2 py-1 flex space-x-2">
                                 {claudeSessions.slice(0, 2).map((session) => (
-                                  <button
+                                  <div
                                     key={session.id}
+                                    className={`px-3 py-1 rounded text-xs transition-all flex items-center space-x-2 cursor-pointer ${
+                                      session.id === activeSessionId
+                                        ? 'bg-gray-600 text-white'
+                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                    }`}
                                     onClick={() => {
                                       // Only change active tab for viewing
                                       setActiveSessionId(session.id);
                                       // Focus button is separate
                                     }}
-                                    className={`px-3 py-1 rounded text-xs transition-all flex items-center space-x-2 ${
-                                      session.id === activeSessionId
-                                        ? 'bg-gray-600 text-white'
-                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                    }`}
                                   >
                                     <span>{session.tabName}</span>
                                     <button
@@ -1008,7 +1008,7 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                                     >
                                       {session.isFocused ? 'LIVE' : 'FOCUS'}
                                     </button>
-                                  </button>
+                                  </div>
                                 ))}
                               </div>
                             )}
