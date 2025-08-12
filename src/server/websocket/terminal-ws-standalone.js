@@ -52,6 +52,31 @@ class TerminalWebSocketServer {
       console.error('WebSocket server error:', error);
     });
 
+    // Listen to InMemoryService focus events for real-time sync
+    if (this.memoryService) {
+      this.memoryService.on('focusChanged', (data) => {
+        const { sessionId, focused, projectId, allFocused } = data;
+        console.log(`[Terminal WS] Focus event received: session=${sessionId}, focused=${focused}, project=${projectId}`);
+        
+        // Update local focus cache
+        if (projectId) {
+          this.focusedSessions.set(projectId, new Set(allFocused));
+        }
+        
+        // Notify the affected session's WebSocket
+        const sessionKey = this.getSessionKey(sessionId, projectId);
+        const session = this.sessions.get(sessionKey);
+        if (session && session.ws && session.ws.readyState === 1) {
+          // Send focus state update to frontend
+          session.ws.send(JSON.stringify({
+            type: 'focusUpdate',
+            focused,
+            allFocused
+          }));
+        }
+      });
+    }
+    
     // Clean up inactive sessions every 5 minutes
     setInterval(() => {
       this.cleanupInactiveSessions();
@@ -240,8 +265,28 @@ class TerminalWebSocketServer {
         
         this.sessions.set(sessionKey, session);
         
-        // Register session in memory with retry mechanism
+        // Register session in memory - create if doesn't exist
         if (this.memoryService && projectId && sessionId) {
+          // First check if session exists, if not create it
+          let memSession = this.memoryService.getSession(sessionId);
+          if (!memSession) {
+            console.log(`[Terminal WS] Creating session ${sessionId} in memory service`);
+            memSession = this.memoryService.createSession(
+              projectId,
+              'system', // This is the system terminal
+              workingDir,
+              userId
+            );
+            // Override the generated ID with our existing session ID
+            if (memSession && memSession.id !== sessionId) {
+              // Update the session ID in memory service
+              this.memoryService.sessions.delete(memSession.id);
+              memSession.id = sessionId;
+              this.memoryService.sessions.set(sessionId, memSession);
+            }
+          }
+          
+          // Now register the WebSocket connection
           this.registerWebSocketWithRetry(sessionId, ws, projectId).catch(err => {
             console.error('Failed to register WebSocket after retries:', err);
           });
@@ -252,18 +297,17 @@ class TerminalWebSocketServer {
           // Check if this session is focused
           const isFocused = this.isSessionFocused(sessionId, projectId);
           
-          if (isFocused) {
-            // Stream output immediately for focused session
-            if (session.ws && session.ws.readyState === ws.OPEN) {
-              session.ws.send(JSON.stringify({
-                type: 'stream',
-                data: data,
-              }));
-            }
-          } else {
-            // Buffer output for unfocused session
-            this.bufferOutput(sessionId, data);
+          // Always stream to focused sessions for real-time updates
+          if (isFocused && session.ws && session.ws.readyState === ws.OPEN) {
+            session.ws.send(JSON.stringify({
+              type: 'stream',
+              data: data,
+            }));
           }
+          
+          // Also buffer output for history (even for focused sessions)
+          // This ensures we have complete output history
+          this.bufferOutput(sessionId, data);
           
           // Update session activity in memory (no database logging)
           if (this.memoryService && session.id) {

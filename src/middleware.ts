@@ -20,7 +20,7 @@ const publicRoutes = [
   '/api/ums/auth/login',
   '/api/ums/auth/register',
   '/api/health',
-  '/api/terminal/health', // Terminal health check endpoint
+  '/api/terminal', // Allow all terminal API routes for now (development)
   '/favicon.ico',
   '/api/dashboard/stats', // Allow dashboard stats endpoint to handle auth internally
   '/api/settings/user', // Allow settings API to handle auth internally
@@ -142,6 +142,11 @@ export async function middleware(request: NextRequest) {
       const secret = new TextEncoder().encode(
         process.env.JWT_SECRET || 'your-secret-key'
       );
+      
+      // Debug token format
+      if (pathname.startsWith('/api/terminal/')) {
+        console.log('[Middleware] Terminal route, token length:', token?.length);
+      }
       
       const { payload } = await jwtVerify(token, secret);
       

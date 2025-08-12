@@ -104,6 +104,31 @@ class ClaudeTerminalWebSocketServer {
       console.error('Claude WebSocket server error:', error);
     });
 
+    // Listen to InMemoryService focus events for real-time sync
+    if (this.memoryService) {
+      this.memoryService.on('focusChanged', (data) => {
+        const { sessionId, focused, projectId, allFocused } = data;
+        console.log(`[Claude Terminal WS] Focus event received: session=${sessionId}, focused=${focused}, project=${projectId}`);
+        
+        // Update local focus cache
+        if (projectId) {
+          this.focusedSessions.set(projectId, new Set(allFocused));
+        }
+        
+        // Notify the affected session's WebSocket
+        const sessionKey = this.getSessionKey(sessionId, projectId);
+        const session = this.sessions.get(sessionKey);
+        if (session && session.ws && session.ws.readyState === 1) {
+          // Send focus state update to frontend
+          session.ws.send(JSON.stringify({
+            type: 'focusUpdate',
+            focused,
+            allFocused
+          }));
+        }
+      });
+    }
+    
     // Clean up inactive sessions every 5 minutes
     setInterval(() => {
       this.cleanupInactiveSessions();
@@ -265,12 +290,31 @@ class ClaudeTerminalWebSocketServer {
         
         this.sessions.set(sessionKey, session);
         
-        // Register session in memory using the provided sessionId
+        // Register session in memory - create if doesn't exist
         if (this.memoryService && projectId && sessionId) {
           try {
-            // Register the existing sessionId instead of creating a new one
+            // First check if session exists, if not create it
+            let memSession = this.memoryService.getSession(sessionId);
+            if (!memSession) {
+              console.log(`[Claude Terminal WS] Creating session ${sessionId} in memory service`);
+              memSession = this.memoryService.createSession(
+                projectId,
+                'claude', // This is the Claude terminal
+                workingDir,
+                userId
+              );
+              // Override the generated ID with our existing session ID
+              if (memSession && memSession.id !== sessionId) {
+                // Update the session ID in memory service
+                this.memoryService.sessions.delete(memSession.id);
+                memSession.id = sessionId;
+                this.memoryService.sessions.set(sessionId, memSession);
+              }
+            }
+            
+            // Now register the WebSocket connection
             this.memoryService.registerWebSocketConnection(sessionId, ws);
-            console.log(`Registered WebSocket for existing Claude session: ${sessionId}`);
+            console.log(`Registered WebSocket for Claude session: ${sessionId}`);
           } catch (err) {
             console.warn('Failed to register WebSocket connection:', err.message);
           }
@@ -298,18 +342,17 @@ class ClaudeTerminalWebSocketServer {
           // Check if this session is focused
           const isFocused = this.isSessionFocused(sessionId, projectId);
           
-          if (isFocused) {
-            // Stream output immediately for focused session
-            if (session.ws && session.ws.readyState === ws.OPEN) {
-              session.ws.send(JSON.stringify({
-                type: 'stream',
-                data: data,
-              }));
-            }
-          } else {
-            // Buffer output for unfocused session
-            this.bufferOutput(sessionId, data);
+          // Always stream to focused sessions for real-time updates
+          if (isFocused && session.ws && session.ws.readyState === ws.OPEN) {
+            session.ws.send(JSON.stringify({
+              type: 'stream',
+              data: data,
+            }));
           }
+          
+          // Also buffer output for history (even for focused sessions)
+          // This ensures we have complete output history
+          this.bufferOutput(sessionId, data);
           
           // Accumulate output for command result
           if (session.commandOutput === undefined) {

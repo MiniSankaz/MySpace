@@ -843,27 +843,76 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                     </div>
                     <div className="flex-1 bg-black">
                       {systemSessions.length > 0 ? (
-                        <div className="h-full">
-                          {systemSessions.map((session) => (
-                            <div
-                              key={session.id}
-                              className={`h-full ${session.id === activeSessionId ? 'block' : 'hidden'}`}
-                            >
-                              <XTermViewV2
-                                sessionId={session.id}
-                                projectId={project.id}
-                                type={session.type}
-                                isFocused={session.isFocused}
-                                onData={(data) => {
-                                  console.log(`Terminal ${session.id} input:`, data);
-                                }}
-                                onResize={(cols, rows) => {
-                                  console.log(`Terminal ${session.id} resized to ${cols}x${rows}`);
-                                }}
-                              />
+                        layout.type === 'split-horizontal' || layout.type === 'split-vertical' ? (
+                          // In split mode, show up to 2 system terminals with tabs
+                          <div className="h-full flex flex-col">
+                            {systemSessions.length > 1 && (
+                              <div className="bg-gray-800 border-b border-gray-700 px-2 py-1 flex space-x-2">
+                                {systemSessions.slice(0, 2).map((session) => (
+                                  <button
+                                    key={session.id}
+                                    onClick={() => {
+                                      setActiveSessionId(session.id);
+                                      setFocus(session.id, true);
+                                    }}
+                                    className={`px-3 py-1 rounded text-xs transition-all ${
+                                      session.isFocused
+                                        ? 'bg-green-600/30 text-green-300 border border-green-500/50'
+                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                    }`}
+                                  >
+                                    {session.tabName}
+                                    {session.isFocused && <span className="ml-2 text-[10px]">LIVE</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              {systemSessions.slice(0, 2).map((session) => (
+                                <div
+                                  key={session.id}
+                                  className={`h-full ${session.id === activeSessionId ? 'block' : 'hidden'}`}
+                                >
+                                  <XTermViewV2
+                                    sessionId={session.id}
+                                    projectId={project.id}
+                                    type={session.type}
+                                    isFocused={session.isFocused}
+                                    onData={(data) => {
+                                      console.log(`Terminal ${session.id} input:`, data);
+                                    }}
+                                    onResize={(cols, rows) => {
+                                      console.log(`Terminal ${session.id} resized to ${cols}x${rows}`);
+                                    }}
+                                  />
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ) : (
+                          // Single terminal view
+                          <div className="h-full">
+                            {systemSessions.map((session) => (
+                              <div
+                                key={session.id}
+                                className={`h-full ${session.id === activeSessionId ? 'block' : 'hidden'}`}
+                              >
+                                <XTermViewV2
+                                  sessionId={session.id}
+                                  projectId={project.id}
+                                  type={session.type}
+                                  isFocused={session.isFocused}
+                                  onData={(data) => {
+                                    console.log(`Terminal ${session.id} input:`, data);
+                                  }}
+                                  onResize={(cols, rows) => {
+                                    console.log(`Terminal ${session.id} resized to ${cols}x${rows}`);
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )
                       ) : (
                         <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-slate-900">
                           <button
@@ -910,12 +959,36 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                     </div>
                     <div className="flex-1 bg-black">
                       {claudeSessions.length > 0 ? (
-                        <div className="h-full">
-                          {claudeSessions.map((session) => (
-                            <div
-                              key={session.id}
-                              className={`h-full ${session.id === activeSessionId ? 'block' : 'hidden'}`}
-                            >
+                        layout.type === 'split-horizontal' || layout.type === 'split-vertical' ? (
+                          // In split mode, show up to 2 claude terminals with tabs
+                          <div className="h-full flex flex-col">
+                            {claudeSessions.length > 1 && (
+                              <div className="bg-gray-800 border-b border-gray-700 px-2 py-1 flex space-x-2">
+                                {claudeSessions.slice(0, 2).map((session) => (
+                                  <button
+                                    key={session.id}
+                                    onClick={() => {
+                                      setActiveSessionId(session.id);
+                                      setFocus(session.id, true);
+                                    }}
+                                    className={`px-3 py-1 rounded text-xs transition-all ${
+                                      session.isFocused
+                                        ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                    }`}
+                                  >
+                                    {session.tabName}
+                                    {session.isFocused && <span className="ml-2 text-[10px]">LIVE</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              {claudeSessions.slice(0, 2).map((session) => (
+                                <div
+                                  key={session.id}
+                                  className={`h-full ${session.id === activeSessionId ? 'block' : 'hidden'}`}
+                                >
                               <XTermViewV2
                                 sessionId={session.id}
                                 projectId={project.id}
@@ -928,9 +1001,34 @@ const TerminalContainerV2: React.FC<TerminalContainerV2Props> = ({ project }) =>
                                   console.log(`Terminal ${session.id} resized to ${cols}x${rows}`);
                                 }}
                               />
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ) : (
+                          // Single terminal view
+                          <div className="h-full">
+                            {claudeSessions.map((session) => (
+                              <div
+                                key={session.id}
+                                className={`h-full ${session.id === activeSessionId ? 'block' : 'hidden'}`}
+                              >
+                                <XTermViewV2
+                                  sessionId={session.id}
+                                  projectId={project.id}
+                                  type={session.type}
+                                  isFocused={session.isFocused}
+                                  onData={(data) => {
+                                    console.log(`Terminal ${session.id} input:`, data);
+                                  }}
+                                  onResize={(cols, rows) => {
+                                    console.log(`Terminal ${session.id} resized to ${cols}x${rows}`);
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )
                       ) : (
                         <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-slate-900">
                           <button

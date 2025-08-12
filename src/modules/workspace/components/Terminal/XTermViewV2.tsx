@@ -202,15 +202,13 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
           switch (message.type) {
             case 'stream':
             case 'data':
-              // Only write if focused (backend should already filter)
-              if (isFocused) {
-                xtermRef.current.write(message.data);
-              }
+              // Always write received data - the backend handles focus-based streaming
+              xtermRef.current.write(message.data);
               break;
               
             case 'buffered':
-              // Flush buffered data when becoming focused
-              if (isFocused && message.data) {
+              // Display buffered data
+              if (message.data) {
                 xtermRef.current.write(message.data);
               }
               break;
@@ -221,6 +219,11 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
               
             case 'exit':
               xtermRef.current.write(`\r\n[Process exited with code ${message.code}]\r\n`);
+              break;
+              
+            case 'focusUpdate':
+              // Handle focus state update from backend
+              console.log(`Terminal ${sessionId} focus update: ${message.focused}`);
               break;
           }
         }

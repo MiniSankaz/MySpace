@@ -43,8 +43,9 @@ export class InMemoryTerminalService extends EventEmitter {
   private static instance: InMemoryTerminalService;
   
   // In-memory storage - no database dependency
-  private sessions: Map<string, TerminalSession> = new Map();
-  private projectSessions: Map<string, Set<string>> = new Map();
+  // Made public for WebSocket servers to manipulate directly when needed
+  public sessions: Map<string, TerminalSession> = new Map();
+  public projectSessions: Map<string, Set<string>> = new Map();
   private wsConnections: Map<string, WebSocketInfo> = new Map();
   
   // Multi-focus support: Track multiple focused sessions per project
