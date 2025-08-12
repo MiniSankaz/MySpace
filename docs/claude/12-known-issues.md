@@ -11,6 +11,7 @@
 - [Build Errors with TypeScript](#build-errors-with-typescript)
 - [Session Cookie Issues](#session-cookie-issues)
 - [Terminal Session Creation Authentication](#terminal-session-creation-authentication-error)
+- [Terminal Shell Spawning posix_spawnp Errors](#terminal-shell-spawning-posix_spawnp-errors) - ANALYZED
 
 ### Environment Issues
 - [Port Conflicts](#port-conflicts)
@@ -38,6 +39,23 @@
 ---
 
 ## Critical Issues
+
+### Git Service Invalid URL Error ⚠️
+**Status**: FIXED (2025-08-12)
+**Problem**: Git commands failing with "TypeError: Invalid URL" 
+**Root Cause**: GitService using relative URL `/api/workspace/git/execute` in server-side context
+**Solution**: 
+- Added full URL construction using `process.env.NEXT_PUBLIC_APP_URL`
+- Modified GitService to accept and forward access tokens
+- Updated all 12 Git API routes to pass tokens to GitService
+**Files Fixed**: `/src/services/git.service.ts`, all files in `/src/app/api/workspace/git/`
+
+### Authentication Cookie Name Mismatch ⚠️
+**Status**: FIXED (2025-08-12)
+**Problem**: All APIs returning 401 despite user being logged in
+**Root Cause**: APIs looking for `auth-token` instead of `accessToken`
+**Solution**: Fixed 20+ API endpoints to use correct cookie name
+**Prevention**: See [Authentication Standards](./15-authentication-standards.md)
 
 ### WebSocket Terminal Reconnection Loop ⚠️
 **Status**: FIXED (2025-08-11)
@@ -78,6 +96,23 @@
 **Problem**: "authClient.getCurrentUser is not a function"
 **Solution**: Use `verifyAuth(request)` from middleware instead
 **File**: `/src/app/api/workspace/projects/[id]/terminals/route.ts`
+
+### Terminal Shell Spawning posix_spawnp Errors
+**Status**: ANALYZED (2025-08-12)
+**Problem**: Intermittent "posix_spawnp failed" errors when spawning terminal shells, causing sessions to close with code 1001
+**Root Cause**: Not actual spawn failures - likely edge cases related to:
+  - Rapid WebSocket connection cycles during page refreshes  
+  - Resource exhaustion (PTY devices, file descriptors)
+  - Race conditions with multiple simultaneous spawns
+  - Temporary system resource constraints
+**Analysis**: Core shell spawning works correctly (node-pty v1.0.0 + Node.js v22.17.0 compatible)
+**Recommended Fixes**:
+  - Enhanced error logging with detailed spawn failure context
+  - Prevent duplicate shell entries in ShellManager detection
+  - Improve session lifecycle for code 1001 (page refresh) scenarios
+  - Add resource monitoring and circuit breaker patterns
+**Workaround**: Restart terminal sessions or refresh browser page
+**Files**: `/src/server/websocket/terminal-ws-standalone.js`, `/src/server/websocket/shell-manager.js`
 
 ## Environment-Specific Issues
 

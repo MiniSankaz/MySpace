@@ -25,7 +25,7 @@ export async function DELETE(
     // Simple auth check - just verify token exists
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('accessToken')?.value || 
-                        cookieStore.get('auth-token')?.value ||
+                        cookieStore.get('accessToken')?.value ||
                         cookieStore.get('next-auth.session-token')?.value;
     
     if (!sessionToken) {

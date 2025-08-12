@@ -6,6 +6,12 @@
 > 
 > Agents should read this file first to understand the project structure, then access specific documentation as needed.
 
+## 🚨 Recent Issues Fixed (2025-01-13)
+- **Terminal Focus Issue**: Fixed terminal sessions not being active after creation due to sync issues between memory service and frontend
+- **Git WebSocket Loop**: Resolved infinite reconnection loops with proper circuit breaker implementation
+- **Memory Leaks**: Enhanced cleanup procedures for all components to prevent resource leaks
+- **State Sync Issues**: Improved state synchronization between Terminal, Git, and File Explorer components
+
 ## 🎯 Project Overview
 
 **Project**: Stock Portfolio Management System  
@@ -36,6 +42,7 @@
 ### Agent Documentation
 - 🤖 [Agent Guidelines](./docs/claude/13-agent-guidelines.md) - Best practices for AI agents
 - 📊 [Agent Work Log](./docs/claude/14-agent-worklog.md) - Detailed agent activity history
+- 🔐 [Authentication Standards](./docs/claude/15-authentication-standards.md) - **CRITICAL: Cookie naming & auth patterns**
 
 ## 🚀 Quick Commands
 
@@ -70,7 +77,13 @@ User: test@personalai.com / Test@123
 - ✅ Multi-terminal parallel processing
 - ✅ Environment file loading from project paths
 
-### Recent Updates (2025-08-11)
+### Recent Updates (2025-08-12)
+- Project Management Sidebar code review completed (82/100 score)
+- Critical security and error handling issues identified
+- Database schema and API endpoints implemented
+- Component architecture established with TypeScript
+
+### Previous Updates (2025-08-11)
 - Terminal V2 UI modernization completed
 - Split screen layouts (single, horizontal, vertical, grid)
 - Glass morphism and gradient effects

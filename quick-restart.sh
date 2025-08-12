@@ -83,3 +83,38 @@ echo -e "${GREEN}✅ Quick restart complete!${NC}"
 echo -e "${GREEN}📝 Logs: tail -f server.log${NC}"
 echo -e "${GREEN}🌐 App: http://127.0.0.1:4000${NC}"
 echo -e "${GREEN}🤖 Assistant: http://127.0.0.1:4000/assistant${NC}"
+
+# Test server is running
+echo -e "${YELLOW}🧪 Testing server availability...${NC}"
+sleep 2
+
+# Check if server responds
+MAX_ATTEMPTS=5
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/api/health 2>/dev/null | grep -q "200\|404"; then
+        echo -e "${GREEN}✅ Server is responding${NC}"
+        break
+    fi
+    ATTEMPT=$((ATTEMPT + 1))
+    echo -e "${YELLOW}⏳ Waiting for server... (attempt $ATTEMPT/$MAX_ATTEMPTS)${NC}"
+    sleep 2
+done
+
+if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+    echo -e "${YELLOW}⚠️ Server may not be responding correctly${NC}"
+fi
+
+# Auto-terminate after testing
+echo -e "${YELLOW}🛑 Auto-terminating quick-restart process...${NC}"
+sleep 1
+
+# Store server PID in file for manual stop if needed
+echo $SERVER_PID > server.pid.quick-restart
+
+echo -e "${GREEN}✅ Quick restart process completed and terminated${NC}"
+echo -e "${GREEN}📌 Server is running in background with PID: $SERVER_PID${NC}"
+echo -e "${GREEN}💡 To stop server manually: kill $(cat server.pid.quick-restart 2>/dev/null || echo 'PID')${NC}"
+
+# Exit the script (terminate itself)
+exit 0

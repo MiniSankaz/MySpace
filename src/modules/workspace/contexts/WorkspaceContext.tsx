@@ -41,6 +41,11 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
     loading: false,
     error: null,
   });
+  
+  // Add method to set current project directly
+  const setCurrentProject = useCallback((project: Project | null) => {
+    setState(prev => ({ ...prev, currentProject: project }));
+  }, []);
 
   // Fetch all projects
   const fetchProjects = useCallback(async () => {
@@ -286,7 +291,11 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
       initializeDefaultProject();
     }, 1000); // Small delay to ensure projects are loaded
     
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Reset creating flag on unmount
+      setIsCreatingDefault(false);
+    };
   }, [initializeDefaultProject]);
 
   const value: WorkspaceContextType = {

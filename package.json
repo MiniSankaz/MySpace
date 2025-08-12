@@ -94,6 +94,7 @@
     "monaco-editor": "^0.52.2",
     "next": "^15.4.5",
     "next-auth": "^5.0.0-beta.29",
+    "node-fetch": "^2.7.0",
     "node-pty": "^1.0.0",
     "nodemailer": "^6.10.1",
     "ora": "^8.2.0",
@@ -155,6 +156,7 @@
     "playwright": "^1.54.2",
     "prettier": "^3.6.2",
     "sass": "^1.90.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.3"
   }
 }

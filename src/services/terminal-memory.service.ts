@@ -37,6 +37,11 @@ interface WebSocketInfo {
   lastPing: Date;
 }
 
+// Use global to ensure singleton across all module instances
+declare global {
+  var _inMemoryTerminalServiceInstance: InMemoryTerminalService | undefined;
+}
+
 /**
  * In-Memory Terminal Service
  * Single source of truth for all terminal sessions
@@ -55,6 +60,10 @@ export class InMemoryTerminalService extends EventEmitter {
   private readonly MAX_FOCUSED_PER_PROJECT = 4;
   private sessionActivity: Map<string, Date> = new Map();
   
+  // WebSocket readiness tracking
+  private wsReadiness: Map<string, boolean> = new Map();
+  private wsReadyPromises: Map<string, Promise<boolean>> = new Map();
+  
   // Session counter for tab naming
   private sessionCounters: Map<string, number> = new Map();
   
@@ -70,12 +79,17 @@ export class InMemoryTerminalService extends EventEmitter {
   
   /**
    * Get singleton instance
+   * Uses global to ensure singleton across all module instances in Next.js
    */
   public static getInstance(): InMemoryTerminalService {
-    if (!InMemoryTerminalService.instance) {
-      InMemoryTerminalService.instance = new InMemoryTerminalService();
+    // Use global variable to ensure true singleton across module boundaries
+    if (!global._inMemoryTerminalServiceInstance) {
+      console.log('[InMemoryTerminalService] Creating new global instance');
+      global._inMemoryTerminalServiceInstance = new InMemoryTerminalService();
+    } else {
+      console.log('[InMemoryTerminalService] Using existing global instance');
     }
-    return InMemoryTerminalService.instance;
+    return global._inMemoryTerminalServiceInstance;
   }
   
   /**
@@ -256,6 +270,9 @@ export class InMemoryTerminalService extends EventEmitter {
     session.wsConnected = true;
     session.status = 'active';
     session.updatedAt = new Date();
+    
+    // Mark WebSocket as ready
+    this.markWebSocketReady(sessionId);
     
     console.log(`[InMemoryTerminalService] Registered WebSocket for session ${sessionId}`);
     this.emit('sessionWebSocketConnected', { sessionId });
@@ -489,6 +506,62 @@ export class InMemoryTerminalService extends EventEmitter {
   }
   
   /**
+   * Wait for WebSocket readiness
+   */
+  public waitForWebSocketReady(sessionId: string, timeout: number = 5000): Promise<boolean> {
+    // Check if already ready
+    if (this.wsReadiness.get(sessionId)) {
+      return Promise.resolve(true);
+    }
+    
+    // Check if promise already exists
+    const existingPromise = this.wsReadyPromises.get(sessionId);
+    if (existingPromise) {
+      return existingPromise;
+    }
+    
+    // Create new promise
+    const promise = new Promise<boolean>((resolve) => {
+      // Set up listener for ready event
+      const readyListener = (readySessionId: string) => {
+        if (readySessionId === sessionId) {
+          this.off('wsReady', readyListener);
+          this.wsReadyPromises.delete(sessionId);
+          resolve(true);
+        }
+      };
+      
+      this.on('wsReady', readyListener);
+      
+      // Set timeout
+      setTimeout(() => {
+        this.off('wsReady', readyListener);
+        this.wsReadyPromises.delete(sessionId);
+        resolve(false);
+      }, timeout);
+    });
+    
+    this.wsReadyPromises.set(sessionId, promise);
+    return promise;
+  }
+  
+  /**
+   * Mark WebSocket as ready
+   */
+  public markWebSocketReady(sessionId: string): void {
+    this.wsReadiness.set(sessionId, true);
+    this.emit('wsReady', sessionId);
+    console.log(`[InMemoryTerminalService] WebSocket ready for session ${sessionId}`);
+  }
+  
+  /**
+   * Check if WebSocket is ready
+   */
+  public isWebSocketReady(sessionId: string): boolean {
+    return this.wsReadiness.get(sessionId) || false;
+  }
+
+  /**
    * Clear all sessions (for testing)
    */
   public clearAllSessions(): void {
@@ -499,9 +572,11 @@ export class InMemoryTerminalService extends EventEmitter {
     this.projectSessions.clear();
     this.wsConnections.clear();
     this.sessionCounters.clear();
+    this.wsReadiness.clear();
+    this.wsReadyPromises.clear();
     console.log('[InMemoryTerminalService] All sessions cleared');
   }
 }
 
-// Export singleton instance
+// Export singleton instance - always use getInstance() to ensure global singleton
 export const inMemoryTerminalService = InMemoryTerminalService.getInstance();

@@ -2,12 +2,19 @@
 
 ## Working with AI Agents
 
+### ⚠️ CRITICAL: Pre-Coding Checklist
+1. **READ [Authentication Standards](./15-authentication-standards.md)** - MANDATORY for API work
+2. **VERIFY variable names** - Check Login API for cookie names
+3. **CHECK existing patterns** - Don't assume, verify with actual code
+4. **NEVER use `auth-token`** - Always use `accessToken` for auth cookies
+
 ### Core Principles
 1. **Trust but Verify** - Always verify agent outputs
 2. **Atomic Tasks** - Break work into small, verifiable units
 3. **Clear Context** - Provide specific, detailed instructions
 4. **Progress Tracking** - Use TodoWrite for task management
 5. **Documentation** - Update CLAUDE.md after significant changes
+6. **Authentication First** - ALWAYS check auth standards before API work
 
 ## Known Agent Issues
 

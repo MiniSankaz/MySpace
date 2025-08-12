@@ -136,12 +136,14 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
 
     // Cleanup
     return () => {
+      console.log(`[XTermView] Cleaning up terminal view for session: ${sessionId}`);
       window.removeEventListener('resize', handleResize);
       dataHandler.dispose();
       
       // Clear reconnect timeout
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       
       // Close WebSocket with clean disconnect
@@ -150,7 +152,17 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
         wsRef.current = null;
       }
       
-      term.dispose();
+      // Reset reconnection state
+      reconnectAttemptsRef.current = 0;
+      
+      // Dispose terminal
+      if (term) {
+        term.dispose();
+      }
+      
+      // Clear refs
+      xtermRef.current = null;
+      fitAddonRef.current = null;
     };
   }, [sessionId]);
 
@@ -166,10 +178,22 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
 
   // Connect to WebSocket server
   const connectWebSocket = useCallback(() => {
+    // Prevent multiple connections
+    if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+      console.log(`[XTermView] WebSocket already connecting for session ${sessionId}`);
+      return;
+    }
+    
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log(`[XTermView] WebSocket already connected for session ${sessionId}`);
+      return;
+    }
+    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const port = type === 'system' ? '4001' : '4002';
     const wsUrl = `${protocol}//127.0.0.1:${port}/?projectId=${projectId}&sessionId=${sessionId}`;
     
+    console.log(`[XTermView] Connecting to WebSocket for session ${sessionId}...`);
     const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
@@ -251,9 +275,9 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
     };
     
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error(`WebSocket error for session ${sessionId}:`, error);
       if (xtermRef.current) {
-        xtermRef.current.write('\r\n\x1b[31m[Connection Error]\x1b[0m\r\n');
+        xtermRef.current.write('\r\n\x1b[31m[Connection Error - Check if terminal is ready]\x1b[0m\r\n');
       }
     };
     

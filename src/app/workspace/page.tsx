@@ -6,8 +6,9 @@ import { WorkspaceProvider } from '@/modules/workspace/contexts/WorkspaceContext
 import { useTerminalStore } from '@/modules/workspace/stores/terminal.store';
 
 // Dynamic import to avoid SSR issues with terminal components
+// Using V2 layout with Project Sidebar and Git Configuration
 const WorkspaceLayout = dynamic(
-  () => import('@/modules/workspace/components/Layout/WorkspaceLayout'),
+  () => import('@/modules/workspace/components/Layout/WorkspaceLayoutV2'),
   { 
     ssr: false,
     loading: () => (

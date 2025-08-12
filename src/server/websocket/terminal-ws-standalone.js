@@ -4,18 +4,28 @@ const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
+const { getShellManager } = require('./shell-manager');
+const ImprovedGitService = require('./git-service-improved');
 
 // Import in-memory terminal service instead of database logging
 let InMemoryTerminalService;
 try {
-  // Try to use the in-memory service
-  const memoryModule = require('../../../dist/services/terminal-memory.service');
+  // Try to use the TypeScript in-memory service directly
+  require('ts-node/register');
+  const memoryModule = require('../../services/terminal-memory.service.ts');
   InMemoryTerminalService = memoryModule.InMemoryTerminalService;
   console.log('In-memory terminal service loaded successfully');
 } catch (error) {
-  // In-memory service is optional - continue without it if not available
-  console.warn('In-memory terminal service not available (optional):', error.message);
-  InMemoryTerminalService = null;
+  // Fallback to compiled version if ts-node is not available
+  try {
+    const memoryModule = require('../../../dist/services/terminal-memory.service');
+    InMemoryTerminalService = memoryModule.InMemoryTerminalService;
+    console.log('In-memory terminal service loaded successfully (compiled)');
+  } catch (error2) {
+    // In-memory service is optional - continue without it if not available
+    console.warn('In-memory terminal service not available (optional):', error2.message);
+    InMemoryTerminalService = null;
+  }
 }
 
 class TerminalWebSocketServer {
@@ -23,6 +33,17 @@ class TerminalWebSocketServer {
     this.port = port;
     this.sessions = new Map();
     this.memoryService = InMemoryTerminalService ? InMemoryTerminalService.getInstance() : null;
+    
+    // Initialize shell manager
+    this.shellManager = getShellManager();
+    
+    // Initialize improved Git service
+    this.gitService = new ImprovedGitService();
+    
+    // Rate limiting for terminal spawns
+    this.spawnAttempts = new Map(); // Track spawn attempts per IP/session
+    this.maxSpawnsPerMinute = 10;
+    this.cleanupSpawnAttempts();
     
     // Multi-focus management - track multiple focused sessions per project
     this.focusedSessions = new Map(); // projectId -> Set<sessionId>
@@ -82,18 +103,63 @@ class TerminalWebSocketServer {
       this.cleanupInactiveSessions();
     }, 5 * 60 * 1000);
   }
+  
+  cleanupSpawnAttempts() {
+    // Clean up old spawn attempts every minute
+    setInterval(() => {
+      const oneMinuteAgo = Date.now() - 60000;
+      for (const [key, attempts] of this.spawnAttempts.entries()) {
+        const recentAttempts = attempts.filter(time => time > oneMinuteAgo);
+        if (recentAttempts.length === 0) {
+          this.spawnAttempts.delete(key);
+        } else {
+          this.spawnAttempts.set(key, recentAttempts);
+        }
+      }
+    }, 60000);
+  }
+  
+  checkRateLimit(identifier) {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60000;
+    
+    if (!this.spawnAttempts.has(identifier)) {
+      this.spawnAttempts.set(identifier, []);
+    }
+    
+    const attempts = this.spawnAttempts.get(identifier);
+    const recentAttempts = attempts.filter(time => time > oneMinuteAgo);
+    
+    if (recentAttempts.length >= this.maxSpawnsPerMinute) {
+      return false; // Rate limit exceeded
+    }
+    
+    recentAttempts.push(now);
+    this.spawnAttempts.set(identifier, recentAttempts);
+    return true;
+  }
 
   cleanupInactiveSessions() {
     const now = Date.now();
-    const maxAge = 30 * 60 * 1000; // 30 minutes
+    const maxAge = 30 * 60 * 1000; // 30 minutes default
     
     for (const [sessionKey, session] of this.sessions) {
       if (!session.ws || session.ws.readyState !== 1) { // Not OPEN
-        // Check if session has been disconnected for too long
-        const disconnectedTime = Date.now() - (session.lastDisconnectTime || Date.now());
+        // Check if keep-alive has expired
+        if (session.keepAliveUntil && now > session.keepAliveUntil) {
+          console.log(`Keep-alive expired for session ${sessionKey}, cleaning up`);
+          if (session.process && !session.process.killed) {
+            session.process.kill();
+          }
+          this.sessions.delete(sessionKey);
+          continue;
+        }
         
-        // Keep sessions alive for 30 minutes for reconnection
-        if (disconnectedTime > maxAge) {
+        // Check if session has been disconnected for too long
+        const disconnectedTime = now - (session.lastDisconnectTime || now);
+        
+        // Keep sessions alive for 30 minutes for reconnection (unless keep-alive is set)
+        if (!session.keepAliveUntil && disconnectedTime > maxAge) {
           console.log(`Cleaning up long-disconnected session: ${sessionKey}`);
           if (session.process) {
             session.process.kill();
@@ -110,12 +176,25 @@ class TerminalWebSocketServer {
     }
   }
 
-  handleConnection(ws, request) {
+  async handleConnection(ws, request) {
     console.log('New terminal WebSocket connection on standalone server');
     console.log('Request URL:', request.url);
     
     try {
       const url = new URL(request.url, `http://localhost:${this.port}`);
+      
+      // Check if this is a Git WebSocket connection
+      // Match any project ID format (alphanumeric with hyphens and underscores)
+      const pathMatch = url.pathname.match(/^\/git\/([a-zA-Z0-9_-]+)$/);
+      if (pathMatch) {
+        // Handle Git WebSocket connections separately
+        const gitProjectId = pathMatch[1];
+        console.log(`Git WebSocket connection for project: ${gitProjectId}`);
+        this.handleGitWebSocketConnection(ws, gitProjectId);
+        return;
+      }
+      
+      // Regular terminal WebSocket handling
       const projectId = url.searchParams.get('projectId');
       let rawSessionId = url.searchParams.get('sessionId') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
       let workingDir = url.searchParams.get('path');
@@ -161,6 +240,11 @@ class TerminalWebSocketServer {
       // Reuse existing session if it exists and is still alive
       if (session && session.process && !session.process.killed) {
         console.log(`Reusing existing session: ${sessionKey} (ID: ${sessionId})`);
+        // Clear keep-alive since we're reconnecting
+        if (session.keepAliveUntil) {
+          delete session.keepAliveUntil;
+          delete session.lastDisconnectCode;
+        }
         // Update WebSocket connection
         session.ws = ws;
         
@@ -179,19 +263,79 @@ class TerminalWebSocketServer {
       }
       
       if (!session) {
-        // Create new shell session - detect platform
-        let shell;
-        let shellArgs = [];
-        
-        if (os.platform() === 'win32') {
-          shell = 'powershell.exe';
-        } else if (os.platform() === 'darwin') {
-          // macOS uses zsh by default
-          shell = '/bin/zsh';
-        } else {
-          // Linux
-          shell = process.env.SHELL || '/bin/bash';
+        // Check rate limit before creating new session
+        const rateLimitKey = projectId || request.socket.remoteAddress || 'global';
+        if (!this.checkRateLimit(rateLimitKey)) {
+          console.error(`Rate limit exceeded for ${rateLimitKey}`);
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Too many terminal sessions. Please wait a moment and try again.',
+          }));
+          ws.close(1008, 'Rate limit exceeded');
+          return;
         }
+        
+        // Create new shell session - detect platform
+        // Helper function to check if shell exists
+        const shellExists = (shellPath) => {
+          try {
+            return fs.existsSync(shellPath);
+          } catch (error) {
+            console.warn(`Failed to check shell ${shellPath}:`, error.message);
+            return false;
+          }
+        };
+        
+        // Get available shell with fallback options
+        const getAvailableShell = () => {
+          const shells = [];
+          
+          if (os.platform() === 'win32') {
+            // Windows shells - try multiple options
+            shells.push(
+              process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe',
+              'powershell.exe',
+              'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+              'cmd.exe'
+            );
+          } else if (os.platform() === 'darwin') {
+            // macOS shells - try zsh first, then bash
+            shells.push(
+              process.env.SHELL || '/bin/zsh',
+              '/bin/zsh',
+              '/bin/bash',
+              '/usr/bin/bash',
+              '/bin/sh'
+            );
+          } else {
+            // Linux/Unix shells
+            shells.push(
+              process.env.SHELL || '/bin/bash',
+              '/bin/bash',
+              '/usr/bin/bash',
+              '/bin/sh',
+              '/usr/bin/sh',
+              '/bin/dash'
+            );
+          }
+          
+          // Find first available shell
+          for (const shellPath of shells) {
+            if (shellExists(shellPath)) {
+              console.log(`✓ Found available shell: ${shellPath}`);
+              return shellPath;
+            } else {
+              console.log(`✗ Shell not found: ${shellPath}`);
+            }
+          }
+          
+          // Ultimate fallback
+          console.warn('⚠️ No standard shell found, using system default fallback');
+          return os.platform() === 'win32' ? 'cmd.exe' : '/bin/sh';
+        };
+        
+        let shell = getAvailableShell();
+        let shellArgs = os.platform() === 'win32' ? [] : ['-l']; // Login shell on Unix
         
         console.log(`Creating new shell session with: ${shell}`);
         console.log(`Current working directory: ${workingDir}`);
@@ -240,13 +384,39 @@ class TerminalWebSocketServer {
         // Debug PORT value
         console.log(`PORT value for terminal: ${finalEnv.PORT}`);
         
-        const shellProcess = pty.spawn(shell, shellArgs, {
-          name: 'xterm-256color',
-          cols: 80,
-          rows: 30,
-          cwd: workingDir,
-          env: finalEnv,
-        });
+        // Use ShellManager to spawn shell with proper verification
+        let shellProcess;
+        try {
+          const shellResult = await this.shellManager.spawnShell({
+            cwd: workingDir,
+            env: finalEnv,
+            cols: 80,
+            rows: 30
+          });
+          
+          shellProcess = shellResult.process;
+          console.log(`✓ Successfully spawned shell: ${shellResult.shell}`);
+          console.log('Shell capabilities:', shellResult.capabilities);
+        } catch (spawnError) {
+          console.error('✗ Failed to spawn any shell:', spawnError.message);
+          console.error('Shell spawn error details:', {
+            error: spawnError.message,
+            code: spawnError.code,
+            availableShells: this.shellManager.getShellInfo().available,
+            workingDir: workingDir,
+            sessionId: sessionId
+          });
+          
+          // Send detailed error to client
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: `Failed to initialize terminal: ${spawnError.message}. No available shells found.`,
+          }));
+          
+          // Close connection with error code
+          ws.close(4000, 'Terminal spawn failed');
+          return;
+        }
         
         session = {
           id: sessionId,
@@ -442,6 +612,27 @@ class TerminalWebSocketServer {
             case 'ping':
               ws.send(JSON.stringify({ type: 'pong' }));
               break;
+              
+            case 'subscribe':
+              // Subscribe to git status updates for a project
+              if (data.projectId && data.projectPath) {
+                this.subscribeToGitUpdates(ws, data.projectId, data.projectPath);
+              }
+              break;
+              
+            case 'unsubscribe':
+              // Unsubscribe from git status updates
+              if (data.projectId) {
+                this.unsubscribeFromGitUpdates(ws, data.projectId);
+              }
+              break;
+              
+            case 'git-refresh':
+              // Force refresh git status
+              if (data.projectId && data.projectPath) {
+                this.refreshGitStatus(data.projectId, data.projectPath);
+              }
+              break;
             
             case 'focus':
               // Handle focus change
@@ -490,12 +681,13 @@ class TerminalWebSocketServer {
         // 1000 = Normal closure, 1001 = Going away (page refresh/navigation)
         // 1006 = Abnormal closure (network failure, browser crash)
         // 4000-4999 = Application-specific codes
-        const isCleanClose = code === 1000 || code === 1001;
+        const isIntentionalClose = code === 1000; // Only 1000 is truly intentional
+        const isPageRefresh = code === 1001; // Browser navigation/refresh
         const isCircuitBreakerClose = code >= 4000 && code <= 4099;
         
-        if (isCleanClose) {
-          // Clean close - end the session properly
-          console.log(`Clean close for session ${sessionKey}, ending session`);
+        if (isIntentionalClose) {
+          // Intentional close - end the session properly
+          console.log(`Intentional close for session ${sessionKey}, ending session`);
           
           // End logging session
           if (this.loggingService && session && session.dbSessionId) {
@@ -509,6 +701,15 @@ class TerminalWebSocketServer {
             session.process.kill();
           }
           this.sessions.delete(sessionKey);
+        } else if (isPageRefresh) {
+          // Page refresh - keep session alive for reconnection
+          console.log(`Page refresh (code 1001) for session ${sessionKey}, keeping session alive for 2 minutes`);
+          
+          if (session) {
+            session.ws = null;
+            session.keepAliveUntil = Date.now() + (2 * 60 * 1000); // Keep alive for 2 minutes
+            session.lastDisconnectCode = code;
+          }
         } else if (isCircuitBreakerClose) {
           // Circuit breaker triggered - log but keep session for recovery
           console.warn(`Circuit breaker close (code ${code}) for session ${sessionKey}, keeping session for recovery`);
@@ -687,6 +888,10 @@ class TerminalWebSocketServer {
       this.memoryService.registerWebSocketConnection(sessionId, ws);
       console.log(`Successfully registered WebSocket for session ${sessionId} on attempt ${retryCount + 1}`);
       
+      // Mark WebSocket as ready for this session
+      this.memoryService.markWebSocketReady(sessionId);
+      console.log(`[Terminal WS] Marked WebSocket ready for session ${sessionId}`);
+      
       // Clear retry count on success
       this.registrationRetries.delete(sessionId);
       
@@ -756,6 +961,279 @@ class TerminalWebSocketServer {
     });
     this.sessions.clear();
     console.log('All terminal sessions closed');
+  }
+  
+  // Git monitoring methods
+  handleGitWebSocketConnection(ws, projectId) {
+    console.log(`[Git WS] Handling Git WebSocket for project: ${projectId}`);
+    
+    // Register connection with improved Git service
+    this.gitService.registerConnection(projectId, ws);
+    
+    // Handle WebSocket messages
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log(`[Git WS] Received message:`, data);
+        
+        switch(data.type) {
+          case 'subscribe':
+            if (data.projectPath) {
+              // Use improved Git service for monitoring
+              this.gitService.startMonitoring(projectId, data.projectPath);
+            }
+            break;
+            
+          case 'git-refresh':
+            if (data.projectPath) {
+              // Force refresh using improved Git service
+              this.gitService.getGitStatus(projectId, data.projectPath);
+            }
+            break;
+            
+          default:
+            console.warn(`[Git WS] Unknown message type: ${data.type}`);
+        }
+      } catch (error) {
+        console.error('[Git WS] Error processing message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: error.message,
+        }));
+      }
+    });
+    
+    // Handle WebSocket close
+    ws.on('close', () => {
+      console.log(`[Git WS] Connection closed for project: ${projectId}`);
+      // Cleanup handled automatically by improved Git service
+    });
+    
+    // Handle errors
+    ws.on('error', (error) => {
+      console.error(`[Git WS] WebSocket error for project ${projectId}:`, error);
+    });
+    
+    // Send initial connection success
+    ws.send(JSON.stringify({
+      type: 'connected',
+      projectId: projectId,
+    }));
+  }
+  
+  subscribeToGitUpdates(ws, projectId, projectPath) {
+    if (!this.gitSubscriptions.has(projectId)) {
+      this.gitSubscriptions.set(projectId, new Set());
+      this.startGitMonitoring(projectId, projectPath);
+    }
+    
+    const subscribers = this.gitSubscriptions.get(projectId);
+    subscribers.add(ws);
+    
+    // Send cached status if available
+    const cached = this.gitStatusCache.get(projectId);
+    if (cached) {
+      ws.send(JSON.stringify({
+        type: 'status-update',
+        status: cached.status,
+        currentBranch: cached.currentBranch,
+      }));
+      
+      if (cached.branches) {
+        ws.send(JSON.stringify({
+          type: 'branches-update',
+          branches: cached.branches,
+        }));
+      }
+    }
+    
+    console.log(`Git subscription added for project ${projectId}`);
+  }
+  
+  unsubscribeFromGitUpdates(ws, projectId) {
+    const subscribers = this.gitSubscriptions.get(projectId);
+    if (subscribers) {
+      subscribers.delete(ws);
+      
+      // Stop monitoring if no more subscribers
+      if (subscribers.size === 0) {
+        this.stopGitMonitoring(projectId);
+        this.gitSubscriptions.delete(projectId);
+      }
+    }
+  }
+  
+  startGitMonitoring(projectId, projectPath) {
+    // Initial status check
+    this.refreshGitStatus(projectId, projectPath);
+    
+    // Poll for changes every 5 seconds
+    const intervalId = setInterval(() => {
+      this.refreshGitStatus(projectId, projectPath);
+    }, 5000);
+    
+    this.gitMonitorIntervals.set(projectId, intervalId);
+    console.log(`Started git monitoring for project ${projectId}`);
+  }
+  
+  stopGitMonitoring(projectId) {
+    const intervalId = this.gitMonitorIntervals.get(projectId);
+    if (intervalId) {
+      clearInterval(intervalId);
+      this.gitMonitorIntervals.delete(projectId);
+      this.gitStatusCache.delete(projectId);
+      console.log(`Stopped git monitoring for project ${projectId}`);
+    }
+  }
+  
+  async refreshGitStatus(projectId, projectPath) {
+    try {
+      // Execute git commands to get status
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      
+      // Get git status
+      const statusResult = await execAsync('git status --porcelain=v1 --branch', {
+        cwd: projectPath,
+        maxBuffer: 1024 * 1024, // 1MB buffer
+      });
+      
+      // Parse status
+      const status = this.parseGitStatus(statusResult.stdout);
+      
+      // Get current branch
+      const branchResult = await execAsync('git rev-parse --abbrev-ref HEAD', {
+        cwd: projectPath,
+      });
+      
+      const currentBranch = branchResult.stdout.trim();
+      
+      // Get branches list
+      const branchesResult = await execAsync('git branch -a -v', {
+        cwd: projectPath,
+      });
+      
+      const branches = this.parseGitBranches(branchesResult.stdout, currentBranch);
+      
+      // Update cache
+      this.gitStatusCache.set(projectId, {
+        status,
+        currentBranch,
+        branches,
+        lastUpdate: Date.now(),
+      });
+      
+      // Broadcast to all subscribers
+      const subscribers = this.gitSubscriptions.get(projectId);
+      if (subscribers) {
+        const statusMessage = JSON.stringify({
+          type: 'status-update',
+          status,
+          currentBranch,
+        });
+        
+        const branchesMessage = JSON.stringify({
+          type: 'branches-update',
+          branches,
+        });
+        
+        subscribers.forEach(ws => {
+          if (ws.readyState === 1) { // OPEN
+            ws.send(statusMessage);
+            ws.send(branchesMessage);
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to refresh git status for project ${projectId}:`, error);
+      
+      // Notify subscribers of error
+      const subscribers = this.gitSubscriptions.get(projectId);
+      if (subscribers) {
+        const errorMessage = JSON.stringify({
+          type: 'error',
+          message: 'Failed to get git status',
+        });
+        
+        subscribers.forEach(ws => {
+          if (ws.readyState === 1) {
+            ws.send(errorMessage);
+          }
+        });
+      }
+    }
+  }
+  
+  parseGitStatus(output) {
+    const lines = output.split('\n').filter(Boolean);
+    const status = {
+      modified: [],
+      staged: [],
+      untracked: [],
+      conflicts: [],
+      ahead: 0,
+      behind: 0,
+      isClean: true,
+    };
+    
+    for (const line of lines) {
+      if (line.startsWith('##')) {
+        // Parse branch info
+        const aheadMatch = line.match(/ahead (\d+)/);
+        const behindMatch = line.match(/behind (\d+)/);
+        
+        if (aheadMatch) status.ahead = parseInt(aheadMatch[1]);
+        if (behindMatch) status.behind = parseInt(behindMatch[1]);
+      } else {
+        const statusCode = line.substring(0, 2);
+        const filename = line.substring(3);
+        
+        status.isClean = false;
+        
+        if (statusCode === '??') {
+          status.untracked.push(filename);
+        } else if (statusCode === 'UU' || statusCode === 'AA' || statusCode === 'DD') {
+          status.conflicts.push(filename);
+        } else if (statusCode[0] !== ' ' && statusCode[0] !== '?') {
+          status.staged.push(filename);
+        } else if (statusCode[1] !== ' ' && statusCode[1] !== '?') {
+          status.modified.push(filename);
+        }
+      }
+    }
+    
+    status.lastFetch = new Date();
+    return status;
+  }
+  
+  parseGitBranches(output, currentBranch) {
+    const lines = output.split('\n').filter(Boolean);
+    const branches = [];
+    
+    for (const line of lines) {
+      const isCurrent = line.startsWith('*');
+      const cleanLine = line.replace(/^\*?\s+/, '');
+      const parts = cleanLine.split(/\s+/);
+      
+      if (parts.length < 2) continue;
+      
+      const name = parts[0];
+      const isRemote = name.startsWith('remotes/');
+      
+      // Skip HEAD references
+      if (name.includes('HEAD')) continue;
+      
+      branches.push({
+        name: isRemote ? name.replace('remotes/', '') : name,
+        isRemote,
+        isCurrent: name === currentBranch,
+        ahead: 0,
+        behind: 0,
+      });
+    }
+    
+    return branches;
   }
 }
 

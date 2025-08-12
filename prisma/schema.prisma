@@ -745,6 +745,8 @@ model User {
   KBSolutionFeedback                KBSolutionFeedback[]
   KBIssueRelations                  KBIssueRelation[]
   KBAttachments                     KBAttachment[]
+  ProjectPreferences                ProjectPreferences[]
+  UserSidebarSettings               UserSidebarSettings?
 
   @@index([createdAt])
   @@index([email])
@@ -1181,6 +1183,8 @@ model Project {
   workspaceTerminalCommands WorkspaceTerminalCommand[]
   workspaceTerminalLogs     WorkspaceTerminalLog[]
   workspaceTerminalSessions WorkspaceTerminalSession[]
+  projectPreferences        ProjectPreferences[]
+  projectStatusCache        ProjectStatusCache?
 
   @@index([name])
   @@index([createdAt])
@@ -1850,4 +1854,58 @@ model KBSearchIndex {
   @@index([issueId])
   @@index([solutionId])
   @@index([lastIndexed])
+}
+
+// Project Sidebar Models
+model ProjectPreferences {
+  id             String   @id @default(uuid())
+  userId         String
+  projectId      String
+  isPinned       Boolean  @default(false)
+  customIcon     String?
+  customColor    String?
+  sortOrder      Int      @default(0)
+  lastAccessedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  User    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId, isPinned])
+  @@index([userId, lastAccessedAt])
+}
+
+model UserSidebarSettings {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  isCollapsed          Boolean  @default(false)
+  width                Int      @default(250)
+  sortBy               String   @default("lastAccessed")
+  viewMode             String   @default("icons")
+  showStatusIndicators Boolean  @default(true)
+  groupBy              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProjectStatusCache {
+  id            String   @id @default(uuid())
+  projectId     String   @unique
+  gitStatus     Json?
+  terminalStatus Json?
+  buildStatus   String?
+  hasErrors     Boolean  @default(false)
+  hasWarnings   Boolean  @default(false)
+  lastUpdatedAt DateTime @default(now())
+
+  // Relations
+  Project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([lastUpdatedAt])
 }

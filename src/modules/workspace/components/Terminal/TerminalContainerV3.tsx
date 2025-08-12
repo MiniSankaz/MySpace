@@ -49,6 +49,8 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     loadSessions();
     
     return () => {
+      // Cleanup on unmount or project change
+      console.log(`[TerminalContainer] Cleaning up sessions for project: ${project.id}`);
       cleanupAllSessions();
     };
   }, [project.id]);
@@ -74,12 +76,15 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
           ...s,
           type: 'terminal',
           mode: s.mode || 'normal',
-          gridPosition: index
+          gridPosition: index,
+          isFocused: s.isFocused || false
         }));
         setSessions(sessionList);
         
-        // Auto-focus first terminal
-        if (sessionList.length > 0) {
+        // Auto-focus first terminal if no sessions are focused
+        const hasFocusedSession = sessionList.some(s => s.isFocused);
+        if (sessionList.length > 0 && !hasFocusedSession) {
+          console.log(`[TerminalContainer] Auto-focusing first session: ${sessionList[0].id}`);
           await setFocus(sessionList[0].id, true);
         }
       }
@@ -91,10 +96,21 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     }
   };
 
-  // Create new terminal session
+  // No longer need to track retry attempts since terminals connect directly
+  
+  // Create new terminal session with retry limit
   const createSession = async (mode: 'normal' | 'claude' = 'normal') => {
+    console.log(`[TerminalContainer] 🆕 createSession called - mode: ${mode}, current sessions: ${sessions.length}`);
+    
     if (sessions.length >= maxTerminals) {
+      console.log(`[TerminalContainer] ❌ Max terminals (${maxTerminals}) reached for ${currentLayout} layout`);
       setError(`Maximum ${maxTerminals} terminals for ${currentLayout} layout`);
+      return;
+    }
+    
+    // Prevent duplicate creation attempts
+    if (loading) {
+      console.log('[TerminalContainer] ⏳ Already creating session, skipping duplicate request...');
       return;
     }
     
@@ -102,6 +118,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       setLoading(true);
       setError(null);
       
+      console.log(`[TerminalContainer] 📮 Sending create request for project: ${project.id}`);
       const response = await fetch('/api/terminal/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,23 +130,38 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       });
       
       const data = await response.json();
+      console.log('[TerminalContainer] 📦 Create response:', data);
       
       if (data.success && data.session) {
+        const sessionId = data.session.id;
+        
+        // Always add session immediately - XTermViewV2 will handle WebSocket connection
+        console.log(`[TerminalContainer] ✅ Session created: ${sessionId}, adding to UI`);
+        
         const newSession = {
           ...data.session,
           type: 'terminal' as const,
           mode,
-          gridPosition: sessions.length
+          gridPosition: sessions.length,
+          status: 'active' as const
         };
-        setSessions(prev => [...prev, newSession]);
+        
+        setSessions(prev => {
+          console.log(`[TerminalContainer] 📝 Adding session to state, new count: ${prev.length + 1}`);
+          return [...prev, newSession];
+        });
         
         // Auto-focus new terminal
+        console.log(`[TerminalContainer] 🎯 Focusing new session: ${newSession.id}`);
         await setFocus(newSession.id, true);
         
         // Show Claude hint if in claude mode
         if (mode === 'claude') {
-          console.log('Terminal created in Claude mode. Type "claude" to start Claude CLI.');
+          console.log('[TerminalContainer] 💡 Terminal created in Claude mode. Type "claude" to start Claude CLI.');
         }
+        
+        // The XTermViewV2 component will connect to WebSocket when it mounts
+        console.log(`[TerminalContainer] Terminal component will establish WebSocket connection`);
       }
     } catch (err) {
       console.error('Failed to create session:', err);
@@ -157,10 +189,18 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       if (data.success) {
         const focusedSessionIds = data.focusedSessions || [];
         
-        setSessions(prev => prev.map(s => ({
-          ...s,
-          isFocused: focusedSessionIds.includes(s.id)
-        })));
+        setSessions(prev => {
+          const updated = prev.map(s => ({
+            ...s,
+            isFocused: focusedSessionIds.includes(s.id)
+          }));
+          
+          console.log(`[TerminalContainer] Updated focus states:`, 
+            updated.map(s => ({ id: s.id, focused: s.isFocused }))
+          );
+          
+          return updated;
+        });
       }
     } catch (err) {
       console.error('Failed to set focus:', err);
