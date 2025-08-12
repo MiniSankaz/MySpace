@@ -96,6 +96,21 @@ class TerminalWebSocketServer {
           }));
         }
       });
+      
+      // Listen for suspension events to prevent terminal killing
+      this.memoryService.on('sessionSuspended', (data) => {
+        const { sessionId, projectId } = data;
+        console.log(`[Terminal WS] Session ${sessionId} suspended for project ${projectId}`);
+        
+        // Mark sessions as suspended but keep processes alive
+        const sessionKey = this.getSessionKey(sessionId, projectId);
+        const session = this.sessions.get(sessionKey);
+        if (session) {
+          session.suspended = true;
+          session.suspendedAt = new Date();
+          console.log(`[Terminal WS] Marked session ${sessionKey} as suspended, process kept alive`);
+        }
+      });
     }
     
     // Clean up inactive sessions every 5 minutes
@@ -145,13 +160,17 @@ class TerminalWebSocketServer {
     
     for (const [sessionKey, session] of this.sessions) {
       if (!session.ws || session.ws.readyState !== 1) { // Not OPEN
-        // Check if keep-alive has expired
-        if (session.keepAliveUntil && now > session.keepAliveUntil) {
+        // Check if keep-alive has expired - but don't kill suspended sessions
+        if (session.keepAliveUntil && now > session.keepAliveUntil && !session.suspended) {
           console.log(`Keep-alive expired for session ${sessionKey}, cleaning up`);
           if (session.process && !session.process.killed) {
             session.process.kill();
           }
           this.sessions.delete(sessionKey);
+          continue;
+        } else if (session.suspended) {
+          // Don't cleanup suspended sessions
+          console.log(`Session ${sessionKey} is suspended, keeping alive`);
           continue;
         }
         
@@ -210,26 +229,28 @@ class TerminalWebSocketServer {
       let userId = null;
       // TODO: Validate token and extract userId if needed
       
-      // Decode path if provided
+      // Enhanced path handling - prioritize passed path from API
       if (workingDir) {
         try {
           workingDir = decodeURIComponent(workingDir);
+          console.log(`Using provided path: ${workingDir}`);
         } catch (e) {
           console.error('Failed to decode path:', e);
-          workingDir = process.cwd();
+          workingDir = null;
         }
-      } else {
-        workingDir = process.cwd();
       }
-
-      // Validate path
+      
+      // Enhanced path validation with better fallback
       if (workingDir && fs.existsSync(workingDir)) {
         const stats = fs.statSync(workingDir);
         if (!stats.isDirectory()) {
           workingDir = path.dirname(workingDir);
         }
+        console.log(`✓ Using valid project path: ${workingDir}`);
       } else {
+        // Fallback to home directory if project path is invalid
         workingDir = os.homedir();
+        console.log(`⚠️ Invalid project path, using home directory: ${workingDir}`);
       }
 
       console.log(`Starting terminal session in: ${workingDir}`);
@@ -341,24 +362,27 @@ class TerminalWebSocketServer {
         console.log(`Current working directory: ${workingDir}`);
         console.log(`Process cwd: ${process.cwd()}`);
         
-        // โหลด .env จาก project directory ถ้ามี (ปรับปรุงเพื่อลดการโหลดซ้ำ)
+        // Enhanced environment loading from project directory
         let projectEnv = { ...process.env };
         const loadedEnvFiles = [];
         
-        // Load project-specific environment files only once
-        const envFileNames = ['.env', '.env.local', '.env.development', '.env.production'];
+        // Load project-specific environment files with priority order
+        const envFileNames = ['.env.local', '.env', '.env.development.local', '.env.development', '.env.production.local', '.env.production'];
+        
+        console.log(`🔍 Scanning for environment files in: ${workingDir}`);
         
         for (const fileName of envFileNames) {
           const envFile = path.join(workingDir, fileName);
-          if (fs.existsSync(envFile)) {
-            console.log(`Loading project environment from: ${envFile}`);
-            try {
-              const envConfig = dotenv.parse(fs.readFileSync(envFile));
+          try {
+            if (fs.existsSync(envFile)) {
+              console.log(`📄 Loading project environment from: ${envFile}`);
+              const envConfig = dotenv.parse(fs.readFileSync(envFile, 'utf8'));
               projectEnv = { ...projectEnv, ...envConfig };
               loadedEnvFiles.push(fileName);
-            } catch (error) {
-              console.error(`Failed to parse env file ${envFile}:`, error);
+              console.log(`✓ Loaded ${Object.keys(envConfig).length} variables from ${fileName}`);
             }
+          } catch (error) {
+            console.error(`❌ Failed to parse env file ${envFile}:`, error);
           }
         }
         
@@ -735,8 +759,8 @@ class TerminalWebSocketServer {
         const isCircuitBreakerClose = code >= 4000 && code <= 4099;
         
         if (isIntentionalClose) {
-          // Intentional close - end the session properly
-          console.log(`Intentional close for session ${sessionKey}, ending session`);
+          // Intentional close - suspend session instead of killing
+          console.log(`Intentional close for session ${sessionKey}, suspending session`);
           
           // End logging session
           if (this.loggingService && session && session.dbSessionId) {
@@ -745,11 +769,18 @@ class TerminalWebSocketServer {
             });
           }
           
-          // Kill the process on clean close
-          if (session && session.process && !session.process.killed) {
-            session.process.kill();
+          // DON'T kill the process - just suspend it
+          if (session && projectId && this.memoryService) {
+            // Mark session as suspended in memory service
+            this.memoryService.suspendProjectSessions(projectId);
+            console.log(`Session ${sessionKey} suspended, process kept alive`);
           }
-          this.sessions.delete(sessionKey);
+          
+          // Remove WebSocket but keep session alive
+          if (session) {
+            session.ws = null;
+            session.keepAliveUntil = Date.now() + (10 * 60 * 1000); // Keep alive for 10 minutes
+          }
         } else if (isPageRefresh) {
           // Page refresh - keep session alive for reconnection
           console.log(`Page refresh (code 1001) for session ${sessionKey}, keeping session alive for 2 minutes`);

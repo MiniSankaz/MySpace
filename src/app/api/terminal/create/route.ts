@@ -35,11 +35,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate and use project path
+    let validatedPath = projectPath;
+    if (!validatedPath || validatedPath === '') {
+      validatedPath = process.cwd();
+      console.log(`[Terminal API] ⚠️ No project path provided, using current directory: ${validatedPath}`);
+    } else {
+      console.log(`[Terminal API] ✓ Using project path: ${validatedPath}`);
+    }
+
     // Create session in memory (no database)
     console.log(`[Terminal API] 🏗️ Creating session for user: ${userId || 'system'}`);
     const session = inMemoryTerminalService.createSession(
       projectId,
-      projectPath || process.cwd(),
+      validatedPath,
       userId,
       mode
     );

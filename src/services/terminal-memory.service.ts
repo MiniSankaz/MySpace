@@ -614,6 +614,9 @@ export class InMemoryTerminalService extends EventEmitter {
         this.sessions.set(sessionId, session);
         
         console.log(`[InMemoryTerminalService] Suspended session ${sessionId}`);
+        
+        // Emit suspension event for WebSocket server
+        this.emit('sessionSuspended', { sessionId, projectId });
         suspendedCount++;
       }
     });
