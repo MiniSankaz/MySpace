@@ -47,13 +47,19 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   // Load existing sessions on mount
   useEffect(() => {
     loadSessions();
-    
-    return () => {
-      // Cleanup on unmount or project change
-      console.log(`[TerminalContainer] Cleaning up sessions for project: ${project.id}`);
-      cleanupAllSessions();
-    };
+    // Sessions now persist across project switches - no cleanup on project change
   }, [project.id]);
+  
+  // Cleanup only when component is completely unmounted (e.g., navigating away from workspace)
+  useEffect(() => {
+    return () => {
+      // Only cleanup if we're truly leaving the workspace, not just switching projects
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/workspace')) {
+        console.log('[TerminalContainer] Component unmounting - cleaning up all sessions');
+        cleanupAllSessions();
+      }
+    };
+  }, []); // Empty dependency array - only runs on mount/unmount
 
   // Load sessions from backend
   const loadSessions = async () => {
