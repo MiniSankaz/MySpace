@@ -448,6 +448,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                   <XTermViewV2
                     sessionId={session.id}
                     projectId={project.id}
+                    projectPath={project.path}
                     type="system"
                     isFocused={session.isFocused}
                   />

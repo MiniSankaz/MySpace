@@ -1323,29 +1323,38 @@ let terminalServerInstance = null;
 function setupShutdownHandlers(server) {
   terminalServerInstance = server;
   
-  // Handle SIGINT (Ctrl+C)
-  process.on('SIGINT', () => {
-    console.log('\n[Terminal Server] Received SIGINT signal. Shutting down gracefully...');
-    shutdown('SIGINT');
-  });
+  // Increase max listeners to prevent memory leak warnings
+  process.setMaxListeners(20);
   
-  // Handle SIGTERM
-  process.on('SIGTERM', () => {
-    console.log('[Terminal Server] Received SIGTERM signal. Shutting down gracefully...');
-    shutdown('SIGTERM');
-  });
-  
-  // Handle unexpected errors
-  process.on('uncaughtException', (error) => {
-    console.error('[Terminal Server] Uncaught exception:', error);
-    shutdown('UNCAUGHT_EXCEPTION');
-  });
-  
-  // Handle unhandled promise rejections
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('[Terminal Server] Unhandled promise rejection:', reason);
-    shutdown('UNHANDLED_REJECTION');
-  });
+  // Check if handlers are already set up to prevent duplicates
+  if (!process._shutdownHandlersSet) {
+    // Handle SIGINT (Ctrl+C)
+    process.on('SIGINT', () => {
+      console.log('\n[Terminal Server] Received SIGINT signal. Shutting down gracefully...');
+      shutdown('SIGINT');
+    });
+    
+    // Handle SIGTERM
+    process.on('SIGTERM', () => {
+      console.log('[Terminal Server] Received SIGTERM signal. Shutting down gracefully...');
+      shutdown('SIGTERM');
+    });
+    
+    // Handle unexpected errors
+    process.on('uncaughtException', (error) => {
+      console.error('[Terminal Server] Uncaught exception:', error);
+      shutdown('UNCAUGHT_EXCEPTION');
+    });
+    
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('[Terminal Server] Unhandled promise rejection:', reason);
+      shutdown('UNHANDLED_REJECTION');
+    });
+    
+    // Mark handlers as set up
+    process._shutdownHandlersSet = true;
+  }
 }
 
 function shutdown(signal) {

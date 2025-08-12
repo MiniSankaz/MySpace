@@ -9,6 +9,7 @@ import '@xterm/xterm/css/xterm.css';
 interface XTermViewV2Props {
   sessionId: string;
   projectId: string;
+  projectPath?: string;
   type: 'system' | 'claude';
   isFocused: boolean;
   onData?: (data: string) => void;
@@ -27,6 +28,7 @@ interface XTermViewV2Props {
 const XTermViewV2: React.FC<XTermViewV2Props> = ({
   sessionId,
   projectId,
+  projectPath,
   type,
   isFocused,
   onData,
@@ -216,7 +218,12 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const port = type === 'system' ? '4001' : '4002';
-    const wsUrl = `${protocol}//127.0.0.1:${port}/?projectId=${projectId}&sessionId=${sessionId}`;
+    
+    // Build WebSocket URL with project path
+    let wsUrl = `${protocol}//127.0.0.1:${port}/?projectId=${projectId}&sessionId=${sessionId}`;
+    if (projectPath) {
+      wsUrl += `&path=${encodeURIComponent(projectPath)}`;
+    }
     
     console.log(`[XTermView] Connecting to WebSocket for session ${sessionId}...`);
     const ws = new WebSocket(wsUrl);
@@ -351,7 +358,7 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
     };
     
     wsRef.current = ws;
-  }, [sessionId, projectId, type, isFocused]);
+  }, [sessionId, projectId, projectPath, type, isFocused]);
 
   return (
     <div 
