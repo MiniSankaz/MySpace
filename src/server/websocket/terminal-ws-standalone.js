@@ -5,28 +5,37 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Import logging service - handle both ES6 and CommonJS
-let terminalLoggingService;
+// Import in-memory terminal service instead of database logging
+let InMemoryTerminalService;
 try {
-  // Try to use the compiled version first
-  const loggingModule = require('../../../dist/services/terminal-logging.service');
-  terminalLoggingService = loggingModule.terminalLoggingService || loggingModule.default;
-  console.log('Terminal logging service loaded successfully');
+  // Try to use the in-memory service
+  const memoryModule = require('../../../dist/services/terminal-memory.service');
+  InMemoryTerminalService = memoryModule.InMemoryTerminalService;
+  console.log('In-memory terminal service loaded successfully');
 } catch (error) {
-  // Logging is optional - continue without it if not available
-  console.warn('Terminal logging service not available (optional):', error.message);
-  terminalLoggingService = null;
+  // In-memory service is optional - continue without it if not available
+  console.warn('In-memory terminal service not available (optional):', error.message);
+  InMemoryTerminalService = null;
 }
 
 class TerminalWebSocketServer {
   constructor(port = 4001) {
     this.port = port;
     this.sessions = new Map();
-    this.loggingService = terminalLoggingService;
+    this.memoryService = InMemoryTerminalService ? InMemoryTerminalService.getInstance() : null;
     
-    // Focus management - track which sessions are focused
-    this.focusedSessions = new Map(); // projectId -> sessionId
+    // Multi-focus management - track multiple focused sessions per project
+    this.focusedSessions = new Map(); // projectId -> Set<sessionId>
     this.outputBuffers = new Map(); // sessionId -> buffered output array
+    
+    // WebSocket retry configuration
+    this.retryConfig = {
+      maxRetries: 5,
+      baseDelay: 1000, // 1 second
+      maxDelay: 30000, // 30 seconds
+      factor: 2
+    };
+    this.registrationRetries = new Map(); // sessionId -> retry count
     
     // Create standalone WebSocket server
     this.wss = new WebSocketServer({ 
@@ -223,7 +232,7 @@ class TerminalWebSocketServer {
           commandQueue: [],
           isProcessing: false,
           environment: {},
-          dbSessionId: null, // Database session ID
+          // No database session ID needed (using in-memory)
           projectId: projectId,
           userId: userId,
           currentCommand: '',
@@ -231,26 +240,10 @@ class TerminalWebSocketServer {
         
         this.sessions.set(sessionKey, session);
         
-        // Create database session for logging
-        if (this.loggingService && projectId) {
-          this.loggingService.createSession({
-            userId: userId,
-            projectId: projectId,
-            type: 'system',
-            tabName: `Terminal ${sessionId.substring(0, 8)}`,
-            currentPath: workingDir,
-            metadata: {
-              shell: shell,
-              platform: os.platform(),
-              sessionId: sessionId,
-            }
-          }).then(dbSession => {
-            if (dbSession) {
-              session.dbSessionId = dbSession.id;
-              console.log(`Created DB session: ${dbSession.id}`);
-            }
-          }).catch(err => {
-            console.error('Failed to create DB session:', err);
+        // Register session in memory with retry mechanism
+        if (this.memoryService && projectId && sessionId) {
+          this.registerWebSocketWithRetry(sessionId, ws, projectId).catch(err => {
+            console.error('Failed to register WebSocket after retries:', err);
           });
         }
 
@@ -272,29 +265,12 @@ class TerminalWebSocketServer {
             this.bufferOutput(sessionId, data);
           }
           
-          // Log output to database
-          if (this.loggingService && session.dbSessionId) {
-            // Strip ANSI codes for clean content
-            const cleanContent = data.replace(/\x1b\[[0-9;]*m/g, '');
-            
-            // Detect if this is an error output
-            const isError = data.includes('error') || data.includes('Error') || 
-                          data.includes('failed') || data.includes('Failed');
-            
-            if (isError) {
-              this.loggingService.logError(
-                session.dbSessionId,
-                session.userId,
-                cleanContent,
-                { raw: data }
-              );
-            } else {
-              this.loggingService.logOutput(
-                session.dbSessionId,
-                session.userId,
-                cleanContent,
-                data
-              );
+          // Update session activity in memory (no database logging)
+          if (this.memoryService && session.id) {
+            try {
+              this.memoryService.updateSessionActivity(session.id);
+            } catch (err) {
+              // Ignore - session activity update is optional
             }
           }
           
@@ -311,12 +287,7 @@ class TerminalWebSocketServer {
         shellProcess.onExit(({ exitCode, signal }) => {
           console.log(`Shell process exited with code ${exitCode}, signal ${signal}`);
           
-          // End logging session
-          if (this.loggingService && session.dbSessionId) {
-            this.loggingService.endSession(session.dbSessionId).catch(err => {
-              console.error('Failed to end DB session:', err);
-            });
-          }
+          // Session cleanup handled by in-memory service
           
           if (session.ws && session.ws.readyState === ws.OPEN) {
             session.ws.send(JSON.stringify({
@@ -379,17 +350,9 @@ class TerminalWebSocketServer {
                 
                 // Log command input
                 if (this.loggingService && session.dbSessionId) {
-                  // Track command building
+                  // Track command building (no database logging)
                   if (data.data === '\r' || data.data === '\n') {
-                    // Command execution - log the complete command
-                    if (session.currentCommand.trim()) {
-                      this.loggingService.logCommand(
-                        session.dbSessionId,
-                        session.userId,
-                        session.currentCommand.trim(),
-                        { workingDir: session.workingDir }
-                      );
-                    }
+                    // Command execution - reset command tracker
                     session.currentCommand = '';
                   } else if (data.data === '\x7f' || data.data === '\b') {
                     // Backspace
@@ -591,31 +554,45 @@ class TerminalWebSocketServer {
     return projectId ? `${sessionId}:${projectId}` : sessionId;
   }
   
-  // Focus management methods
+  // Multi-focus management methods
   isSessionFocused(sessionId, projectId) {
     if (!projectId) return true; // If no project, assume focused
-    const focusedSessionId = this.focusedSessions.get(projectId);
-    return focusedSessionId === sessionId;
+    
+    // Check with memory service first (single source of truth)
+    if (this.memoryService) {
+      return this.memoryService.isSessionFocused(sessionId);
+    }
+    
+    // Fallback to local tracking
+    const focusedSet = this.focusedSessions.get(projectId);
+    return focusedSet ? focusedSet.has(sessionId) : false;
   }
   
   handleFocusChange(sessionId, projectId, isFocused) {
     if (!projectId) return;
     
-    if (isFocused) {
-      // Set this session as focused for the project
-      const previousFocused = this.focusedSessions.get(projectId);
-      this.focusedSessions.set(projectId, sessionId);
-      console.log(`Session ${sessionId} is now focused for project ${projectId}`);
+    // Use memory service as single source of truth
+    if (this.memoryService) {
+      this.memoryService.setSessionFocus(sessionId, isFocused);
       
-      // Mark previous session as unfocused if different
-      if (previousFocused && previousFocused !== sessionId) {
-        console.log(`Session ${previousFocused} is now unfocused for project ${projectId}`);
-      }
+      // Update local cache from memory service
+      const focusedList = this.memoryService.getFocusedSessions(projectId);
+      this.focusedSessions.set(projectId, new Set(focusedList));
+      
+      console.log(`Session ${sessionId} focus changed to ${isFocused}, total focused: ${focusedList.length}`);
     } else {
-      // Unfocus this session if it was focused
-      const currentFocused = this.focusedSessions.get(projectId);
-      if (currentFocused === sessionId) {
-        this.focusedSessions.delete(projectId);
+      // Fallback to local tracking for multi-focus
+      if (!this.focusedSessions.has(projectId)) {
+        this.focusedSessions.set(projectId, new Set());
+      }
+      
+      const focusedSet = this.focusedSessions.get(projectId);
+      
+      if (isFocused) {
+        focusedSet.add(sessionId);
+        console.log(`Session ${sessionId} is now focused for project ${projectId}`);
+      } else {
+        focusedSet.delete(sessionId);
         console.log(`Session ${sessionId} is now unfocused for project ${projectId}`);
       }
     }
@@ -642,6 +619,64 @@ class TerminalWebSocketServer {
       return buffer.join('');
     }
     return null;
+  }
+  
+  // Register WebSocket with exponential backoff retry
+  async registerWebSocketWithRetry(sessionId, ws, projectId, retryCount = 0) {
+    try {
+      // First check if session exists in memory service
+      const session = this.memoryService.getSession(sessionId);
+      if (!session) {
+        // Wait a bit for session to be created (race condition mitigation)
+        if (retryCount === 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Check again after wait
+        const sessionAfterWait = this.memoryService.getSession(sessionId);
+        if (!sessionAfterWait) {
+          throw new Error(`Session ${sessionId} not found in memory service`);
+        }
+      }
+      
+      // Register the WebSocket connection
+      this.memoryService.registerWebSocketConnection(sessionId, ws);
+      console.log(`Successfully registered WebSocket for session ${sessionId} on attempt ${retryCount + 1}`);
+      
+      // Clear retry count on success
+      this.registrationRetries.delete(sessionId);
+      
+      // Sync focus state after successful registration
+      if (projectId) {
+        const focusedList = this.memoryService.getFocusedSessions(projectId);
+        this.focusedSessions.set(projectId, new Set(focusedList));
+      }
+      
+      return true;
+    } catch (error) {
+      const currentRetries = this.registrationRetries.get(sessionId) || 0;
+      
+      if (currentRetries >= this.retryConfig.maxRetries) {
+        console.error(`Max retries (${this.retryConfig.maxRetries}) reached for session ${sessionId}:`, error.message);
+        this.registrationRetries.delete(sessionId);
+        throw error;
+      }
+      
+      // Calculate delay with exponential backoff
+      const delay = Math.min(
+        this.retryConfig.baseDelay * Math.pow(this.retryConfig.factor, currentRetries),
+        this.retryConfig.maxDelay
+      );
+      
+      console.warn(`Failed to register WebSocket for session ${sessionId}, retrying in ${delay}ms (attempt ${currentRetries + 1}/${this.retryConfig.maxRetries}):`, error.message);
+      
+      // Update retry count
+      this.registrationRetries.set(sessionId, currentRetries + 1);
+      
+      // Wait and retry
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return this.registerWebSocketWithRetry(sessionId, ws, projectId, currentRetries + 1);
+    }
   }
   
   closeSession(sessionId, projectId) {

@@ -5,17 +5,17 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Import logging service - handle both ES6 and CommonJS
-let workspaceTerminalLogger;
+// Import in-memory terminal service instead of database logging
+let InMemoryTerminalService;
 try {
-  // Try to use the workspace terminal logging service
-  const loggingModule = require('../../../dist/services/workspace-terminal-logging.service');
-  workspaceTerminalLogger = loggingModule.workspaceTerminalLogger || loggingModule.default;
-  console.log('Claude Terminal: Workspace logging service loaded successfully');
+  // Try to use the in-memory service
+  const memoryModule = require('../../../dist/services/terminal-memory.service');
+  InMemoryTerminalService = memoryModule.InMemoryTerminalService;
+  console.log('Claude Terminal: In-memory terminal service loaded successfully');
 } catch (error) {
-  // Logging is optional - continue without it if not available
-  console.warn('Claude Terminal: Workspace logging service not available (optional):', error.message);
-  workspaceTerminalLogger = null;
+  // In-memory service is optional - continue without it if not available
+  console.warn('Claude Terminal: In-memory terminal service not available (optional):', error.message);
+  InMemoryTerminalService = null;
 }
 
 // Import Knowledge Base integration
@@ -74,10 +74,20 @@ class ClaudeTerminalWebSocketServer {
   constructor(port = 4002) {
     this.port = port;
     this.sessions = new Map();
+    this.memoryService = InMemoryTerminalService ? InMemoryTerminalService.getInstance() : null;
     
-    // Focus management - track which sessions are focused
-    this.focusedSessions = new Map(); // projectId -> sessionId
+    // Multi-focus management - track multiple focused sessions per project
+    this.focusedSessions = new Map(); // projectId -> Set<sessionId>
     this.outputBuffers = new Map(); // sessionId -> buffered output array
+    
+    // WebSocket retry configuration (same as terminal-ws-standalone.js)
+    this.retryConfig = {
+      maxRetries: 5,
+      baseDelay: 1000, // 1 second
+      maxDelay: 30000, // 30 seconds
+      factor: 2
+    };
+    this.registrationRetries = new Map(); // sessionId -> retry count
     
     // Create standalone WebSocket server for Claude terminals
     this.wss = new WebSocketServer({ 
@@ -250,28 +260,19 @@ class ClaudeTerminalWebSocketServer {
           isClaudeReady: false,
           projectId: projectId,
           userId: userId,
-          loggingSessionId: null
+          // No database session ID needed (using in-memory)
         };
         
         this.sessions.set(sessionKey, session);
         
-        // Create logging session if service is available (with graceful degradation)
-        if (workspaceTerminalLogger) {
+        // Register session in memory using the provided sessionId
+        if (this.memoryService && projectId && sessionId) {
           try {
-            const loggingSession = await workspaceTerminalLogger.createSession({
-              tabId: sessionId,
-              tabName: `Claude Terminal`,
-              type: 'claude',
-              projectId: projectId,
-              userId: userId || 'anonymous',
-              currentPath: workingDir
-            });
-            session.loggingSessionId = loggingSession.id;
-            console.log(`Created logging session: ${loggingSession.id} for Claude terminal`);
-          } catch (error) {
-            console.warn('Logging session creation failed, continuing without logging:', error.message);
-            // Continue without logging - this is not critical for terminal functionality
-            session.loggingSessionId = null;
+            // Register the existing sessionId instead of creating a new one
+            this.memoryService.registerWebSocketConnection(sessionId, ws);
+            console.log(`Registered WebSocket for existing Claude session: ${sessionId}`);
+          } catch (err) {
+            console.warn('Failed to register WebSocket connection:', err.message);
           }
         }
 
@@ -316,23 +317,12 @@ class ClaudeTerminalWebSocketServer {
           }
           session.commandOutput += data;
           
-          // Log output to database if logging is available
-          if (workspaceTerminalLogger && session.loggingSessionId) {
+          // Update session activity in memory (no database logging)
+          if (this.memoryService && session.id) {
             try {
-              // Clean ANSI codes for database storage
-              const cleanContent = data.replace(/\x1b\[[0-9;]*m/g, '');
-              
-              // Detect if this is error output
-              const isError = data.includes('error') || data.includes('Error') || 
-                            data.includes('failed') || data.includes('Failed');
-              
-              await workspaceTerminalLogger.logOutput({
-                sessionId: session.loggingSessionId,
-                type: isError ? 'stderr' : 'stdout',
-                content: cleanContent
-              });
-            } catch (error) {
-              console.error('Failed to log terminal output:', error);
+              this.memoryService.updateSessionActivity(session.id);
+            } catch (err) {
+              // Ignore - session activity update is optional
             }
           }
           
@@ -428,15 +418,7 @@ class ClaudeTerminalWebSocketServer {
         shellProcess.onExit(async ({ exitCode, signal }) => {
           console.log(`Claude shell process exited with code ${exitCode}, signal ${signal}`);
           
-          // End logging session if available
-          if (workspaceTerminalLogger && session.loggingSessionId) {
-            try {
-              await workspaceTerminalLogger.endSession(session.loggingSessionId);
-              console.log(`Ended logging session: ${session.loggingSessionId}`);
-            } catch (error) {
-              console.error('Failed to end logging session:', error);
-            }
-          }
+          // Session cleanup handled by in-memory service
           
           // Unregister from Knowledge Base
           if (terminalKBIntegration) {
@@ -547,23 +529,16 @@ class ClaudeTerminalWebSocketServer {
           switch (data.type) {
             case 'input':
               if (session.process) {
-                // Log input command if logging is available
-                if (workspaceTerminalLogger && session.loggingSessionId && data.data) {
-                  try {
-                    // Track command building for Claude
-                    if (!session.currentCommand) {
-                      session.currentCommand = '';
-                    }
+                // Track command building for Claude (no database logging)
+                if (data.data) {
+                  if (!session.currentCommand) {
+                    session.currentCommand = '';
+                  }
                     
                     if (data.data === '\r' || data.data === '\n') {
-                      // Command execution - log the complete command
+                      // Command execution - track for Knowledge Base
                       if (session.currentCommand.trim()) {
                         const command = session.currentCommand.trim();
-                        await workspaceTerminalLogger.logCommand({
-                          sessionId: session.loggingSessionId,
-                          command: command,
-                          workingDir: session.workingDir
-                        });
                         
                         // Track command for Knowledge Base
                         if (terminalKBIntegration) {
@@ -574,16 +549,13 @@ class ClaudeTerminalWebSocketServer {
                       session.currentCommand = '';
                     } else if (data.data === '\x7f' || data.data === '\b') {
                       // Backspace
-                      session.currentCommand = session.currentCommand.slice(0, -1);
-                    } else if (data.data === '\x03') {
-                      // Ctrl+C - cancel current command
-                      session.currentCommand = '';
-                    } else if (data.data.match(/^[\x20-\x7e]+$/)) {
-                      // Regular printable characters
-                      session.currentCommand += data.data;
-                    }
-                  } catch (error) {
-                    console.error('Failed to log terminal input:', error);
+                    session.currentCommand = session.currentCommand.slice(0, -1);
+                  } else if (data.data === '\x03') {
+                    // Ctrl+C - cancel current command
+                    session.currentCommand = '';
+                  } else if (data.data.match(/^[\x20-\x7e]+$/)) {
+                    // Regular printable characters
+                    session.currentCommand += data.data;
                   }
                 }
                 
@@ -675,11 +647,14 @@ class ClaudeTerminalWebSocketServer {
           // Clean close - end the session properly
           console.log(`Clean close for Claude session ${sessionKey}, ending session`);
           
-          // End logging session if available
-          if (workspaceTerminalLogger && session && session.loggingSessionId) {
-            workspaceTerminalLogger.endSession(session.loggingSessionId).catch(err => {
-              console.error('Failed to end logging session on close:', err);
-            });
+          // Session cleanup handled by in-memory service
+          if (this.memoryService && session && session.id) {
+            try {
+              this.memoryService.closeSession(session.id);
+              console.log(`Closed in-memory session: ${session.id}`);
+            } catch (err) {
+              console.warn('Failed to close session in memory:', err.message);
+            }
           }
           
           // Unregister from Knowledge Base
@@ -783,31 +758,45 @@ class ClaudeTerminalWebSocketServer {
     return controlChars[key.toLowerCase()];
   }
   
-  // Focus management methods
+  // Multi-focus management methods
   isSessionFocused(sessionId, projectId) {
     if (!projectId) return true; // If no project, assume focused
-    const focusedSessionId = this.focusedSessions.get(projectId);
-    return focusedSessionId === sessionId;
+    
+    // Check with memory service first (single source of truth)
+    if (this.memoryService) {
+      return this.memoryService.isSessionFocused(sessionId);
+    }
+    
+    // Fallback to local tracking
+    const focusedSet = this.focusedSessions.get(projectId);
+    return focusedSet ? focusedSet.has(sessionId) : false;
   }
   
   handleFocusChange(sessionId, projectId, isFocused) {
     if (!projectId) return;
     
-    if (isFocused) {
-      // Set this session as focused for the project
-      const previousFocused = this.focusedSessions.get(projectId);
-      this.focusedSessions.set(projectId, sessionId);
-      console.log(`Claude session ${sessionId} is now focused for project ${projectId}`);
+    // Use memory service as single source of truth
+    if (this.memoryService) {
+      this.memoryService.setSessionFocus(sessionId, isFocused);
       
-      // Mark previous session as unfocused if different
-      if (previousFocused && previousFocused !== sessionId) {
-        console.log(`Claude session ${previousFocused} is now unfocused for project ${projectId}`);
-      }
+      // Update local cache from memory service
+      const focusedList = this.memoryService.getFocusedSessions(projectId);
+      this.focusedSessions.set(projectId, new Set(focusedList));
+      
+      console.log(`Claude session ${sessionId} focus changed to ${isFocused}, total focused: ${focusedList.length}`);
     } else {
-      // Unfocus this session if it was focused
-      const currentFocused = this.focusedSessions.get(projectId);
-      if (currentFocused === sessionId) {
-        this.focusedSessions.delete(projectId);
+      // Fallback to local tracking for multi-focus
+      if (!this.focusedSessions.has(projectId)) {
+        this.focusedSessions.set(projectId, new Set());
+      }
+      
+      const focusedSet = this.focusedSessions.get(projectId);
+      
+      if (isFocused) {
+        focusedSet.add(sessionId);
+        console.log(`Claude session ${sessionId} is now focused for project ${projectId}`);
+      } else {
+        focusedSet.delete(sessionId);
         console.log(`Claude session ${sessionId} is now unfocused for project ${projectId}`);
       }
     }
@@ -839,11 +828,14 @@ class ClaudeTerminalWebSocketServer {
   cleanup() {
     console.log('Cleaning up all Claude terminal sessions...');
     for (const [sessionId, session] of this.sessions) {
-      // End logging session if available
-      if (workspaceTerminalLogger && session.loggingSessionId) {
-        workspaceTerminalLogger.endSession(session.loggingSessionId).catch(err => {
-          console.error(`Failed to end logging session ${session.loggingSessionId}:`, err);
-        });
+      // Close session in memory service
+      if (this.memoryService && session.id) {
+        try {
+          this.memoryService.closeSession(session.id);
+          console.log(`Closed in-memory session: ${session.id}`);
+        } catch (err) {
+          console.warn('Failed to close session in memory:', err.message);
+        }
       }
       
       // Unregister from Knowledge Base

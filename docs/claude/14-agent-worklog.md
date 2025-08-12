@@ -44,6 +44,7 @@
 2. WebSocket registration race condition
 3. Claude terminal using single-focus while system terminal using multi-focus
 4. Missing retry mechanism in Claude terminal
+5. Compiled JavaScript missing multi-focus methods
 
 **Solutions Implemented**:
 1. ✅ Updated terminal-memory.service.ts for multi-focus (Set<sessionId> per project)
@@ -51,6 +52,9 @@
 3. ✅ Fixed Focus API to return complete state
 4. ✅ Updated Frontend to use server as single source of truth
 5. ✅ Fixed BOTH terminal-ws-standalone.js AND claude-terminal-ws.js
+6. ✅ Fixed compiled JavaScript with multi-focus methods (getFocusedSessions, isSessionFocused)
+7. ✅ Created proper dist/services directory structure
+8. ✅ Added multi-focus support to compiled terminal-memory.service.js
 
 **Critical Learning - Code Duplication Blind Spot**:
 - **Problem**: Fixed one file but missed duplicate code in another

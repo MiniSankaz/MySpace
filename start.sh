@@ -329,6 +329,62 @@ check_build() {
     
     local need_rebuild=false
     
+    # Always rebuild terminal-memory service
+    echo -e "${CYAN}🔧 Building terminal-memory service...${NC}"
+    
+    # Create dist/services directory if it doesn't exist
+    if [ ! -d "dist/services" ]; then
+        mkdir -p dist/services
+        echo -e "${GREEN}✅ Created dist/services directory${NC}"
+    fi
+    
+    # Compile terminal-memory.service.ts to JavaScript
+    if [ -f "src/services/terminal-memory.service.ts" ]; then
+        # Check if TypeScript compiler is available
+        if command -v tsc &> /dev/null || [ -f "node_modules/.bin/tsc" ]; then
+            # Use local tsc if available, otherwise global
+            TSC_CMD="tsc"
+            if [ -f "node_modules/.bin/tsc" ]; then
+                TSC_CMD="node_modules/.bin/tsc"
+            fi
+            
+            # Compile the TypeScript file
+            $TSC_CMD src/services/terminal-memory.service.ts \
+                --outDir dist \
+                --module commonjs \
+                --target es2018 \
+                --esModuleInterop \
+                --skipLibCheck \
+                --allowJs \
+                --resolveJsonModule \
+                --downlevelIteration \
+                --moduleResolution node \
+                --noEmit false \
+                --declaration false 2>/dev/null
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✅ Terminal-memory service compiled successfully${NC}"
+            else
+                # If TypeScript compilation fails, try simpler approach
+                echo -e "${YELLOW}⚠️  TypeScript compilation had issues, using fallback...${NC}"
+                
+                # Copy the compiled file if it exists
+                if [ -f "src/services/terminal-memory.service.js.compiled" ]; then
+                    cp src/services/terminal-memory.service.js.compiled dist/services/terminal-memory.service.js
+                    echo -e "${GREEN}✅ Used pre-compiled terminal-memory service${NC}"
+                fi
+            fi
+        else
+            # No TypeScript compiler, use pre-compiled version if available
+            if [ -f "src/services/terminal-memory.service.js.compiled" ]; then
+                cp src/services/terminal-memory.service.js.compiled dist/services/terminal-memory.service.js
+                echo -e "${GREEN}✅ Used pre-compiled terminal-memory service${NC}"
+            else
+                echo -e "${YELLOW}⚠️  Terminal-memory service not compiled (optional)${NC}"
+            fi
+        fi
+    fi
+    
     # Check if .next exists for Next.js
     if [ ! -d ".next" ]; then
         echo -e "${YELLOW}📦 Next.js not built${NC}"
