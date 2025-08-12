@@ -13,7 +13,7 @@ import QuickActions from './QuickActions';
 import KeyboardShortcuts from './KeyboardShortcuts';
 import FileEditorModal from '../FileEditor/FileEditorModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, GitBranch, Terminal, Code } from 'lucide-react';
+import { FolderOpen, GitBranch, Terminal, Code, Info } from 'lucide-react';
 
 const TerminalComponent = TerminalContainerV3;
 
@@ -30,7 +30,7 @@ export const WorkspaceLayoutV2: React.FC = () => {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [fullscreenTerminal, setFullscreenTerminal] = useState(false);
-  const [mainView, setMainView] = useState<'terminal' | 'git' | 'code'>('git'); // Default to Git view
+  const [mainView, setMainView] = useState<'project-info' | 'terminal' | 'git' | 'code'>('project-info'); // Default to Project info view
   const [rightSidebarTab, setRightSidebarTab] = useState<'files' | 'config'>('files');
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [isFileEditorOpen, setIsFileEditorOpen] = useState(false);
@@ -63,6 +63,11 @@ export const WorkspaceLayoutV2: React.FC = () => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         setTheme(theme === 'dark' ? 'light' : 'dark');
+      }
+      // Cmd/Ctrl + I for Project Info view
+      if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+        e.preventDefault();
+        setMainView('project-info');
       }
       // Cmd/Ctrl + G for Git view
       if ((e.metaKey || e.ctrlKey) && e.key === 'g') {
@@ -179,6 +184,22 @@ export const WorkspaceLayoutV2: React.FC = () => {
           {/* View Selector Tabs */}
           <div className={`flex items-center border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'} px-4`}>
             <button
+              onClick={() => setMainView('project-info')}
+              className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-all ${
+                mainView === 'project-info'
+                  ? theme === 'dark' 
+                    ? 'text-blue-400 border-b-2 border-blue-400' 
+                    : 'text-blue-600 border-b-2 border-blue-600'
+                  : theme === 'dark'
+                    ? 'text-gray-400 hover:text-gray-300'
+                    : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Info className="w-4 h-4" />
+              <span>Project Info</span>
+            </button>
+
+            <button
               onClick={() => setMainView('terminal')}
               className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-all ${
                 mainView === 'terminal'
@@ -258,6 +279,130 @@ export const WorkspaceLayoutV2: React.FC = () => {
                         transition={{ duration: 0.3 }}
                         className="h-full relative"
                       >
+                        {/* Project Info View */}
+                        {mainView === 'project-info' && (
+                          <div className="h-full overflow-y-auto p-6">
+                            <div className="max-w-4xl mx-auto">
+                              <div className={`${theme === 'dark' ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-2xl p-8 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                                <div className="flex items-center space-x-3 mb-6">
+                                  <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+                                    <Info className={`w-8 h-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                                  </div>
+                                  <div>
+                                    <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                      {currentProject?.name || 'Project Information'}
+                                    </h1>
+                                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {currentProject?.description || 'Project overview and details'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {currentProject ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Project Details */}
+                                    <div className={`${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-xl p-6`}>
+                                      <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                        Project Details
+                                      </h3>
+                                      <div className="space-y-3">
+                                        <div className="flex justify-between">
+                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Path:</span>
+                                          <span className={`font-mono text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'} break-all`}>
+                                            {currentProject.path}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Type:</span>
+                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                                            Web Application
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Status:</span>
+                                          <span className={`px-2 py-1 rounded text-xs font-medium bg-green-500/20 text-green-400`}>
+                                            Active
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Recent Activity */}
+                                    <div className={`${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-xl p-6`}>
+                                      <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                        Recent Activity
+                                      </h3>
+                                      <div className="space-y-3">
+                                        <div className="flex justify-between">
+                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Created:</span>
+                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                                            {new Date(currentProject.createdAt).toLocaleDateString()}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Last Access:</span>
+                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                                            {currentProject.preferences?.lastAccessedAt 
+                                              ? new Date(currentProject.preferences.lastAccessedAt).toLocaleDateString()
+                                              : 'Today'
+                                            }
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Pinned:</span>
+                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                                            {currentProject.preferences?.isPinned ? 'Yes' : 'No'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Quick Actions */}
+                                    <div className={`${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-xl p-6 md:col-span-2`}>
+                                      <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                        Quick Actions
+                                      </h3>
+                                      <div className="flex flex-wrap gap-3">
+                                        <button
+                                          onClick={() => setMainView('terminal')}
+                                          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all"
+                                        >
+                                          <Terminal className="w-4 h-4" />
+                                          <span>Open Terminal</span>
+                                        </button>
+                                        <button
+                                          onClick={() => setMainView('git')}
+                                          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all"
+                                        >
+                                          <GitBranch className="w-4 h-4" />
+                                          <span>Git Management</span>
+                                        </button>
+                                        <button
+                                          onClick={() => setMainView('code')}
+                                          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg transition-all"
+                                        >
+                                          <Code className="w-4 h-4" />
+                                          <span>Code Editor</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-12">
+                                    <Info className={`w-16 h-16 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} mx-auto mb-4`} />
+                                    <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
+                                      No Project Selected
+                                    </h3>
+                                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
+                                      Select a project from the sidebar to view its information
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Terminal View */}
                         {mainView === 'terminal' && (
                           <div className="h-full">

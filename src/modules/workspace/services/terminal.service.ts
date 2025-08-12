@@ -5,6 +5,8 @@ import { terminalSessionManager } from './terminal-session-manager';
 import prisma from '@/core/database/prisma';
 import * as pty from 'node-pty';
 import os from 'os';
+import fs from 'fs';
+import path from 'path';
 
 interface TerminalProcess {
   session: TerminalSession;
@@ -32,6 +34,65 @@ export class TerminalService extends EventEmitter {
       this.shell = '/bin/bash';
       this.shellArgs = ['-l']; // Login shell
     }
+  }
+
+  /**
+   * Load environment variables from project's .env files
+   */
+  private loadProjectEnv(projectPath: string): Record<string, string> {
+    const envFiles = [
+      '.env.local',
+      '.env.development.local',
+      '.env.development',
+      '.env'
+    ];
+
+    let projectEnv: Record<string, string> = {};
+
+    for (const envFile of envFiles) {
+      const envPath = path.join(projectPath, envFile);
+      if (fs.existsSync(envPath)) {
+        try {
+          const envContent = fs.readFileSync(envPath, 'utf8');
+          const envVars = this.parseEnvFile(envContent);
+          projectEnv = { ...projectEnv, ...envVars };
+          console.log(`[Terminal] Loaded environment from: ${envFile}`);
+        } catch (error) {
+          console.warn(`[Terminal] Failed to load ${envFile}:`, error);
+        }
+      }
+    }
+
+    return projectEnv;
+  }
+
+  /**
+   * Parse .env file content into key-value pairs
+   */
+  private parseEnvFile(content: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    const lines = content.split('\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const equalIndex = trimmed.indexOf('=');
+        if (equalIndex > 0) {
+          const key = trimmed.substring(0, equalIndex).trim();
+          let value = trimmed.substring(equalIndex + 1).trim();
+          
+          // Remove quotes if present
+          if ((value.startsWith('"') && value.endsWith('"')) || 
+              (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          
+          result[key] = value;
+        }
+      }
+    }
+
+    return result;
   }
 
   async createSession(
@@ -68,18 +129,32 @@ export class TerminalService extends EventEmitter {
       
       console.log(`Starting terminal with shell: ${this.shell}, args: ${this.shellArgs}, cwd: ${cwd}`);
       
+      // Load project-specific environment variables
+      const projectEnv = this.loadProjectEnv(cwd);
+      
+      // Combine system env with project env (project env takes precedence)
+      const combinedEnv = {
+        ...process.env,
+        ...projectEnv,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+        LANG: process.env.LANG || 'en_US.UTF-8',
+        // Ensure we're in the correct working directory
+        PWD: cwd,
+      };
+
+      console.log(`[Terminal] Loaded ${Object.keys(projectEnv).length} environment variables from project`);
+      if (projectEnv.PORT) {
+        console.log(`[Terminal] Using project PORT: ${projectEnv.PORT}`);
+      }
+      
       // Create pseudo-terminal
       const ptyProcess = pty.spawn(this.shell, this.shellArgs, {
         name: 'xterm-256color',
         cols: 80,
         rows: 30,
         cwd,
-        env: {
-          ...process.env,
-          TERM: 'xterm-256color',
-          COLORTERM: 'truecolor',
-          LANG: process.env.LANG || 'en_US.UTF-8'
-        } as any,
+        env: combinedEnv as any,
       });
 
       // Store terminal process

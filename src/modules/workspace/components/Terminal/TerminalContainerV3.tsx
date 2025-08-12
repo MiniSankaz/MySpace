@@ -43,6 +43,17 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   const previousProjectIdRef = useRef<string | null>(null);
   const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(new Set());
   
+  // Clean up suspended projects on mount
+  useEffect(() => {
+    // Clear any stale suspended projects on component mount
+    const cleanupSuspendedProjects = () => {
+      setSuspendedProjects(new Set());
+      console.log('[Terminal] Cleared suspended projects on mount');
+    };
+    
+    cleanupSuspendedProjects();
+  }, []);
+  
   // Calculate max terminals based on layout
   const maxTerminals = LAYOUTS[currentLayout].rows * LAYOUTS[currentLayout].cols;
   
@@ -57,12 +68,19 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       
       // Check if current project has suspended sessions
       if (suspendedProjects.has(project.id)) {
-        await resumeProjectSessions(project.id);
-        setSuspendedProjects(prev => {
-          const next = new Set(prev);
-          next.delete(project.id);
-          return next;
-        });
+        try {
+          await resumeProjectSessions(project.id);
+          // Only remove from suspended set if resume was successful
+          setSuspendedProjects(prev => {
+            const next = new Set(prev);
+            next.delete(project.id);
+            return next;
+          });
+          console.log(`[Terminal] Successfully resumed project ${project.id}`);
+        } catch (error) {
+          console.error(`[Terminal] Failed to resume project ${project.id}:`, error);
+          // Keep in suspended state if resume failed
+        }
       } else {
         // Load fresh sessions
         loadSessions();
@@ -512,7 +530,15 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
             
             {/* Suspended Projects Indicator */}
             {suspendedProjects.size > 0 && (
-              <span className="flex items-center text-xs text-yellow-400 font-mono ml-2 px-2 py-1 bg-yellow-500/10 rounded-md border border-yellow-500/30">
+              <span 
+                className="flex items-center text-xs text-yellow-400 font-mono ml-2 px-2 py-1 bg-yellow-500/10 rounded-md border border-yellow-500/30 cursor-pointer hover:bg-yellow-500/20 transition-colors"
+                onClick={() => {
+                  // Debug: Clear all suspended projects
+                  console.log('Clearing suspended projects:', Array.from(suspendedProjects));
+                  setSuspendedProjects(new Set());
+                }}
+                title="Click to clear suspended projects (debug)"
+              >
                 <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse mr-1.5" />
                 {suspendedProjects.size} suspended {suspendedProjects.size === 1 ? 'project' : 'projects'}
               </span>
