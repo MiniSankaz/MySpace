@@ -59,9 +59,9 @@ export class InMemoryTerminalService extends EventEmitter {
   private focusedSessions: Map<string, Set<string>> = new Map();
   private readonly MAX_FOCUSED_PER_PROJECT = 4;
   
-  // Memory safety limits
-  private readonly MAX_TOTAL_SESSIONS = 20; // ADDED: Global session limit
-  private readonly MAX_SESSIONS_PER_PROJECT = 5; // ADDED: Per-project limit
+  // Memory safety limits - CRITICAL REDUCTION
+  private readonly MAX_TOTAL_SESSIONS = 10; // CRITICAL: Reduced from 20
+  private readonly MAX_SESSIONS_PER_PROJECT = 3; // CRITICAL: Reduced from 5
   private sessionActivity: Map<string, Date> = new Map();
   
   // WebSocket readiness tracking
@@ -85,10 +85,15 @@ export class InMemoryTerminalService extends EventEmitter {
     super();
     console.log('[InMemoryTerminalService] Initialized');
     
-    // Cleanup inactive sessions every 10 minutes
+    // Cleanup inactive sessions every 5 minutes - MORE FREQUENT
     setInterval(() => {
       this.cleanupInactiveSessions();
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000);
+    
+    // Emergency memory monitor every 2 minutes
+    setInterval(() => {
+      this.emergencyMemoryCheck();
+    }, 2 * 60 * 1000);
   }
   
   /**
@@ -540,6 +545,45 @@ export class InMemoryTerminalService extends EventEmitter {
     if (isMemoryPressure && global.gc) {
       global.gc();
       console.log(`[InMemoryTerminalService] Forced garbage collection, memory: ${memoryUsageMB}MB`);
+    }
+  }
+  
+  /**
+   * Emergency memory check - closes sessions if RSS > 900MB
+   */
+  private emergencyMemoryCheck(): void {
+    const memoryUsage = process.memoryUsage();
+    const rssMB = Math.round(memoryUsage.rss / 1024 / 1024);
+    const heapUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+    const externalMB = Math.round(memoryUsage.external / 1024 / 1024);
+    
+    console.log(`[InMemoryTerminalService] Memory: RSS=${rssMB}MB, Heap=${heapUsedMB}MB, External=${externalMB}MB, Sessions=${this.sessions.size}`);
+    
+    // CRITICAL: Emergency cleanup if RSS > 900MB
+    if (rssMB > 900) {
+      console.error(`🚨 EMERGENCY: RSS memory ${rssMB}MB > 900MB - EMERGENCY CLEANUP`);
+      
+      // Close ALL sessions immediately to prevent crash
+      const sessionCount = this.sessions.size;
+      this.clearAllSessions();
+      
+      // Force garbage collection multiple times
+      if (global.gc) {
+        global.gc();
+        global.gc();
+        global.gc();
+      }
+      
+      console.error(`🚨 EMERGENCY: Closed ${sessionCount} sessions, forcing GC`);
+    }
+    // WARNING: High memory cleanup if RSS > 700MB  
+    else if (rssMB > 700) {
+      console.warn(`⚠️ HIGH MEMORY: RSS ${rssMB}MB > 700MB - Aggressive cleanup`);
+      this.cleanupOldestSessions(Math.ceil(this.sessions.size / 2)); // Close half
+      
+      if (global.gc) {
+        global.gc();
+      }
     }
   }
   

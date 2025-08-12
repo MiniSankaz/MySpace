@@ -515,9 +515,9 @@ class TerminalWebSocketServer {
           // Also buffer for history with strict limits
           session.outputBuffer += data;
           
-          // Limit buffer size (keep last 5KB) - REDUCED FROM 10KB
-          if (session.outputBuffer.length > 5120) {
-            session.outputBuffer = session.outputBuffer.slice(-5120);
+          // Limit buffer size (keep last 2KB) - CRITICAL MEMORY REDUCTION
+          if (session.outputBuffer.length > 2048) {
+            session.outputBuffer = session.outputBuffer.slice(-2048);
           }
         });
 
@@ -782,12 +782,12 @@ class TerminalWebSocketServer {
             session.keepAliveUntil = Date.now() + (10 * 60 * 1000); // Keep alive for 10 minutes
           }
         } else if (isPageRefresh) {
-          // Page refresh - keep session alive for reconnection
-          console.log(`Page refresh (code 1001) for session ${sessionKey}, keeping session alive for 2 minutes`);
+          // Page refresh - keep session alive for reconnection - REDUCED TIME
+          console.log(`Page refresh (code 1001) for session ${sessionKey}, keeping session alive for 1 minute`);
           
           if (session) {
             session.ws = null;
-            session.keepAliveUntil = Date.now() + (2 * 60 * 1000); // Keep alive for 2 minutes
+            session.keepAliveUntil = Date.now() + (1 * 60 * 1000); // Keep alive for 1 minute - REDUCED
             session.lastDisconnectCode = code;
           }
         } else if (isCircuitBreakerClose) {
@@ -927,9 +927,9 @@ class TerminalWebSocketServer {
     const buffer = this.outputBuffers.get(sessionId) || [];
     buffer.push(data);
     
-    // Limit buffer size to 100 lines/chunks - REDUCED FROM 500
-    if (buffer.length > 100) {
-      buffer.splice(0, buffer.length - 100);
+    // Limit buffer size to 50 lines/chunks - CRITICAL REDUCTION
+    if (buffer.length > 50) {
+      buffer.splice(0, buffer.length - 50);
     }
     
     this.outputBuffers.set(sessionId, buffer);
