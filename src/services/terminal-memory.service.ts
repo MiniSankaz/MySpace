@@ -58,6 +58,10 @@ export class InMemoryTerminalService extends EventEmitter {
   // Multi-focus support: Track multiple focused sessions per project
   private focusedSessions: Map<string, Set<string>> = new Map();
   private readonly MAX_FOCUSED_PER_PROJECT = 4;
+  
+  // Memory safety limits
+  private readonly MAX_TOTAL_SESSIONS = 20; // ADDED: Global session limit
+  private readonly MAX_SESSIONS_PER_PROJECT = 5; // ADDED: Per-project limit
   private sessionActivity: Map<string, Date> = new Map();
   
   // WebSocket readiness tracking
@@ -127,7 +131,7 @@ export class InMemoryTerminalService extends EventEmitter {
   }
   
   /**
-   * Create new terminal session
+   * Create new terminal session with memory safety checks
    */
   public createSession(
     projectId: string,
@@ -135,6 +139,20 @@ export class InMemoryTerminalService extends EventEmitter {
     userId?: string,
     mode: TerminalMode = 'normal'
   ): TerminalSession {
+    // Memory safety: Check total session limit
+    if (this.sessions.size >= this.MAX_TOTAL_SESSIONS) {
+      console.warn(`[InMemoryTerminalService] Maximum sessions (${this.MAX_TOTAL_SESSIONS}) reached, cleaning oldest`);
+      this.cleanupOldestSessions(3); // Remove 3 oldest sessions
+    }
+    
+    // Memory safety: Check per-project limit
+    const projectSessionIds = this.projectSessions.get(projectId) || new Set();
+    if (projectSessionIds.size >= this.MAX_SESSIONS_PER_PROJECT) {
+      console.warn(`[InMemoryTerminalService] Maximum sessions per project (${this.MAX_SESSIONS_PER_PROJECT}) reached`);
+      // Remove oldest session for this project
+      const oldestSessionId = Array.from(projectSessionIds)[0];
+      this.closeSession(oldestSessionId);
+    }
     const sessionId = this.generateSessionId();
     const tabName = this.getNextTabName(projectId);
     
@@ -489,11 +507,20 @@ export class InMemoryTerminalService extends EventEmitter {
   }
   
   /**
-   * Clean up inactive sessions
+   * Clean up inactive sessions with memory pressure awareness
    */
   private cleanupInactiveSessions(): void {
     const now = Date.now();
-    const timeout = 30 * 60 * 1000; // 30 minutes
+    const timeout = 5 * 60 * 1000; // 5 minutes - REDUCED FROM 30 minutes
+    
+    // Check memory pressure
+    const memoryUsage = process.memoryUsage();
+    const memoryUsageMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+    const isMemoryPressure = memoryUsageMB > 800; // 800MB threshold
+    
+    if (isMemoryPressure) {
+      console.warn(`[InMemoryTerminalService] Memory pressure detected: ${memoryUsageMB}MB - Aggressive cleanup`);
+    }
     
     for (const [sessionId, session] of this.sessions) {
       if (session.status === 'closed') {
@@ -501,10 +528,33 @@ export class InMemoryTerminalService extends EventEmitter {
       }
       
       const timeSinceUpdate = now - session.updatedAt.getTime();
-      if (timeSinceUpdate > timeout && !session.wsConnected) {
-        console.log(`[InMemoryTerminalService] Auto-closing inactive session ${sessionId}`);
+      const aggressiveTimeout = isMemoryPressure ? 2 * 60 * 1000 : timeout; // 2 minutes if memory pressure
+      
+      if (timeSinceUpdate > aggressiveTimeout && !session.wsConnected) {
+        console.log(`[InMemoryTerminalService] Auto-closing inactive session ${sessionId} (${Math.round(timeSinceUpdate / 60000)}min old)`);
         this.closeSession(sessionId);
       }
+    }
+    
+    // Force garbage collection if memory is high
+    if (isMemoryPressure && global.gc) {
+      global.gc();
+      console.log(`[InMemoryTerminalService] Forced garbage collection, memory: ${memoryUsageMB}MB`);
+    }
+  }
+  
+  /**
+   * Clean up oldest sessions for memory safety
+   */
+  private cleanupOldestSessions(count: number): void {
+    const sessionEntries = Array.from(this.sessions.entries())
+      .filter(([_, session]) => session.status !== 'closed')
+      .sort((a, b) => a[1].createdAt.getTime() - b[1].createdAt.getTime()); // Oldest first
+    
+    for (let i = 0; i < Math.min(count, sessionEntries.length); i++) {
+      const [sessionId, session] = sessionEntries[i];
+      console.log(`[InMemoryTerminalService] Closing oldest session ${sessionId} (age: ${Math.round((Date.now() - session.createdAt.getTime()) / 60000)}min)`);
+      this.closeSession(sessionId);
     }
   }
   

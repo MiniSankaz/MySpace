@@ -156,7 +156,7 @@ class TerminalWebSocketServer {
 
   cleanupInactiveSessions() {
     const now = Date.now();
-    const maxAge = 30 * 60 * 1000; // 30 minutes default
+    const maxAge = 5 * 60 * 1000; // 5 minutes - REDUCED FROM 30 minutes
     
     for (const [sessionKey, session] of this.sessions) {
       if (!session.ws || session.ws.readyState !== 1) { // Not OPEN
@@ -512,12 +512,12 @@ class TerminalWebSocketServer {
             }
           }
           
-          // Also buffer for history
+          // Also buffer for history with strict limits
           session.outputBuffer += data;
           
-          // Limit buffer size (keep last 10KB)
-          if (session.outputBuffer.length > 10240) {
-            session.outputBuffer = session.outputBuffer.slice(-10240);
+          // Limit buffer size (keep last 5KB) - REDUCED FROM 10KB
+          if (session.outputBuffer.length > 5120) {
+            session.outputBuffer = session.outputBuffer.slice(-5120);
           }
         });
 
@@ -927,9 +927,9 @@ class TerminalWebSocketServer {
     const buffer = this.outputBuffers.get(sessionId) || [];
     buffer.push(data);
     
-    // Limit buffer size to 500 lines/chunks
-    if (buffer.length > 500) {
-      buffer.splice(0, buffer.length - 500);
+    // Limit buffer size to 100 lines/chunks - REDUCED FROM 500
+    if (buffer.length > 100) {
+      buffer.splice(0, buffer.length - 100);
     }
     
     this.outputBuffers.set(sessionId, buffer);
