@@ -50,14 +50,20 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     // Sessions now persist across project switches - no cleanup on project change
   }, [project.id]);
   
-  // Cleanup only when component is completely unmounted (e.g., navigating away from workspace)
+  // Track if component is truly unmounting (not React StrictMode)
+  const isUnmountingRef = useRef(false);
+  
+  // Cleanup only when truly leaving workspace
   useEffect(() => {
+    // Mark as mounted
+    isUnmountingRef.current = false;
+    
     return () => {
-      // Only cleanup if we're truly leaving the workspace, not just switching projects
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/workspace')) {
-        console.log('[TerminalContainer] Component unmounting - cleaning up all sessions');
-        cleanupAllSessions();
-      }
+      // Mark as unmounting
+      isUnmountingRef.current = true;
+      
+      // Don't cleanup sessions - they should persist
+      console.log('[TerminalContainer] Component unmounting but keeping sessions alive');
     };
   }, []); // Empty dependency array - only runs on mount/unmount
 

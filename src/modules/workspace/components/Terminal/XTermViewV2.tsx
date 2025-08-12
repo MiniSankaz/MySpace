@@ -43,6 +43,12 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
   // Initialize terminal
   useEffect(() => {
     if (!terminalRef.current) return;
+    
+    // Prevent double initialization in React StrictMode
+    if (xtermRef.current) {
+      console.log(`[XTermView] Terminal already initialized for session ${sessionId}`);
+      return;
+    }
 
     // Create terminal instance
     const term = new Terminal({
@@ -81,11 +87,24 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
     term.loadAddon(fitAddon);
     term.loadAddon(webLinksAddon);
     
-    // Open terminal in container
-    term.open(terminalRef.current);
-    
-    // Fit terminal to container
-    fitAddon.fit();
+    // Open terminal in container with safety check
+    try {
+      term.open(terminalRef.current);
+      
+      // Delay fit to ensure container is ready
+      setTimeout(() => {
+        if (fitAddon && terminalRef.current) {
+          try {
+            fitAddon.fit();
+          } catch (e) {
+            console.warn('[XTermView] Initial fit failed, will retry:', e);
+          }
+        }
+      }, 50);
+    } catch (error) {
+      console.error('[XTermView] Failed to open terminal:', error);
+      return;
+    }
     
     // Store refs
     xtermRef.current = term;
@@ -136,9 +155,15 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
 
     // Cleanup
     return () => {
+      // Only cleanup if this is the actual unmount (not StrictMode re-render)
+      if (!xtermRef.current) return;
+      
       console.log(`[XTermView] Cleaning up terminal view for session: ${sessionId}`);
       window.removeEventListener('resize', handleResize);
-      dataHandler.dispose();
+      
+      if (dataHandler) {
+        dataHandler.dispose();
+      }
       
       // Clear reconnect timeout
       if (reconnectTimeoutRef.current) {
@@ -147,7 +172,7 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
       }
       
       // Close WebSocket with clean disconnect
-      if (wsRef.current) {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.close(1000, 'Component unmounting');
         wsRef.current = null;
       }
@@ -156,12 +181,12 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
       reconnectAttemptsRef.current = 0;
       
       // Dispose terminal
-      if (term) {
-        term.dispose();
+      if (xtermRef.current) {
+        xtermRef.current.dispose();
+        xtermRef.current = null;
       }
       
-      // Clear refs
-      xtermRef.current = null;
+      // Clear fit addon ref
       fitAddonRef.current = null;
     };
   }, [sessionId]);
