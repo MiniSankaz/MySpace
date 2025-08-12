@@ -7,8 +7,9 @@
 import { EventEmitter } from 'events';
 
 // Terminal session types
-export type TerminalType = 'system' | 'claude';
+export type TerminalType = 'terminal'; // Single terminal type
 export type TerminalStatus = 'active' | 'inactive' | 'error' | 'connecting' | 'closed';
+export type TerminalMode = 'normal' | 'claude'; // Mode for Claude CLI within terminal
 
 // Terminal session interface
 export interface TerminalSession {
@@ -16,6 +17,7 @@ export interface TerminalSession {
   projectId: string;
   userId?: string;
   type: TerminalType;
+  mode: TerminalMode; // Current mode (normal or claude)
   tabName: string;
   status: TerminalStatus;
   active: boolean;
@@ -53,8 +55,8 @@ export class InMemoryTerminalService extends EventEmitter {
   private readonly MAX_FOCUSED_PER_PROJECT = 4;
   private sessionActivity: Map<string, Date> = new Map();
   
-  // Session counters for tab naming
-  private sessionCounters: Map<string, { system: number; claude: number }> = new Map();
+  // Session counter for tab naming
+  private sessionCounters: Map<string, number> = new Map();
   
   private constructor() {
     super();
@@ -84,27 +86,20 @@ export class InMemoryTerminalService extends EventEmitter {
   }
   
   /**
-   * Get WebSocket URL for terminal type
+   * Get WebSocket URL for terminal
    */
-  private getWebSocketUrl(type: TerminalType): string {
-    const port = type === 'system' ? 4001 : 4002;
-    return `ws://localhost:${port}`;
+  private getWebSocketUrl(): string {
+    // All terminals use the same WebSocket server now
+    return `ws://localhost:4001`;
   }
   
   /**
-   * Get next tab name for project and type
+   * Get next tab name for project
    */
-  private getNextTabName(projectId: string, type: TerminalType): string {
-    if (!this.sessionCounters.has(projectId)) {
-      this.sessionCounters.set(projectId, { system: 0, claude: 0 });
-    }
-    
-    const counters = this.sessionCounters.get(projectId)!;
-    counters[type]++;
-    
-    return type === 'claude' 
-      ? `Claude ${counters.claude}`
-      : `Terminal ${counters.system}`;
+  private getNextTabName(projectId: string): string {
+    const count = (this.sessionCounters.get(projectId) || 0) + 1;
+    this.sessionCounters.set(projectId, count);
+    return `Terminal ${count}`;
   }
   
   /**
@@ -112,18 +107,19 @@ export class InMemoryTerminalService extends EventEmitter {
    */
   public createSession(
     projectId: string,
-    type: TerminalType,
     projectPath: string,
-    userId?: string
+    userId?: string,
+    mode: TerminalMode = 'normal'
   ): TerminalSession {
     const sessionId = this.generateSessionId();
-    const tabName = this.getNextTabName(projectId, type);
+    const tabName = this.getNextTabName(projectId);
     
     const session: TerminalSession = {
       id: sessionId,
       projectId,
       userId,
-      type,
+      type: 'terminal',
+      mode,
       tabName,
       status: 'connecting',
       active: true,

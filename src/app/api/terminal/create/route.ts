@@ -35,11 +35,11 @@ export async function POST(request: NextRequest) {
 
     // Get request body
     const body = await request.json();
-    const { projectId, type, projectPath } = body;
+    const { projectId, projectPath, mode = 'normal' } = body;
 
-    if (!projectId || !type) {
+    if (!projectId) {
       return NextResponse.json(
-        { error: 'Missing required parameters: projectId, type' },
+        { error: 'Missing required parameter: projectId' },
         { status: 400 }
       );
     }
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
     // Create session in memory (no database)
     const session = inMemoryTerminalService.createSession(
       projectId,
-      type,
       projectPath || process.cwd(),
-      userId
+      userId,
+      mode
     );
 
     console.log(`[Terminal API] Created session ${session.id} for project ${projectId}`);
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       id: session.id,
       projectId: session.projectId,
       type: session.type,
+      mode: session.mode,
       tabName: session.tabName,
       status: session.status,
       isFocused: true, // New sessions start focused

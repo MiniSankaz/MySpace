@@ -273,9 +273,9 @@ class TerminalWebSocketServer {
             console.log(`[Terminal WS] Creating session ${sessionId} in memory service`);
             memSession = this.memoryService.createSession(
               projectId,
-              'system', // This is the system terminal
               workingDir,
-              userId
+              userId,
+              'normal' // Default mode
             );
             // Override the generated ID with our existing session ID
             if (memSession && memSession.id !== sessionId) {

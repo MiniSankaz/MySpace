@@ -55,27 +55,20 @@ app.prepare().then(() => {
   // }
 
   // Initialize WebSocket servers
-  let terminalWS, claudeWS, claudeTerminalWS;
+  let terminalWS, claudeWS;
   
   try {
-    // Use standalone WebSocket server on port 4001
+    // Use standalone WebSocket server on port 4001 for all terminals
     const { TerminalWebSocketServer, setupShutdownHandlers: setupTerminalShutdown } = require('./src/server/websocket/terminal-ws-standalone');
     const wsPort = process.env.WS_PORT || 4001;
     terminalWS = new TerminalWebSocketServer(wsPort);
     setupTerminalShutdown(terminalWS);
-    console.log(`✓ Terminal WebSocket server listening on port ${wsPort}`);
+    console.log(`✓ Unified Terminal WebSocket server listening on port ${wsPort}`);
     
-    // Initialize Claude Terminal WebSocket server on port 4002
-    const { ClaudeTerminalWebSocketServer, setupShutdownHandlers: setupClaudeShutdown } = require('./src/server/websocket/claude-terminal-ws');
-    const claudeTerminalPort = process.env.CLAUDE_WS_PORT || 4002;
-    claudeTerminalWS = new ClaudeTerminalWebSocketServer(claudeTerminalPort);
-    setupClaudeShutdown(claudeTerminalWS);
-    console.log(`✓ Claude Terminal WebSocket server listening on port ${claudeTerminalPort}`);
-    
-    // Initialize Claude WebSocket server
+    // Initialize Claude WebSocket server for AI assistant (not terminal)
     const { ClaudeWebSocketServer } = require('./src/server/websocket/claude-ws');
     claudeWS = new ClaudeWebSocketServer(server);
-    console.log('✓ Claude WebSocket server initialized');
+    console.log('✓ Claude Assistant WebSocket server initialized');
     
     // Only handle custom WebSocket upgrades, not HMR
     // Next.js will handle HMR WebSocket internally
@@ -86,10 +79,6 @@ app.prepare().then(() => {
       if (terminalWS) {
         console.log('Closing terminal WebSocket sessions...');
         terminalWS.closeAllSessions();
-      }
-      if (claudeTerminalWS) {
-        console.log('Closing Claude terminal sessions...');
-        claudeTerminalWS.cleanup();
       }
       if (claudeWS) {
         console.log('Closing Claude WebSocket sessions...');
