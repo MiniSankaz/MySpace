@@ -55,11 +55,32 @@ export async function GET(request: NextRequest) {
       external: Math.round(memoryUsage.external / 1024 / 1024)
     };
     
-    // Health status - increased memory limit to 4GB
-    const isHealthy = memoryUsageMB.heapUsed < 4096 && allSessions.length < 100;
+    // CRITICAL: Detect infinite loops
+    const issues: string[] = [];
+    const warnings: string[] = [];
+    
+    // Check for excessive sessions per project
+    for (const [projectId, count] of sessionsByProject.entries()) {
+      if (count > 100) {
+        issues.push(`Project ${projectId} has ${count} sessions (LOOP DETECTED)`);
+      } else if (count > 50) {
+        warnings.push(`Project ${projectId} has ${count} sessions`);
+      }
+    }
+    
+    // Check total session count
+    if (allSessions.length > 500) {
+      issues.push(`Total sessions: ${allSessions.length} (CRITICAL LOOP)`);
+    } else if (allSessions.length > 200) {
+      warnings.push(`Total sessions: ${allSessions.length} (possible loop)`);
+    }
+    
+    // Health status - enhanced with loop detection
+    const hasLoops = issues.length > 0;
+    const isHealthy = !hasLoops && memoryUsageMB.heapUsed < 4096 && allSessions.length < 100;
     
     return NextResponse.json({
-      status: isHealthy ? 'healthy' : 'degraded',
+      status: hasLoops ? 'critical' : (isHealthy ? 'healthy' : 'degraded'),
       metrics: {
         totalSessions: allSessions.length,
         suspendedSessions: suspendedCount,
@@ -69,16 +90,27 @@ export async function GET(request: NextRequest) {
         uptime: Math.round(process.uptime()),
       },
       sessionsByStatus: Object.fromEntries(sessionsByStatus),
+      sessionsByProject: Object.fromEntries(sessionsByProject),
       limits: {
         maxSessions: 100,
         maxMemoryMB: 4096,
-        maxSessionsPerProject: 10
+        maxSessionsPerProject: 50,
+        criticalSessionsPerProject: 100
       },
+      issues,
       warnings: [
+        ...warnings,
         ...(allSessions.length > 80 ? ['High session count (>80)'] : []),
         ...(memoryUsageMB.heapUsed > 3000 ? ['High memory usage (>3GB)'] : []),
         ...(suspendedCount > 20 ? ['Many suspended sessions (>20)'] : [])
       ],
+      recommendations: hasLoops ? [
+        '🚨 INFINITE LOOP DETECTED - Take immediate action:',
+        '1. Run: node scripts/cleanup-sessions.ts --force',
+        '2. Restart the application immediately',
+        '3. Check logs for LOOP DETECTED or CIRCUIT BREAKER messages',
+        '4. Monitor this endpoint for recovery'
+      ] : [],
       timestamp: new Date().toISOString()
     });
   } catch (error) {

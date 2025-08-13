@@ -1,11 +1,13 @@
 /**
  * API Route: POST /api/terminal/create
- * Create a new terminal session (in-memory storage)
+ * Create a new terminal session (with flexible storage)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-// Import the TypeScript version directly for better compatibility during development
+// ใช้ Storage Service ใหม่แทน InMemoryTerminalService
+import { terminalStorageService } from '@/services/storage/TerminalStorageService';
+// ยังคงใช้ legacy service สำหรับ WebSocket readiness
 import { inMemoryTerminalService } from '@/services/terminal-memory.service';
 
 export async function POST(request: NextRequest) {
@@ -44,26 +46,26 @@ export async function POST(request: NextRequest) {
       console.log(`[Terminal API] ✓ Using project path: ${validatedPath}`);
     }
 
-    // Create session in memory (no database)
-    console.log(`[Terminal API] 🏗️ Creating session for user: ${userId || 'system'}`);
-    const session = inMemoryTerminalService.createSession(
+    // สร้าง session ผ่าน Storage Service ใหม่
+    console.log(`[Terminal API] 🏗️ Creating session via Storage Service for user: ${userId || 'system'}`);
+    const session = await terminalStorageService.createSession(
       projectId,
       validatedPath,
       userId,
       mode
     );
 
-    console.log(`[Terminal API] ✅ Created session ${session.id} for project ${projectId}, waiting for WebSocket readiness...`);
+    console.log(`[Terminal API] ✅ Created session ${session.id} for project ${projectId}`);
 
-    // Wait for WebSocket readiness before returning
-    const wsReady = await inMemoryTerminalService.waitForWebSocketReady(session.id, 5000);
+    // Don't wait for WebSocket readiness - let frontend connect immediately
+    // The WebSocket server will handle session registration when connection arrives
+    const wsReady = true; // Always return true to allow immediate connection
     
-    if (!wsReady) {
-      console.warn(`[Terminal API] WebSocket not ready for session ${session.id}, returning with retry info`);
-    }
+    // Give a small delay for session to propagate to memory service
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Get current focus state for the project
-    const focusedSessions = inMemoryTerminalService.getFocusedSessions(projectId);
+    const focusedSessions = await terminalStorageService.storageProvider?.getFocusedSessions(projectId) || [];
     const focusState = {
       focused: focusedSessions,
       version: Date.now(), // Simple version using timestamp
@@ -78,18 +80,23 @@ export async function POST(request: NextRequest) {
       mode: session.mode,
       tabName: session.tabName,
       status: session.status,
-      isFocused: true, // New sessions start focused
+      isFocused: session.isFocused || true, // New sessions start focused
       active: session.active,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt
     };
 
+    // Log storage mode info
+    const storageInfo = await terminalStorageService.getStorageInfo();
+    console.log(`[Terminal API] 📊 Storage mode: ${storageInfo.storageMode}, Compatibility: ${storageInfo.compatibilityMode}`);
+
     return NextResponse.json({
       success: true,
       session: formattedSession,
-      websocketReady: wsReady,
-      retryDelay: wsReady ? undefined : 1000,
-      focusState
+      websocketReady: true, // Always true to allow immediate connection
+      retryDelay: undefined, // No retry needed
+      focusState,
+      storageMode: storageInfo.storageMode // เพิ่มข้อมูล storage mode
     });
 
   } catch (error) {

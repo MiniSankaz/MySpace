@@ -26,6 +26,7 @@ const publicRoutes = [
   '/api/settings/user', // Allow settings API to handle auth internally
   // Temporarily allow workspace API for testing
   '/api/workspace/files',
+  '/api/memory-info', // Diagnostic endpoint for memory monitoring
 ];
 
 // Admin-only routes

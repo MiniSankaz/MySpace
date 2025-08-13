@@ -1,23 +1,11 @@
 /**
  * API Route: GET /api/terminal/list
- * List terminal sessions for a project (in-memory storage)
+ * List terminal sessions for a project using Storage Service
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-// Import the compiled JavaScript version to use the same instance as WebSocket servers
-let inMemoryTerminalService;
-try {
-  // Try to use the compiled version first (same as WebSocket servers)
-  const memoryModule = require('../../../../../dist/services/terminal-memory.service');
-  inMemoryTerminalService = memoryModule.inMemoryTerminalService || memoryModule.InMemoryTerminalService.getInstance();
-  console.log('[Terminal List API] Using compiled terminal-memory service');
-} catch (error) {
-  // Fallback to TypeScript version if not compiled
-  console.log('[Terminal List API] Falling back to TypeScript terminal-memory service');
-  const tsModule = require('@/services/terminal-memory.service');
-  inMemoryTerminalService = tsModule.inMemoryTerminalService || tsModule.InMemoryTerminalService.getInstance();
-}
+import { terminalStorageService } from '@/services/storage/TerminalStorageService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,8 +31,8 @@ export async function GET(request: NextRequest) {
       // Allow request even without auth for development
     }
 
-    // Get sessions from in-memory service
-    const sessions = inMemoryTerminalService.listSessions(projectId);
+    // Get sessions from storage service (which handles both storage and memory)
+    const sessions = await terminalStorageService.listSessions(projectId);
     
     console.log(`[Terminal API] Found ${sessions.length} sessions for project ${projectId}`);
 

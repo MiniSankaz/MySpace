@@ -77,8 +77,13 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   // Handle project switching with suspension/resumption
   useEffect(() => {
     const handleProjectSwitch = async () => {
-      // Suspend previous project if switching
-      if (previousProjectIdRef.current && previousProjectIdRef.current !== project.id) {
+      // Only suspend if we're actually switching to a different project
+      // and we had a previous project (not initial mount)
+      const isActualProjectSwitch = previousProjectIdRef.current && 
+                                   previousProjectIdRef.current !== project.id;
+      
+      if (isActualProjectSwitch) {
+        console.log(`[Terminal] Switching from project ${previousProjectIdRef.current} to ${project.id}`);
         await suspendProjectSessions(previousProjectIdRef.current);
         setSuspendedProjects(prev => new Set(prev).add(previousProjectIdRef.current!));
       }

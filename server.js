@@ -27,15 +27,20 @@ app.prepare().then(() => {
   
   setInterval(() => {
     const memUsage = process.memoryUsage();
+    const v8 = require('v8');
+    const heapStats = v8.getHeapStatistics();
+    
     const memUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
-    const memTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    const memAllocatedMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    const memLimitMB = Math.round(heapStats.heap_size_limit / 1024 / 1024);
+    const memAvailableMB = memLimitMB - memUsedMB;
     
-    // Log memory usage every 30 seconds
-    console.log(`Memory: ${memUsedMB}MB used / ${memTotalMB}MB total`);
+    // Log memory usage every 30 seconds with clearer format
+    console.log(`Memory: ${memUsedMB}MB used / ${memAllocatedMB}MB allocated / ${memLimitMB}MB limit (${memAvailableMB}MB available)`);
     
-    // Force garbage collection if memory usage is high (>1.5GB)
-    if (memUsage.heapUsed > 1.5 * 1024 * 1024 * 1024) {
-      console.warn('🚨 High memory usage detected, forcing garbage collection');
+    // Force garbage collection if memory usage is high (>4GB with 8GB total)
+    if (memUsage.heapUsed > 4 * 1024 * 1024 * 1024) {
+      console.warn('🚨 High memory usage detected (>4GB), forcing garbage collection');
       if (global.gc) {
         global.gc();
         const afterGC = process.memoryUsage();
@@ -44,9 +49,9 @@ app.prepare().then(() => {
       }
     }
     
-    // Exit if memory usage exceeds 3GB to prevent OOM crash
-    if (memUsage.heapUsed > 3 * 1024 * 1024 * 1024) {
-      console.error('🚨 CRITICAL: Memory usage exceeded 3GB, restarting to prevent crash');
+    // Exit if memory usage exceeds 7GB to prevent OOM crash (with 8GB limit)
+    if (memUsage.heapUsed > 7 * 1024 * 1024 * 1024) {
+      console.error('🚨 CRITICAL: Memory usage exceeded 7GB, restarting to prevent crash');
       process.exit(1);
     }
   }, 30000);

@@ -5,17 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-// Import the compiled JavaScript version to use the same instance as WebSocket servers
-let inMemoryTerminalService;
-try {
-  // Try to use the compiled version first (same as WebSocket servers)
-  const memoryModule = require('../../../../../dist/services/terminal-memory.service');
-  inMemoryTerminalService = memoryModule.inMemoryTerminalService || memoryModule.InMemoryTerminalService.getInstance();
-} catch (error) {
-  // Fallback to TypeScript version if not compiled
-  const tsModule = require('@/services/terminal-memory.service');
-  inMemoryTerminalService = tsModule.inMemoryTerminalService || tsModule.InMemoryTerminalService.getInstance();
-}
+// Import the singleton terminal service directly
+import { InMemoryTerminalService, terminalService } from '@/services/terminal-memory.service';
+
+// Use singleton instance
+const terminalService = InMemoryTerminalService.getInstance();
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get all focused sessions for the project
-    const focusedSessions = inMemoryTerminalService.getFocusedSessions(projectId);
+    const focusedSessions = terminalService.getFocusedSessions(projectId);
     
     return NextResponse.json({
       success: true,
@@ -76,10 +70,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update focus in memory service (supports both focus and unfocus)
-    inMemoryTerminalService.setSessionFocus(sessionId, focused);
+    terminalService.setSessionFocus(sessionId, focused);
     
     // Get updated session
-    const session = inMemoryTerminalService.getSession(sessionId);
+    const session = terminalService.getSession(sessionId);
     
     if (!session) {
       return NextResponse.json(
@@ -89,11 +83,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get all focused sessions for the project (multi-focus support)
-    const allFocusedSessions = inMemoryTerminalService.getFocusedSessions(projectId);
+    const allFocusedSessions = terminalService.getFocusedSessions(projectId);
     
     // Get details of all focused sessions
     const focusedSessionDetails = allFocusedSessions.map(sid => {
-      const s = inMemoryTerminalService.getSession(sid);
+      const s = terminalService.getSession(sid);
       return s ? {
         id: s.id,
         type: s.type,

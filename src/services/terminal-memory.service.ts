@@ -57,11 +57,11 @@ export class InMemoryTerminalService extends EventEmitter {
   
   // Multi-focus support: Track multiple focused sessions per project
   private focusedSessions: Map<string, Set<string>> = new Map();
-  private readonly MAX_FOCUSED_PER_PROJECT = 4;
+  private readonly MAX_FOCUSED_PER_PROJECT = 10; // Increased for better multi-terminal support
   
-  // Memory safety limits - CRITICAL REDUCTION
-  private readonly MAX_TOTAL_SESSIONS = 10; // CRITICAL: Reduced from 20
-  private readonly MAX_SESSIONS_PER_PROJECT = 3; // CRITICAL: Reduced from 5
+  // Memory safety limits - Increased for better performance
+  private readonly MAX_TOTAL_SESSIONS = 50; // Increased to support more sessions
+  private readonly MAX_SESSIONS_PER_PROJECT = 20; // Increased for multi-terminal work
   private sessionActivity: Map<string, Date> = new Map();
   
   // WebSocket readiness tracking
@@ -144,6 +144,41 @@ export class InMemoryTerminalService extends EventEmitter {
     userId?: string,
     mode: TerminalMode = 'normal'
   ): TerminalSession {
+    // CRITICAL: Circuit breaker check
+    if (this.circuitBreakerTripped.get(projectId)) {
+      console.error(`[InMemoryTerminalService] CIRCUIT BREAKER ACTIVE for project ${projectId}. Refusing to create session.`);
+      throw new Error('Circuit breaker active: Too many session creation attempts detected');
+    }
+    
+    // CRITICAL: Rate limiting to detect loops
+    const now = Date.now();
+    const projectCreations = this.creationRateLimit.get(projectId) || [];
+    
+    // Remove timestamps older than 1 minute
+    const recentCreations = projectCreations.filter(timestamp => now - timestamp < 60000);
+    
+    // Check if we're creating too many sessions
+    if (recentCreations.length >= this.MAX_CREATIONS_PER_MINUTE) {
+      console.error(`[InMemoryTerminalService] LOOP DETECTED: ${recentCreations.length} sessions created in last minute for project ${projectId}`);
+      console.error('[InMemoryTerminalService] TRIPPING CIRCUIT BREAKER');
+      
+      // Trip the circuit breaker
+      this.circuitBreakerTripped.set(projectId, true);
+      
+      // Auto-reset circuit breaker after 5 minutes
+      setTimeout(() => {
+        console.log(`[InMemoryTerminalService] Resetting circuit breaker for project ${projectId}`);
+        this.circuitBreakerTripped.delete(projectId);
+        this.creationRateLimit.delete(projectId);
+      }, 5 * 60 * 1000);
+      
+      throw new Error(`Session creation loop detected: ${recentCreations.length} sessions in 1 minute`);
+    }
+    
+    // Track this creation
+    recentCreations.push(now);
+    this.creationRateLimit.set(projectId, recentCreations);
+    
     // Memory safety: Check total session limit
     if (this.sessions.size >= this.MAX_TOTAL_SESSIONS) {
       console.warn(`[InMemoryTerminalService] Maximum sessions (${this.MAX_TOTAL_SESSIONS}) reached, cleaning oldest`);
@@ -521,10 +556,10 @@ export class InMemoryTerminalService extends EventEmitter {
     // Check memory pressure
     const memoryUsage = process.memoryUsage();
     const memoryUsageMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-    const isMemoryPressure = memoryUsageMB > 800; // 800MB threshold
+    const isMemoryPressure = memoryUsageMB > 4000; // 4GB threshold (with 8GB total)
     
     if (isMemoryPressure) {
-      console.warn(`[InMemoryTerminalService] Memory pressure detected: ${memoryUsageMB}MB - Aggressive cleanup`);
+      console.warn(`[InMemoryTerminalService] Memory pressure detected: ${memoryUsageMB}MB (threshold: 4GB) - Aggressive cleanup`);
     }
     
     for (const [sessionId, session] of this.sessions) {
@@ -549,7 +584,7 @@ export class InMemoryTerminalService extends EventEmitter {
   }
   
   /**
-   * Emergency memory check - closes sessions if RSS > 900MB
+   * Emergency memory check - closes sessions if RSS > 6GB
    */
   private emergencyMemoryCheck(): void {
     const memoryUsage = process.memoryUsage();
@@ -559,9 +594,9 @@ export class InMemoryTerminalService extends EventEmitter {
     
     console.log(`[InMemoryTerminalService] Memory: RSS=${rssMB}MB, Heap=${heapUsedMB}MB, External=${externalMB}MB, Sessions=${this.sessions.size}`);
     
-    // CRITICAL: Emergency cleanup if RSS > 3GB (with 4GB limit)
-    if (rssMB > 3072) {
-      console.error(`🚨 EMERGENCY: RSS memory ${rssMB}MB > 3GB - EMERGENCY CLEANUP`);
+    // CRITICAL: Emergency cleanup if RSS > 6GB (with 8GB limit)
+    if (rssMB > 6144) {
+      console.error(`🚨 EMERGENCY: RSS memory ${rssMB}MB > 6GB - EMERGENCY CLEANUP`);
       
       // Close ALL sessions immediately to prevent crash
       const sessionCount = this.sessions.size;

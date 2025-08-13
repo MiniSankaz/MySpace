@@ -20,6 +20,10 @@ PID_FILE="./server.pid"
 MAX_RETRIES=3
 RETRY_DELAY=5
 
+# Terminal Storage Configuration
+TERMINAL_STORAGE_MODE=${TERMINAL_STORAGE_MODE:-LOCAL}
+TERMINAL_COMPATIBILITY_MODE=${TERMINAL_COMPATIBILITY_MODE:-hybrid}
+
 # ASCII Art Banner
 show_banner() {
     echo -e "${MAGENTA}"
@@ -517,19 +521,19 @@ start_server() {
     echo -e "${YELLOW}🛑 Press Ctrl+C to stop${NC}"
     echo ""
     
-    # Start server in background to monitor it
+    # Start server in background to monitor it (with 8GB memory limit)
     case $mode in
         "production")
-            NODE_ENV=production npm run start 2>&1 | tee -a "$LOG_FILE" &
+            NODE_ENV=production NODE_OPTIONS="--max-old-space-size=8192" npm run start 2>&1 | tee -a "$LOG_FILE" &
             ;;
         "development")
-            npm run dev 2>&1 | tee -a "$LOG_FILE" &
+            NODE_OPTIONS="--max-old-space-size=8192" npm run dev 2>&1 | tee -a "$LOG_FILE" &
             ;;
         "custom")
-            node server.js 2>&1 | tee -a "$LOG_FILE" &
+            NODE_OPTIONS="--max-old-space-size=8192" node server.js 2>&1 | tee -a "$LOG_FILE" &
             ;;
         *)
-            npm run dev 2>&1 | tee -a "$LOG_FILE" &
+            NODE_OPTIONS="--max-old-space-size=8192" npm run dev 2>&1 | tee -a "$LOG_FILE" &
             ;;
     esac
     

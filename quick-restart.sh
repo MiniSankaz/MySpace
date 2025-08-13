@@ -64,8 +64,8 @@ fi
 # Start services
 echo -e "${YELLOW}🚀 Starting services...${NC}"
 
-# Start server with Node
-NODE_ENV=development nohup node server.js > server.log 2>&1 &
+# Start server with Node (8GB memory limit)
+NODE_ENV=development nohup node --max-old-space-size=8192 --expose-gc server.js > server.log 2>&1 &
 SERVER_PID=$!
 echo "Server PID: $SERVER_PID"
 

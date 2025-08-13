@@ -156,28 +156,28 @@ class TerminalWebSocketServer {
 
   cleanupInactiveSessions() {
     const now = Date.now();
-    const maxAge = 5 * 60 * 1000; // 5 minutes - REDUCED FROM 30 minutes
+    const maxAge = 30 * 60 * 1000; // 30 minutes for better session persistence
     
     for (const [sessionKey, session] of this.sessions) {
       if (!session.ws || session.ws.readyState !== 1) { // Not OPEN
-        // Check if keep-alive has expired - but don't kill suspended sessions
-        if (session.keepAliveUntil && now > session.keepAliveUntil && !session.suspended) {
+        // Check if keep-alive has expired - but don't kill suspended or disconnected sessions
+        if (session.keepAliveUntil && now > session.keepAliveUntil && !session.suspended && !session.disconnected) {
           console.log(`Keep-alive expired for session ${sessionKey}, cleaning up`);
           if (session.process && !session.process.killed) {
             session.process.kill();
           }
           this.sessions.delete(sessionKey);
           continue;
-        } else if (session.suspended) {
-          // Don't cleanup suspended sessions
-          console.log(`Session ${sessionKey} is suspended, keeping alive`);
+        } else if (session.suspended || session.disconnected) {
+          // Don't cleanup suspended or recently disconnected sessions
+          // They should be able to reconnect
           continue;
         }
         
         // Check if session has been disconnected for too long
         const disconnectedTime = now - (session.lastDisconnectTime || now);
         
-        // Keep sessions alive for 30 minutes for reconnection (unless keep-alive is set)
+        // Keep sessions alive for 30 minutes for reconnection
         if (!session.keepAliveUntil && disconnectedTime > maxAge) {
           console.log(`Cleaning up long-disconnected session: ${sessionKey}`);
           if (session.process) {
@@ -189,8 +189,9 @@ class TerminalWebSocketServer {
           session.lastDisconnectTime = Date.now();
         }
       } else {
-        // Session is connected, clear disconnect time
+        // Session is connected, clear disconnect time and disconnected flag
         session.lastDisconnectTime = null;
+        session.disconnected = false;
       }
     }
   }
@@ -269,10 +270,11 @@ class TerminalWebSocketServer {
         // Update WebSocket connection
         session.ws = ws;
         
-        // Send current buffer to reconnected client
+        // Send buffered output as a single 'buffered' message on reconnect
+        // to distinguish from real-time stream
         if (session.outputBuffer) {
           ws.send(JSON.stringify({
-            type: 'stream',
+            type: 'buffered',
             data: session.outputBuffer,
           }));
         }
@@ -459,49 +461,84 @@ class TerminalWebSocketServer {
         
         this.sessions.set(sessionKey, session);
         
-        // Register session in memory - create if doesn't exist
+        // Register session in memory
         if (this.memoryService && projectId && sessionId) {
-          // First check if session exists, if not create it
+          // Check if session exists
           let memSession = this.memoryService.getSession(sessionId);
+          
           if (!memSession) {
-            console.log(`[Terminal WS] Creating session ${sessionId} in memory service`);
-            memSession = this.memoryService.createSession(
-              projectId,
-              workingDir,
-              userId,
-              'normal' // Default mode
-            );
-            // Override the generated ID with our existing session ID
-            if (memSession && memSession.id !== sessionId) {
-              // Update the session ID in memory service
-              this.memoryService.sessions.delete(memSession.id);
-              memSession.id = sessionId;
-              this.memoryService.sessions.set(sessionId, memSession);
-            }
+            // Session doesn't exist - this shouldn't happen if Storage Service created it first
+            console.warn(`[Terminal WS] Session ${sessionId} not found in memory service, waiting...`);
+            
+            // Wait a bit for session to be created by Storage Service
+            setTimeout(() => {
+              memSession = this.memoryService.getSession(sessionId);
+              if (!memSession) {
+                console.error(`[Terminal WS] Session ${sessionId} still not found after wait`);
+                // As fallback, create it
+                console.log(`[Terminal WS] Creating fallback session ${sessionId}`);
+                memSession = this.memoryService.createSession(
+                  projectId,
+                  workingDir,
+                  userId,
+                  'normal'
+                );
+              }
+              
+              // Register WebSocket
+              this.memoryService.registerWebSocketConnection(sessionId, ws);
+              this.memoryService.markWebSocketReady(sessionId);
+              console.log(`[Terminal WS] WebSocket registered for session ${sessionId}`);
+            }, 500); // Wait 500ms for Storage Service to create session
+          } else {
+            // Session exists, register immediately
+            console.log(`[Terminal WS] Session ${sessionId} found, registering WebSocket`);
+            this.memoryService.registerWebSocketConnection(sessionId, ws);
+            this.memoryService.markWebSocketReady(sessionId);
+            
+            // Update status to active
+            this.memoryService.updateSessionStatus(sessionId, 'active');
           }
           
-          // Now register the WebSocket connection
-          this.registerWebSocketWithRetry(sessionId, ws, projectId).catch(err => {
-            console.error('Failed to register WebSocket after retries:', err);
-          });
+          // Set initial focus state
+          this.handleFocusChange(sessionId, projectId, true);
         }
 
         // Handle PTY data with focus-aware streaming
         shellProcess.onData((data) => {
-          // Check if this session is focused
-          const isFocused = this.isSessionFocused(sessionId, projectId);
+          // Clean up shell prompt artifacts
+          // Remove standalone % and unnecessary line breaks from zsh prompt
+          let cleanedData = data;
           
-          // Always stream to focused sessions for real-time updates
-          if (isFocused && session.ws && session.ws.readyState === ws.OPEN) {
-            session.ws.send(JSON.stringify({
-              type: 'stream',
-              data: data,
-            }));
+          // Remove trailing % with optional space and newline (common in zsh)
+          cleanedData = cleanedData.replace(/\s*%\s*\r?\n/g, '');
+          
+          // Remove standalone % at the end of output
+          cleanedData = cleanedData.replace(/\s*%\s*$/g, '');
+          
+          // CRITICAL FIX: Send output to ALL active sessions, not just focused ones
+          // Focus should only affect CPU optimization, not prevent output
+          if (session.ws && session.ws.readyState === ws.OPEN) {
+            const isFocused = this.isSessionFocused(sessionId, projectId);
+            
+            if (isFocused) {
+              // Stream immediately for focused sessions
+              session.ws.send(JSON.stringify({
+                type: 'stream',
+                data: cleanedData,
+              }));
+            } else {
+              // For unfocused sessions, still send but with a flag
+              session.ws.send(JSON.stringify({
+                type: 'stream',
+                data: cleanedData,
+                unfocused: true // Frontend can handle differently if needed
+              }));
+            }
           }
           
-          // Also buffer output for history (even for focused sessions)
-          // This ensures we have complete output history
-          this.bufferOutput(sessionId, data);
+          // Buffer output for history
+          this.bufferOutput(sessionId, cleanedData);
           
           // Update session activity in memory (no database logging)
           if (this.memoryService && session.id) {
@@ -513,7 +550,7 @@ class TerminalWebSocketServer {
           }
           
           // Also buffer for history with strict limits
-          session.outputBuffer += data;
+          session.outputBuffer += cleanedData;
           
           // Limit buffer size (keep last 2KB) - CRITICAL MEMORY REDUCTION
           if (session.outputBuffer.length > 2048) {
@@ -769,17 +806,19 @@ class TerminalWebSocketServer {
             });
           }
           
-          // DON'T kill the process - just suspend it
-          if (session && projectId && this.memoryService) {
-            // Mark session as suspended in memory service
-            this.memoryService.suspendProjectSessions(projectId);
-            console.log(`Session ${sessionKey} suspended, process kept alive`);
+          // DON'T kill the process - just mark this specific session as disconnected
+          // Do NOT suspend the entire project's sessions
+          if (session) {
+            // Just mark this session as disconnected, don't suspend others
+            session.disconnected = true;
+            session.disconnectedAt = new Date();
+            console.log(`Session ${sessionKey} marked as disconnected, process kept alive`);
           }
           
           // Remove WebSocket but keep session alive
           if (session) {
             session.ws = null;
-            session.keepAliveUntil = Date.now() + (10 * 60 * 1000); // Keep alive for 10 minutes
+            session.keepAliveUntil = Date.now() + (60 * 60 * 1000); // Keep alive for 60 minutes
           }
         } else if (isPageRefresh) {
           // Page refresh - keep session alive for reconnection - REDUCED TIME

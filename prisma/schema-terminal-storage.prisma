@@ -1,0 +1,137 @@
+// ==================== Terminal Storage Models ====================
+// Models เพิ่มเติมสำหรับ Terminal Storage System
+// ให้เพิ่มใน schema.prisma หลัก
+
+// อัพเดท TerminalSession model ที่มีอยู่
+model TerminalSession {
+  id          String                @id @default(uuid())
+  projectId   String
+  userId      String?
+  type        String                // terminal
+  mode        String                @default("normal") // normal, claude
+  tabName     String
+  status      String                @default("active") // active, inactive, closed, error, suspended, connecting
+  active      Boolean               @default(true)
+  isFocused   Boolean               @default(false)  // เพิ่ม field นี้
+  output      Json                  @default("[]")
+  currentPath String
+  wsConnected Boolean               @default(false)  // เพิ่ม field นี้
+  pid         Int?
+  metadata    Json?
+  environment Json?                 // เพิ่ม field นี้
+  startedAt   DateTime              @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  
+  // Relations
+  commands    TerminalCommand[]
+  logs        TerminalLog[]
+  outputs     TerminalOutput[]      // เพิ่ม relation นี้
+  Project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  User        User?                 @relation(fields: [userId], references: [id])
+  sessionState TerminalSessionState?
+  suspension  TerminalSuspension?   // เพิ่ม relation นี้
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([type])
+  @@index([mode])
+  @@index([status])
+  @@index([active])
+  @@index([isFocused])
+  @@index([startedAt])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+// Model ใหม่สำหรับ Terminal Output
+model TerminalOutput {
+  id          String          @id @default(uuid())
+  sessionId   String
+  type        String          // stdout, stderr, system
+  content     String
+  timestamp   DateTime        @default(now())
+  sequence    Int
+  
+  // Relations
+  Session     TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@index([sessionId, sequence])
+  @@index([timestamp])
+}
+
+// Model ใหม่สำหรับ Terminal Command History
+model TerminalCommand {
+  id        String          @id @default(uuid())
+  sessionId String
+  projectId String
+  command   String
+  output    String?
+  exitCode  Int?
+  duration  Int?           // milliseconds
+  timestamp DateTime        @default(now())
+  
+  // Relations
+  Project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  Session   TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([projectId])
+  @@index([timestamp])
+}
+
+// Model ใหม่สำหรับ Suspension State
+model TerminalSuspension {
+  id               String           @id @default(uuid())
+  sessionId        String           @unique
+  bufferedOutput   Json             // JSON array of output lines
+  cursorRow        Int              @default(0)
+  cursorCol        Int              @default(0)
+  workingDirectory String?
+  environment      Json?
+  suspendedAt      DateTime         @default(now())
+  
+  // Relations
+  Session          TerminalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@index([suspendedAt])
+}
+
+// Model สำหรับ Storage Sync Log
+model TerminalStorageSync {
+  id              String   @id @default(uuid())
+  sessionId       String
+  syncType        String   // create, update, delete
+  storageMode     String   // LOCAL, DATABASE, HYBRID
+  syncStatus      String   // pending, success, failed
+  syncData        Json?
+  error           String?
+  attemptCount    Int      @default(1)
+  syncedAt        DateTime?
+  createdAt       DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([syncStatus])
+  @@index([createdAt])
+}
+
+// Model สำหรับ Storage Metrics
+model TerminalStorageMetrics {
+  id              String   @id @default(uuid())
+  storageMode     String   // LOCAL, DATABASE, HYBRID
+  date            DateTime @db.Date
+  sessionCount    Int      @default(0)
+  avgReadTime     Float?   // milliseconds
+  avgWriteTime    Float?   // milliseconds
+  cacheHitRate    Float?   // percentage
+  memoryUsage     BigInt?  // bytes
+  diskUsage       BigInt?  // bytes
+  syncSuccess     Int      @default(0)
+  syncFailed      Int      @default(0)
+  createdAt       DateTime @default(now())
+  
+  @@unique([storageMode, date])
+  @@index([storageMode])
+  @@index([date])
+}

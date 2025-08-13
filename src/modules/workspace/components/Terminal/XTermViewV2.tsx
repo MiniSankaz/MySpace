@@ -240,10 +240,8 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
         reconnectTimeoutRef.current = null;
       }
       
-      // Notify user of successful reconnection
-      if (reconnectAttemptsRef.current > 0 && xtermRef.current) {
-        xtermRef.current.write('\r\n\x1b[32m[Reconnected successfully]\x1b[0m\r\n');
-      }
+      // Clear notification about reconnection (removed to avoid clutter)
+      // The buffered data will be shown instead
       
       // Send resize dimensions with safety checks
       if (fitAddonRef.current && xtermRef.current) {
@@ -281,8 +279,9 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
               break;
               
             case 'buffered':
-              // Display buffered data
+              // Clear terminal before displaying buffered data to prevent duplication
               if (message.data) {
+                xtermRef.current.clear();
                 xtermRef.current.write(message.data);
               }
               break;
