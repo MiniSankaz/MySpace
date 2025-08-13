@@ -91,6 +91,7 @@ Plan (BA) → Execute (Dev) → Verify (Code Review) → Test
 - **code-reviewer**: Verify
 - **sop-enforcer**: Ensure standards
 - **dev-life-consultant**: Holistic view
+- **technical-architect**: Design system architecture (use for Terminal V2 changes)
 
 ### Track Progress
 - Use TodoWrite for task tracking
@@ -203,3 +204,105 @@ Always track multi-step tasks
 1. Use Code Reviewer to verify
 2. List specific files to check
 3. Ask for proof (show file contents)
+
+## Terminal V2 Specific Agent Guidelines
+
+### Working with Terminal V2 System
+When working on Terminal V2 features, follow these agent-specific guidelines:
+
+#### 1. Architecture Understanding First
+```bash
+# Before any Terminal V2 changes, agents should understand:
+ls -la src/services/terminal-v2/core/          # Core services
+ls -la src/services/terminal-v2/orchestrator/  # Orchestration
+ls -la src/services/terminal-v2/migration/     # Migration system
+```
+
+#### 2. Use technical-architect Agent
+For Terminal V2 changes, always start with technical-architect:
+```
+"Design Terminal V2 changes for [feature] considering clean architecture principles"
+→ Get proper architecture design
+→ Understand service boundaries
+→ Plan integration points
+```
+
+#### 3. Migration Service Considerations
+When making Terminal V2 changes, agents must consider:
+- **Backward Compatibility**: Legacy system must continue working
+- **Progressive Migration**: Changes must work in all migration modes
+- **Feature Flags**: Use migration service to control feature rollout
+
+#### 4. Testing Requirements for Agents
+All Terminal V2 agent work must include:
+```bash
+# Integration testing
+npx tsx scripts/test-terminal-integration.ts
+
+# Load testing
+npx tsx scripts/load-test-terminal.ts
+
+# Health check verification
+curl http://localhost:4000/api/terminal-v2/migration-status
+```
+
+#### 5. Service Responsibility Matrix
+Agents must respect clean architecture boundaries:
+
+| Service | Responsible For | NOT Responsible For |
+|---------|----------------|-------------------|
+| SessionManager | Session lifecycle, focus, suspend/resume | WebSocket handling, metrics |
+| StreamManager | WebSocket, PTY processes, I/O | Session state, business logic |
+| MetricsCollector | Performance monitoring | Session management, streams |
+| Orchestrator | Service coordination | Direct business logic |
+| Migration Service | Feature flags, progressive rollout | Core functionality |
+
+#### 6. Common Agent Mistakes with Terminal V2
+1. **Mixing Service Concerns**: Putting stream logic in session manager
+2. **Bypassing Migration**: Direct service calls instead of using migration layer
+3. **Missing Error Handling**: Not implementing circuit breaker patterns
+4. **Incomplete Testing**: Only testing happy path, not migration scenarios
+
+#### 7. Agent Verification Checklist for Terminal V2
+Before marking Terminal V2 tasks complete, agents must verify:
+- [ ] Service boundaries maintained
+- [ ] Migration service integration working
+- [ ] All migration modes tested (legacy/dual/new/progressive)
+- [ ] Circuit breakers implemented
+- [ ] Integration tests passing
+- [ ] Load tests showing acceptable performance
+- [ ] Health endpoint responding correctly
+- [ ] Prometheus metrics available
+
+#### 8. Escalation Path for Terminal V2
+If agents encounter Terminal V2 issues:
+1. **First**: Check Terminal V2 architecture documentation
+2. **Second**: Run diagnostic commands to understand current state
+3. **Third**: Use technical-architect agent to redesign approach
+4. **Fourth**: Consult SOPs for Terminal V2 development standards
+
+### Agent Communication Patterns for Terminal V2
+
+#### ✅ GOOD Pattern for Terminal V2:
+```
+User: "Add session timeout feature to Terminal V2"
+technical-architect: [Designs approach respecting clean architecture]
+development-planner: [Implements following architecture design]
+code-reviewer: [Verifies clean architecture maintained]
+sop-enforcer: [Ensures Terminal V2 standards followed]
+```
+
+#### ❌ BAD Pattern for Terminal V2:
+```
+User: "Add session timeout to Terminal V2"
+development-planner: [Directly modifies multiple services without architecture plan]
+[Result: Breaks clean architecture, creates tight coupling]
+```
+
+### Terminal V2 Agent Success Criteria
+- Clean architecture principles maintained
+- Backward compatibility preserved
+- Progressive migration supported
+- All tests pass (unit + integration + load)
+- Performance benchmarks met
+- Documentation updated

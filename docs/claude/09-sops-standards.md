@@ -228,3 +228,167 @@ ls -la src/services/*.ts
 3. **Incomplete Testing**: Test ALL affected components, not just the obvious ones
 4. **Missing Dependencies**: Update ALL files importing changed modules
 5. **WebSocket Pairs**: terminal-ws-standalone.js AND claude-terminal-ws.js often need same fixes
+
+## Terminal V2 Development Standards
+
+### Clean Architecture Principles
+- **Single Responsibility**: Each service has one clear purpose
+- **Dependency Inversion**: Core services don't depend on external services
+- **Interface Segregation**: Services expose only necessary methods
+- **Open/Closed**: Open for extension, closed for modification
+
+### Terminal V2 Service Guidelines
+
+#### Session Manager Service
+```typescript
+// ✅ Good - Clear responsibility
+class SessionManager {
+  createSession(params: CreateSessionParams): TerminalSession
+  suspendProjectSessions(projectId: string): number
+  resumeProjectSessions(projectId: string): TerminalSession[]
+}
+
+// ❌ Bad - Mixed responsibilities
+class SessionManager {
+  createSession(params: CreateSessionParams): TerminalSession
+  writeToTerminal(data: string): void  // Stream Manager responsibility
+  collectMetrics(): void               // Metrics Collector responsibility
+}
+```
+
+#### Migration Service Best Practices
+```typescript
+// ✅ Good - Progressive migration
+if (this.migrationService.shouldUseNewAPI('terminal-create')) {
+  return await this.terminalOrchestrator.createSession(params);
+} else {
+  return await this.legacyAdapter.createSession(params);
+}
+
+// ❌ Bad - Hardcoded system choice
+return await this.terminalOrchestrator.createSession(params); // No migration support
+```
+
+#### Error Handling Standards
+```typescript
+// ✅ Good - Circuit breaker pattern
+try {
+  const result = await operation();
+  this.circuitBreaker.recordSuccess();
+  return result;
+} catch (error) {
+  this.circuitBreaker.recordFailure();
+  if (this.circuitBreaker.isOpen()) {
+    throw new ServiceUnavailableError('Circuit breaker open');
+  }
+  throw error;
+}
+```
+
+### Performance Requirements
+
+#### Terminal V2 Specific
+- Session creation: < 100ms
+- WebSocket connection: < 50ms
+- Memory per session: < 5MB
+- CPU per 100 sessions: < 20%
+- Cleanup time: < 10ms per session
+
+#### Migration Performance
+- Legacy to V2 conversion: < 200ms
+- Progressive migration overhead: < 10%
+- Feature flag check: < 1ms
+- Rollback time: < 30 seconds
+
+## Terminal V2 Testing Standards
+
+### Unit Testing Requirements
+```typescript
+// ✅ Required tests for each service
+describe('SessionManager', () => {
+  test('creates session with valid parameters')
+  test('suspends project sessions correctly')
+  test('handles session limits')
+  test('cleans up expired sessions')
+  test('throws error on invalid input')
+})
+```
+
+### Integration Testing
+```bash
+# Run Terminal V2 integration tests
+npx tsx scripts/test-terminal-integration.ts
+
+# Tests must cover:
+# - Session creation and management
+# - Project switching (suspend/resume)
+# - Memory management and cleanup
+# - Error handling and recovery
+# - Migration service functionality
+```
+
+### Load Testing Requirements
+```bash
+# Performance benchmarks
+NUM_PROJECTS=10 SESSIONS_PER_PROJECT=20 npx tsx scripts/load-test-terminal.ts
+
+# Acceptance criteria:
+# - Support 200+ concurrent sessions
+# - < 50ms average latency
+# - < 1% error rate
+# - Memory growth < 10MB/hour
+```
+
+## Terminal V2 Code Change Checklist ⚠️ CRITICAL
+
+### Before Making Terminal V2 Changes
+```bash
+# 1. Understand the clean architecture
+ls -la src/services/terminal-v2/core/
+ls -la src/services/terminal-v2/orchestrator/
+ls -la src/services/terminal-v2/migration/
+
+# 2. Check migration service impact
+grep -r "migrationService|MigrationMode" src/
+
+# 3. Verify service dependencies
+grep -r "sessionManager|streamManager|metricsCollector" src/
+
+# 4. Check configuration files
+ls -la src/config/terminal*.ts
+```
+
+### During Terminal V2 Changes
+- [ ] Maintain clean architecture boundaries
+- [ ] Update migration service if needed
+- [ ] Keep backward compatibility
+- [ ] Follow single responsibility principle
+- [ ] Update relevant configuration
+- [ ] Add appropriate error handling
+- [ ] Include circuit breaker pattern
+
+### After Terminal V2 Changes
+- [ ] Run integration tests: `npx tsx scripts/test-terminal-integration.ts`
+- [ ] Run load tests: `npx tsx scripts/load-test-terminal.ts`
+- [ ] Test all migration modes (legacy/dual/new/progressive)
+- [ ] Verify health check endpoint works
+- [ ] Check Prometheus metrics endpoint
+- [ ] Test project switching scenarios
+- [ ] Verify cleanup procedures work
+
+### Terminal V2 Deployment Checklist
+- [ ] Set appropriate migration mode
+- [ ] Configure environment variables
+- [ ] Test health check endpoint
+- [ ] Verify WebSocket connections
+- [ ] Monitor memory usage
+- [ ] Check error rates
+- [ ] Validate performance metrics
+
+### Common Terminal V2 Pitfalls to Avoid
+1. **Mixing Service Responsibilities**: Keep session, stream, and metrics concerns separate
+2. **Bypassing Migration Service**: Always go through migration layer
+3. **Ignoring Circuit Breakers**: Use resilience patterns for external dependencies
+4. **Hard-coding Configuration**: Use configuration files for all settings
+5. **Skipping Integration Tests**: Always run full test suite
+6. **Missing Cleanup**: Ensure proper resource cleanup in all scenarios

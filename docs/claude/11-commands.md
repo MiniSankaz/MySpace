@@ -7,6 +7,8 @@
 npm run dev              # Start dev server (port 4000)
 npm run build           # Build for production
 npm run start           # Start production server
+./start-v2.sh           # Start with Terminal V2 (recommended)
+./start.sh              # Start with legacy terminal
 ./quick-restart.sh      # Quick restart development
 ```
 
@@ -48,11 +50,16 @@ npm run test:watch      # Watch mode
 npm run test:coverage   # Generate coverage report
 ```
 
-### Terminal Testing
+### Terminal V2 Testing
 ```bash
-node scripts/test-terminal-v2.js           # Test Terminal V2
-node scripts/test-parallel-terminals.js    # Test parallel terminals
-node scripts/test-realtime-terminals.js    # Test real-time streaming
+npx tsx scripts/test-terminal-integration.ts  # Terminal V2 integration tests
+npx tsx scripts/load-test-terminal.ts         # Load testing (200+ sessions)
+
+# Environment Variables for Load Testing
+NUM_PROJECTS=5                    # Number of test projects
+SESSIONS_PER_PROJECT=10          # Sessions per project
+MESSAGE_INTERVAL=1000            # Message frequency (ms)
+TEST_DURATION=30000              # Test duration (30 seconds)
 ```
 
 ## Git Operations
@@ -97,25 +104,70 @@ git revert <commit-hash>           # Revert commit
 ./scripts/production-deployment.sh       # Production deploy
 ```
 
-## Terminal System
+## Terminal V2 System
 
-### WebSocket Servers
+### Start Terminal V2
 ```bash
-# System Terminal (Port 4001)
-node src/server/websocket/terminal-ws-standalone.js
+# Progressive Migration (Recommended for Production)
+./start-v2.sh --progressive
 
-# Claude Terminal (Port 4002)
-node src/server/websocket/claude-terminal-ws.js
+# New System Only (Full V2)
+./start-v2.sh --new
+
+# Dual Mode (Testing Both Systems)
+./start-v2.sh --dual
+
+# Legacy Mode Only
+./start-v2.sh --legacy
 ```
 
-### Terminal Commands
+### Terminal V2 Operations
 ```bash
-# In terminal session
+# Health Check
+curl http://localhost:4000/api/terminal-v2/migration-status
+
+# Create Session (API)
+curl -X POST http://localhost:4000/api/terminal-v2/create \
+  -H "Content-Type: application/json" \
+  -d '{"projectId":"test","projectPath":"/tmp","mode":"normal"}'
+
+# WebSocket Connection
+# ws://localhost:4000/ws/terminal-v2?sessionId=<id>&projectId=<project>
+```
+
+### Migration Control
+```bash
+# Environment Variables
+TERMINAL_MIGRATION_MODE=progressive  # legacy|dual|new|progressive
+TERMINAL_USE_V2=true                # Enable V2 server
+USE_NEW_TERMINAL_API=true           # Use new API endpoints
+
+# Check Migration Status
+curl http://localhost:4000/api/terminal-v2/migration-status | jq
+```
+
+### Terminal Commands (In Session)
+```bash
 clear                   # Clear terminal
 exit                    # Exit session
 pwd                     # Current directory
 ls -la                  # List files
 cd /path                # Change directory
+
+# Terminal V2 specific
+echo $TERMINAL_SESSION_ID    # Check session ID
+echo $TERMINAL_PROJECT_ID    # Check project ID
+```
+
+## Legacy Terminal System
+
+### WebSocket Servers (Backward Compatible)
+```bash
+# Legacy Terminal (Port 4001)
+ws://localhost:4001
+
+# Claude Terminal (Port 4002)
+ws://localhost:4002
 ```
 
 ## Package Management
@@ -161,15 +213,63 @@ printenv | grep API           # Check API variables
 
 ### Process Management
 ```bash
-lsof -i :4000           # Check port usage
+lsof -i :4000           # Check port usage (main app)
+lsof -i :4001           # Check port usage (legacy terminal)
+lsof -i :4002           # Check port usage (claude terminal)
 kill -9 <PID>           # Kill process
 ps aux | grep node      # Find Node processes
 netstat -an | grep 4000 # Check network connections
 ```
 
+### Terminal V2 Debugging
+```bash
+# Check V2 System Health
+curl http://localhost:4000/api/terminal-v2/migration-status
+
+# Monitor WebSocket Connections
+ws ws://localhost:4000/ws/terminal-v2?sessionId=test&projectId=test
+
+# Check Service Status
+ps aux | grep 'session-manager\|stream-manager\|metrics-collector'
+
+# Memory Usage
+node -e "console.log(process.memoryUsage())"
+```
+
 ### Logs
 ```bash
-tail -f logs/app.log    # Follow log file
-grep ERROR logs/*.log   # Search for errors
-pm2 logs                # PM2 logs (if using PM2)
+tail -f logs/server-*.log          # Follow server logs
+grep "Terminal V2" logs/*.log       # Search for V2 logs
+grep ERROR logs/*.log              # Search for errors
+journalctl -u your-app             # Systemd logs (production)
+
+# Terminal V2 specific logs
+grep "session-manager" logs/*.log   # Session management logs
+grep "stream-manager" logs/*.log    # Stream management logs
+grep "migration" logs/*.log         # Migration logs
+```
+
+## Performance Monitoring
+
+### Metrics Collection
+```bash
+# Prometheus Metrics
+curl http://localhost:4000/metrics
+
+# System Metrics
+top                     # CPU usage
+free -h                 # Memory usage
+iostat                  # I/O statistics
+```
+
+### Load Testing
+```bash
+# Basic Load Test
+NUM_PROJECTS=3 SESSIONS_PER_PROJECT=5 npx tsx scripts/load-test-terminal.ts
+
+# Heavy Load Test
+NUM_PROJECTS=10 SESSIONS_PER_PROJECT=20 TEST_DURATION=60000 npx tsx scripts/load-test-terminal.ts
+
+# Stress Test
+NUM_PROJECTS=20 SESSIONS_PER_PROJECT=25 MESSAGE_INTERVAL=100 npx tsx scripts/load-test-terminal.ts
 ```
