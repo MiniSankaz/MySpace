@@ -8,6 +8,8 @@ import '@xterm/xterm/css/xterm.css';
 import { TerminalWebSocketMultiplexer } from '../../services/terminal-websocket-multiplexer';
 import { useTerminalStore } from '../../stores/terminal.store';
 import { SessionValidator } from '../../types/terminal.types';
+import { getWebSocketConfig } from '@/utils/websocket';
+import { authClient } from '@/core/auth/auth-client';
 
 interface XTermViewProps {
   sessionId: string;
@@ -62,15 +64,14 @@ const XTermView: React.FC<XTermViewProps> = ({
     // Otherwise use/create global multiplexer
     if (!globalMultiplexer) {
       console.log('[XTermView] Creating new global multiplexer');
-      const token = localStorage.getItem('accessToken');
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = '127.0.0.1:4001';
+      const token = authClient.getAccessToken?.() || localStorage.getItem('accessToken');
+      const wsConfig = getWebSocketConfig();
       
       globalMultiplexer = new TerminalWebSocketMultiplexer({
-        url: `${protocol}//${wsHost}`,
+        url: wsConfig.system.url,
         auth: { token },
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
+        reconnectionAttempts: wsConfig.reconnect.maxAttempts,
+        reconnectionDelay: wsConfig.reconnect.delay,
       });
       
       // Global multiplexer event handlers

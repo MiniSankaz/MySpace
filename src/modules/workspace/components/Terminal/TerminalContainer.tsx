@@ -32,6 +32,7 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
     setLayout,
     toggleMaximize,
     loadProjectSessions,
+    reconcileProjectSessions,
     setConnectionStatus,
   } = useTerminalStore();
 
@@ -51,7 +52,8 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
 
   // Initialize multiplexers on mount
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    // Use authClient for secure token access
+    const token = authClient.getAccessToken?.() || localStorage.getItem('accessToken');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
     // System terminal multiplexer (port 4001)
@@ -133,15 +135,19 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
     };
   }, []);
 
-  // Load existing sessions on mount
+  // Load existing sessions on mount - CRITICAL FIX: Use reconcileProjectSessions
   useEffect(() => {
     const loadSessions = async () => {
       try {
         setIsLoadingSessions(true);
+        console.log(`[TerminalContainer] Loading sessions for project ${project.id}`);
         const response = await authClient.fetch(`/api/workspace/projects/${project.id}/terminals`);
         if (response.ok) {
           const existingSessions = await response.json();
-          loadProjectSessions(project.id, existingSessions);
+          console.log(`[TerminalContainer] Received ${existingSessions.length} sessions, reconciling...`);
+          // CRITICAL FIX: Use reconcileProjectSessions instead of loadProjectSessions
+          // This prevents duplication when switching projects
+          reconcileProjectSessions(project.id, existingSessions);
         }
       } catch (error) {
         console.error('Failed to load terminal sessions:', error);
@@ -151,7 +157,7 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
     };
 
     loadSessions();
-  }, [project.id, loadProjectSessions]);
+  }, [project.id, reconcileProjectSessions]);
 
   // Track background activity for inactive terminals
   useEffect(() => {
@@ -173,8 +179,8 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
 
     checkBackgroundActivity();
     
-    // Check every 500ms for more responsive background activity detection
-    const interval = setInterval(checkBackgroundActivity, 500);
+    // Check every 2 seconds for balanced performance
+    const interval = setInterval(checkBackgroundActivity, 2000);
     return () => clearInterval(interval);
   }, [sessions, activeTab]);
 

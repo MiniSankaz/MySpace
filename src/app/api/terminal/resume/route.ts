@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Resume all sessions for the project
-    const result = inMemoryTerminalService.resumeProjectSessions(projectId);
+    // Resume all sessions for the project (now async)
+    const result = await inMemoryTerminalService.resumeProjectSessions(projectId);
     
     console.log(`[Terminal Resume API] Resumed ${result.sessions.length} sessions for project ${projectId}`);
     

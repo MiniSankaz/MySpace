@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Project, WorkspaceState, CreateProjectDTO, UpdateProjectDTO } from '../types';
 import { authClient } from '@/core/auth/auth-client';
+import { useTerminalStore } from '../stores/terminal.store';
 
 interface WorkspaceContextType extends WorkspaceState {
   selectProject: (projectId: string) => Promise<void>;
@@ -41,6 +42,9 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
     loading: false,
     error: null,
   });
+  
+  // Access terminal store for reconciliation
+  const { reconcileProjectSessions } = useTerminalStore();
   
   // Add method to set current project directly
   const setCurrentProject = useCallback((project: Project | null) => {
@@ -102,27 +106,18 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
       console.error('Project not found:', projectId);
       return;
     }
-
-    setState(prev => ({ ...prev, currentProject: project }));
     
-    // Fetch terminal sessions for this project
-    try {
-      const response = await authClient.fetch(`/api/workspace/projects/${projectId}/terminals`);
-      if (response.ok) {
-        const sessions = await response.json();
-        setState(prev => ({
-          ...prev,
-          currentProject: project,
-          terminals: {
-            system: sessions.filter((t: any) => t.type === 'system'),
-            claude: sessions.filter((t: any) => t.type === 'claude'),
-          },
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to fetch terminals:', error);
-    }
-  }, [state.projects]);
+    // CRITICAL FIX: Let TerminalContainer handle terminal loading
+    // WorkspaceContext only updates the current project
+    // This prevents duplicate API calls and state conflicts
+    console.log(`[WorkspaceContext] Switching to project ${projectId}`);
+    
+    // Just update the current project - TerminalContainer will handle terminals
+    setState(prev => ({
+      ...prev,
+      currentProject: project,
+    }));
+  }, [state.projects, reconcileProjectSessions]);
 
   // Create new project
   const createProject = useCallback(async (data: CreateProjectDTO) => {
@@ -269,7 +264,7 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
         const defaultProject = await createProject({
           name: 'Current Workspace',
           description: 'Default project for current workspace',
-          path: '/Users/sem4pro/Stock/port',
+          path: process.env.DEFAULT_PROJECT_PATH || process.cwd(),
         });
         await selectProject(defaultProject.id);
       } catch (error) {

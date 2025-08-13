@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Suspend all sessions for the project
-    const suspendedCount = inMemoryTerminalService.suspendProjectSessions(projectId);
+    // Suspend all sessions for the project (now async)
+    const suspendedCount = await inMemoryTerminalService.suspendProjectSessions(projectId);
     
     console.log(`[Terminal Suspend API] Suspended ${suspendedCount} sessions for project ${projectId}`);
     

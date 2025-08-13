@@ -38,10 +38,20 @@ interface TerminalContainerV3Props {
 const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) => {
   const [sessions, setSessions] = useState<TerminalSession[]>([]);
   const [loading, setLoading] = useState(false);
+  const [switchingProject, setSwitchingProject] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentLayout, setCurrentLayout] = useState<LayoutType>('1x1');
   const previousProjectIdRef = useRef<string | null>(null);
   const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(new Set());
+  const [resumeAttempts, setResumeAttempts] = useState<Map<string, number>>(new Map());
+  const MAX_RESUME_ATTEMPTS = 3;
+  
+  // Debouncing and queue management
+  const switchQueueRef = useRef<string[]>([]);
+  const isProcessingSwitchRef = useRef(false);
+  const lastSwitchTimeRef = useRef<number>(0);
+  const pendingProjectSwitchRef = useRef<NodeJS.Timeout | null>(null);
+  const SWITCH_DEBOUNCE_MS = 500; // Wait 500ms before processing switch
   
   // Load project-specific layout preference and clean up suspended projects
   useEffect(() => {
@@ -74,45 +84,120 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   // Calculate max terminals based on layout
   const maxTerminals = LAYOUTS[currentLayout].rows * LAYOUTS[currentLayout].cols;
   
-  // Handle project switching with suspension/resumption
-  useEffect(() => {
-    const handleProjectSwitch = async () => {
-      // Only suspend if we're actually switching to a different project
-      // and we had a previous project (not initial mount)
-      const isActualProjectSwitch = previousProjectIdRef.current && 
-                                   previousProjectIdRef.current !== project.id;
-      
-      if (isActualProjectSwitch) {
-        console.log(`[Terminal] Switching from project ${previousProjectIdRef.current} to ${project.id}`);
-        await suspendProjectSessions(previousProjectIdRef.current);
-        setSuspendedProjects(prev => new Set(prev).add(previousProjectIdRef.current!));
-      }
-      
-      // Check if current project has suspended sessions
-      if (suspendedProjects.has(project.id)) {
-        try {
-          await resumeProjectSessions(project.id);
-          // Only remove from suspended set if resume was successful
-          setSuspendedProjects(prev => {
-            const next = new Set(prev);
-            next.delete(project.id);
-            return next;
-          });
-          console.log(`[Terminal] Successfully resumed project ${project.id}`);
-        } catch (error) {
-          console.error(`[Terminal] Failed to resume project ${project.id}:`, error);
-          // Keep in suspended state if resume failed
-        }
-      } else {
-        // Load fresh sessions
-        loadSessions();
-      }
-      
-      // Update previous project reference
-      previousProjectIdRef.current = project.id;
-    };
+  // Process project switch queue sequentially
+  const processProjectSwitchQueue = async () => {
+    if (isProcessingSwitchRef.current || switchQueueRef.current.length === 0) {
+      return;
+    }
     
-    handleProjectSwitch();
+    isProcessingSwitchRef.current = true;
+    setSwitchingProject(true);
+    
+    while (switchQueueRef.current.length > 0) {
+      const nextProjectId = switchQueueRef.current.shift()!;
+      
+      // Skip if this is the same as the current project
+      if (nextProjectId === previousProjectIdRef.current) {
+        continue;
+      }
+      
+      console.log(`[Terminal] Processing switch to project ${nextProjectId}`);
+      
+      try {
+        // Suspend previous project if exists
+        if (previousProjectIdRef.current && previousProjectIdRef.current !== nextProjectId) {
+          console.log(`[Terminal] Suspending project ${previousProjectIdRef.current}`);
+          await suspendProjectSessions(previousProjectIdRef.current);
+          setSuspendedProjects(prev => new Set(prev).add(previousProjectIdRef.current!));
+        }
+        
+        // Resume or load sessions for new project
+        if (suspendedProjects.has(nextProjectId)) {
+          const attempts = resumeAttempts.get(nextProjectId) || 0;
+          
+          if (attempts >= MAX_RESUME_ATTEMPTS) {
+            console.error(`[Terminal] Max resume attempts reached for project ${nextProjectId}`);
+            setSuspendedProjects(prev => {
+              const next = new Set(prev);
+              next.delete(nextProjectId);
+              return next;
+            });
+            setResumeAttempts(prev => {
+              const next = new Map(prev);
+              next.delete(nextProjectId);
+              return next;
+            });
+            await loadSessionsForProject(nextProjectId);
+          } else {
+            try {
+              setResumeAttempts(prev => new Map(prev).set(nextProjectId, attempts + 1));
+              await resumeProjectSessions(nextProjectId);
+              setSuspendedProjects(prev => {
+                const next = new Set(prev);
+                next.delete(nextProjectId);
+                return next;
+              });
+              setResumeAttempts(prev => {
+                const next = new Map(prev);
+                next.delete(nextProjectId);
+                return next;
+              });
+              console.log(`[Terminal] Successfully resumed project ${nextProjectId}`);
+            } catch (error) {
+              console.error(`[Terminal] Failed to resume project ${nextProjectId}:`, error);
+              await loadSessionsForProject(nextProjectId);
+            }
+          }
+        } else {
+          await loadSessionsForProject(nextProjectId);
+        }
+        
+        previousProjectIdRef.current = nextProjectId;
+        
+        // Add delay between switches to prevent race conditions
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error(`[Terminal] Error processing switch to project ${nextProjectId}:`, error);
+      }
+    }
+    
+    isProcessingSwitchRef.current = false;
+    setSwitchingProject(false);
+  };
+  
+  // Handle project switching with debouncing
+  useEffect(() => {
+    // Clear any pending switch
+    if (pendingProjectSwitchRef.current) {
+      clearTimeout(pendingProjectSwitchRef.current);
+    }
+    
+    const now = Date.now();
+    const timeSinceLastSwitch = now - lastSwitchTimeRef.current;
+    
+    // If switching too fast, debounce
+    if (timeSinceLastSwitch < SWITCH_DEBOUNCE_MS) {
+      console.log(`[Terminal] Debouncing project switch to ${project.id} (${SWITCH_DEBOUNCE_MS}ms)`); 
+      
+      pendingProjectSwitchRef.current = setTimeout(() => {
+        lastSwitchTimeRef.current = Date.now();
+        switchQueueRef.current.push(project.id);
+        processProjectSwitchQueue();
+      }, SWITCH_DEBOUNCE_MS - timeSinceLastSwitch);
+    } else {
+      // Process immediately
+      lastSwitchTimeRef.current = now;
+      switchQueueRef.current.push(project.id);
+      processProjectSwitchQueue();
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (pendingProjectSwitchRef.current) {
+        clearTimeout(pendingProjectSwitchRef.current);
+      }
+    };
   }, [project.id]);
   
   // Track if component is truly unmounting (not React StrictMode)
@@ -132,6 +217,47 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     };
   }, []); // Empty dependency array - only runs on mount/unmount
 
+  // Load sessions for specific project
+  const loadSessionsForProject = async (projectId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/terminal/list?projectId=${projectId}`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.sessions)) {
+        const sessionList = data.sessions.map((s: any, index: number) => ({
+          ...s,
+          type: 'terminal',
+          mode: s.mode || 'normal',
+          gridPosition: index,
+          isFocused: s.isFocused || false
+        }));
+        setSessions(sessionList);
+        
+        // Auto-focus first terminal if no sessions are focused
+        const hasFocusedSession = sessionList.some(s => s.isFocused);
+        if (sessionList.length > 0 && !hasFocusedSession) {
+          console.log(`[TerminalContainer] Auto-focusing first session: ${sessionList[0].id}`);
+          await setFocus(sessionList[0].id, true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load sessions:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load sessions');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Load sessions from backend
   const loadSessions = async () => {
     try {
@@ -623,7 +749,17 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       </div>
 
       {/* Terminal Grid */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
+        {/* Project switching overlay */}
+        {switchingProject && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-gray-800/90 backdrop-blur rounded-lg px-6 py-4 flex items-center space-x-3 border border-gray-700">
+              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+              <span className="text-sm text-gray-300">Switching project...</span>
+            </div>
+          </div>
+        )}
+        
         {loading && sessions.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />

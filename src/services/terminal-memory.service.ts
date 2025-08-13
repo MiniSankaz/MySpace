@@ -69,6 +69,10 @@ export class InMemoryTerminalService extends EventEmitter {
   private readonly MAX_CREATIONS_PER_MINUTE = 10;
   private circuitBreakerTripped = new Map<string, boolean>();
   
+  // Suspension timeout management
+  private readonly MAX_SUSPENSION_TIME = 30 * 60 * 1000; // 30 minutes
+  private suspensionCleanupTimer?: NodeJS.Timeout;
+  
   // WebSocket readiness tracking
   private wsReadiness: Map<string, boolean> = new Map();
   private wsReadyPromises: Map<string, Promise<boolean>> = new Map();
@@ -86,6 +90,11 @@ export class InMemoryTerminalService extends EventEmitter {
     environment?: Record<string, string>;
   }> = new Map();
   
+  // Mutex locks for suspend/resume operations
+  private suspendResumeLocks: Map<string, boolean> = new Map();
+  private operationQueue: Array<{ type: 'suspend' | 'resume'; projectId: string; resolve: Function }> = [];
+  private isProcessingQueue: boolean = false;
+  
   private constructor() {
     super();
     console.log('[InMemoryTerminalService] Initialized');
@@ -94,6 +103,11 @@ export class InMemoryTerminalService extends EventEmitter {
     setInterval(() => {
       this.cleanupInactiveSessions();
     }, 5 * 60 * 1000);
+    
+    // Cleanup expired suspended sessions every 10 minutes
+    this.suspensionCleanupTimer = setInterval(() => {
+      this.cleanupExpiredSuspendedSessions();
+    }, 10 * 60 * 1000);
     
     // Emergency memory monitor every 2 minutes
     setInterval(() => {
@@ -722,9 +736,82 @@ export class InMemoryTerminalService extends EventEmitter {
   }
   
   /**
-   * Suspend sessions for a project
+   * Cleanup expired suspended sessions
    */
-  public suspendProjectSessions(projectId: string): number {
+  private cleanupExpiredSuspendedSessions(): void {
+    const now = Date.now();
+    const expiredSessions: string[] = [];
+    
+    this.suspendedSessions.forEach((state, sessionId) => {
+      const suspendedTime = now - state.suspendedAt.getTime();
+      if (suspendedTime > this.MAX_SUSPENSION_TIME) {
+        expiredSessions.push(sessionId);
+      }
+    });
+    
+    if (expiredSessions.length > 0) {
+      console.log(`[InMemoryTerminalService] Cleaning up ${expiredSessions.length} expired suspended sessions`);
+      expiredSessions.forEach(sessionId => {
+        // Remove from suspended sessions
+        this.suspendedSessions.delete(sessionId);
+        
+        // Remove the actual session
+        const session = this.sessions.get(sessionId);
+        if (session) {
+          this.closeSession(sessionId);
+        }
+      });
+    }
+  }
+  
+  /**
+   * Process operation queue sequentially
+   */
+  private async processOperationQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.operationQueue.length === 0) {
+      return;
+    }
+    
+    this.isProcessingQueue = true;
+    
+    while (this.operationQueue.length > 0) {
+      const operation = this.operationQueue.shift()!;
+      
+      try {
+        if (operation.type === 'suspend') {
+          const result = await this._suspendProjectSessionsInternal(operation.projectId);
+          operation.resolve(result);
+        } else if (operation.type === 'resume') {
+          const result = await this._resumeProjectSessionsInternal(operation.projectId);
+          operation.resolve(result);
+        }
+        
+        // Add small delay between operations to prevent race conditions
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+      } catch (error) {
+        console.error(`[InMemoryTerminalService] Error processing ${operation.type} for project ${operation.projectId}:`, error);
+        operation.resolve(operation.type === 'suspend' ? 0 : { resumed: false, sessions: [] });
+      }
+    }
+    
+    this.isProcessingQueue = false;
+  }
+  
+  /**
+   * Suspend sessions for a project (queued)
+   */
+  public async suspendProjectSessions(projectId: string): Promise<number> {
+    return new Promise((resolve) => {
+      this.operationQueue.push({ type: 'suspend', projectId, resolve });
+      this.processOperationQueue();
+    });
+  }
+  
+  /**
+   * Internal suspend implementation
+   */
+  private _suspendProjectSessionsInternal(projectId: string): number {
     const sessionIds = this.projectSessions.get(projectId);
     if (!sessionIds || sessionIds.size === 0) {
       return 0;
@@ -759,9 +846,23 @@ export class InMemoryTerminalService extends EventEmitter {
   }
   
   /**
-   * Resume sessions for a project
+   * Resume sessions for a project (queued)
    */
-  public resumeProjectSessions(projectId: string): {
+  public async resumeProjectSessions(projectId: string): Promise<{
+    resumed: boolean;
+    sessions: any[];
+    uiState?: any;
+  }> {
+    return new Promise((resolve) => {
+      this.operationQueue.push({ type: 'resume', projectId, resolve });
+      this.processOperationQueue();
+    });
+  }
+  
+  /**
+   * Internal resume implementation
+   */
+  private _resumeProjectSessionsInternal(projectId: string): {
     resumed: boolean;
     sessions: any[];
     uiState?: any;
@@ -770,6 +871,28 @@ export class InMemoryTerminalService extends EventEmitter {
     if (!sessionIds || sessionIds.size === 0) {
       return { resumed: false, sessions: [] };
     }
+    
+    // Check for expired suspended sessions first
+    const now = Date.now();
+    const expiredSessions: string[] = [];
+    
+    sessionIds.forEach(sessionId => {
+      const suspendedState = this.suspendedSessions.get(sessionId);
+      if (suspendedState) {
+        const suspendedTime = now - suspendedState.suspendedAt.getTime();
+        if (suspendedTime > this.MAX_SUSPENSION_TIME) {
+          expiredSessions.push(sessionId);
+        }
+      }
+    });
+    
+    // Clean up expired sessions before resuming
+    expiredSessions.forEach(sessionId => {
+      console.log(`[InMemoryTerminalService] Session ${sessionId} expired, removing from suspended state`);
+      this.suspendedSessions.delete(sessionId);
+      this.closeSession(sessionId);
+      sessionIds.delete(sessionId);
+    });
     
     const resumedSessions: any[] = [];
     sessionIds.forEach(sessionId => {

@@ -7,6 +7,8 @@
 import { EventEmitter } from 'events';
 import { logger } from '@/core/utils/logger';
 import { prisma } from '@/core/database/prisma';
+import { buildWebSocketUrl, getWebSocketConfig } from '@/utils/websocket';
+import { config } from '@/config/app.config';
 
 // Terminal session types
 export type TerminalType = 'system' | 'claude';
@@ -448,16 +450,17 @@ export class TerminalService extends EventEmitter {
       }
     }
     
+    const wsConfig = getWebSocketConfig();
     return {
       system: {
         status: systemCount > 0 ? 'connected' : 'disconnected',
         activeSessions: systemCount,
-        port: 4001
+        port: wsConfig.system.port
       },
       claude: {
         status: claudeCount > 0 ? 'connected' : 'disconnected',
         activeSessions: claudeCount,
-        port: 4002
+        port: wsConfig.claude.port
       }
     };
   }
@@ -540,8 +543,7 @@ export class TerminalService extends EventEmitter {
   }
   
   private getWebSocketUrl(type: TerminalType): string {
-    const port = type === 'system' ? 4001 : 4002;
-    return `ws://localhost:${port}`;
+    return buildWebSocketUrl(type);
   }
   
   private addSessionToMaps(session: TerminalSession): void {

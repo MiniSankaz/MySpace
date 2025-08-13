@@ -85,6 +85,7 @@ export interface TerminalActions {
   // Bulk operations
   clearProjectSessions: (projectId: string) => void;
   loadProjectSessions: (projectId: string, sessions: TerminalSession[]) => void;
+  reconcileProjectSessions: (projectId: string, sessions: TerminalSession[]) => void; // Smart merge for project switching
   forceCloseAllSessions: () => void; // Force close all sessions across all projects
   
   // Reset
@@ -182,9 +183,10 @@ export const useTerminalStore = create<TerminalState & TerminalActions>()(
               activeTabs.claude = newProjectSessions.claude[0]?.id || null;
             }
             
-            // Keep connection status and metadata for potential reconnection
-            // Only remove if session is truly being deleted
+            // Clean up session data completely
             const { [sessionId]: _, ...connectionStatus } = state.connectionStatus;
+            const { [sessionId]: __, ...commandHistory } = state.commandHistory;
+            const { [sessionId]: ___, ...sessionMetadata } = state.sessionMetadata;
             
             return {
               projectSessions: {
@@ -196,8 +198,8 @@ export const useTerminalStore = create<TerminalState & TerminalActions>()(
                 [projectId]: activeTabs,
               },
               connectionStatus,
-              commandHistory: state.commandHistory,
-              sessionMetadata: state.sessionMetadata,
+              commandHistory,
+              sessionMetadata,
             };
           });
         },
@@ -398,8 +400,22 @@ export const useTerminalStore = create<TerminalState & TerminalActions>()(
 
         loadProjectSessions: (projectId, sessions) => {
           set((state) => {
-            const systemSessions = sessions.filter(s => s.type === 'system');
-            const claudeSessions = sessions.filter(s => s.type === 'claude');
+            const incomingSystemSessions = sessions.filter(s => s.type === 'system');
+            const incomingClaudeSessions = sessions.filter(s => s.type === 'claude');
+            
+            // Get existing sessions for this project
+            const existingProject = state.projectSessions[projectId] || { system: [], claude: [] };
+            
+            // CRITICAL FIX: Merge sessions instead of overwriting
+            // Only add sessions that don't already exist in UI
+            const mergeUniqueSessions = (existing: any[], incoming: any[]) => {
+              const existingIds = new Set(existing.map(s => s.id));
+              const newSessions = incoming.filter(s => !existingIds.has(s.id));
+              return [...existing, ...newSessions];
+            };
+            
+            const mergedSystemSessions = mergeUniqueSessions(existingProject.system, incomingSystemSessions);
+            const mergedClaudeSessions = mergeUniqueSessions(existingProject.claude, incomingClaudeSessions);
             
             const newSessionMetadata = { ...state.sessionMetadata };
             sessions.forEach(session => {
@@ -412,19 +428,112 @@ export const useTerminalStore = create<TerminalState & TerminalActions>()(
               }
             });
             
+            // Only update active tabs if none are currently set
+            const currentActiveTabs = state.activeTabs[projectId];
+            const shouldUpdateTabs = !currentActiveTabs || (!currentActiveTabs.system && !currentActiveTabs.claude);
+            
             return {
               projectSessions: {
                 ...state.projectSessions,
                 [projectId]: {
-                  system: systemSessions,
-                  claude: claudeSessions,
+                  system: mergedSystemSessions,
+                  claude: mergedClaudeSessions,
+                },
+              },
+              activeTabs: {
+                ...state.activeTabs,
+                [projectId]: shouldUpdateTabs ? {
+                  system: mergedSystemSessions[0]?.id || currentActiveTabs?.system || null,
+                  claude: mergedClaudeSessions[0]?.id || currentActiveTabs?.claude || null,
+                } : currentActiveTabs,
+              },
+              sessionMetadata: newSessionMetadata,
+            };
+          });
+        },
+
+        reconcileProjectSessions: (projectId, sessions) => {
+          set((state) => {
+            // Validate inputs
+            if (!projectId || !Array.isArray(sessions)) {
+              console.error('[TerminalStore] Invalid input to reconcileProjectSessions:', { projectId, sessions });
+              return state;
+            }
+            
+            const incomingSystemSessions = sessions.filter(s => s?.type === 'system');
+            const incomingClaudeSessions = sessions.filter(s => s?.type === 'claude');
+            
+            // Get existing sessions for this project
+            const existingProject = state.projectSessions[projectId] || { system: [], claude: [] };
+            
+            // SMART RECONCILIATION: Update existing sessions, add new ones, preserve UI state
+            const reconcileSessions = (existing: any[], incoming: any[]) => {
+              const existingMap = new Map(existing.map(s => [s.id, s]));
+              const incomingMap = new Map(incoming.map(s => [s.id, s]));
+              
+              const reconciled = [];
+              
+              // Update existing sessions with new data
+              for (const [id, existingSession] of existingMap) {
+                const incomingSession = incomingMap.get(id);
+                if (incomingSession) {
+                  // Merge existing UI state with backend data
+                  reconciled.push({
+                    ...incomingSession,
+                    // Preserve UI-specific properties if they exist
+                    uiState: existingSession.uiState,
+                  });
+                } else {
+                  // Keep existing session if it's not in incoming (UI-only session)
+                  reconciled.push(existingSession);
+                }
+              }
+              
+              // Add new sessions from backend
+              for (const [id, incomingSession] of incomingMap) {
+                if (!existingMap.has(id)) {
+                  reconciled.push(incomingSession);
+                }
+              }
+              
+              return reconciled;
+            };
+            
+            const reconciledSystemSessions = reconcileSessions(existingProject.system, incomingSystemSessions);
+            const reconciledClaudeSessions = reconcileSessions(existingProject.claude, incomingClaudeSessions);
+            
+            // Update metadata for new sessions
+            const newSessionMetadata = { ...state.sessionMetadata };
+            sessions.forEach(session => {
+              if (!newSessionMetadata[session.id]) {
+                newSessionMetadata[session.id] = {
+                  lastActivity: new Date(),
+                  commandCount: 0,
+                  errorCount: 0,
+                };
+              }
+            });
+            
+            // Preserve existing active tabs when possible
+            const currentActiveTabs = state.activeTabs[projectId];
+            const validSystemTab = reconciledSystemSessions.find(s => s.id === currentActiveTabs?.system);
+            const validClaudeTab = reconciledClaudeSessions.find(s => s.id === currentActiveTabs?.claude);
+            
+            console.log(`[TerminalStore] Reconciled ${projectId}: ${reconciledSystemSessions.length} system, ${reconciledClaudeSessions.length} claude`);
+            
+            return {
+              projectSessions: {
+                ...state.projectSessions,
+                [projectId]: {
+                  system: reconciledSystemSessions,
+                  claude: reconciledClaudeSessions,
                 },
               },
               activeTabs: {
                 ...state.activeTabs,
                 [projectId]: {
-                  system: systemSessions[0]?.id || null,
-                  claude: claudeSessions[0]?.id || null,
+                  system: validSystemTab ? currentActiveTabs.system : (reconciledSystemSessions[0]?.id || null),
+                  claude: validClaudeTab ? currentActiveTabs.claude : (reconciledClaudeSessions[0]?.id || null),
                 },
               },
               sessionMetadata: newSessionMetadata,

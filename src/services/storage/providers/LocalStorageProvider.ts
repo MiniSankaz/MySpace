@@ -18,6 +18,7 @@ import {
 } from '../interfaces/ITerminalStorageService';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { getStoragePaths } from '@/utils/paths';
 
 /**
  * Local Storage Provider Implementation
@@ -45,8 +46,9 @@ export class LocalStorageProvider extends BaseStorageProvider {
   constructor(config?: LocalStorageConfig) {
     super('LOCAL');
     
+    const storagePaths = getStoragePaths();
     this.config = {
-      basePath: config?.basePath || '/tmp/terminal-sessions',
+      basePath: config?.basePath || storagePaths.terminal,
       compression: config?.compression || false,
       maxSessions: config?.maxSessions || 50,
       flushInterval: config?.flushInterval || 5000,

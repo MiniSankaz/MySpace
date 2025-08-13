@@ -43,6 +43,7 @@
 - 🤖 [Agent Guidelines](./docs/claude/13-agent-guidelines.md) - Best practices for AI agents
 - 📊 [Agent Work Log](./docs/claude/14-agent-worklog.md) - Detailed agent activity history
 - 🔐 [Authentication Standards](./docs/claude/15-authentication-standards.md) - **CRITICAL: Cookie naming & auth patterns**
+- 📋 [Agent SOPs](./docs/claude/16-agent-sops.md) - **MANDATORY: Standard Operating Procedures for all agents**
 
 ## 🚀 Quick Commands
 
