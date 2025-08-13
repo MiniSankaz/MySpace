@@ -4,7 +4,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { configManager } from '@/config/terminal.config';
+import { terminalConfig } from '@/config/terminal.config';
 
 export interface PerformanceMetrics {
   timestamp: Date;

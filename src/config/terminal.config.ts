@@ -1,241 +1,93 @@
 /**
  * Terminal System Configuration
- * Centralized configuration for hybrid terminal architecture
+ * Centralized configuration for terminal-related settings
+ * Follows Zero Hardcoding Policy
  */
 
-export interface TerminalConfig {
-  mode: 'memory' | 'database' | 'hybrid';
-  memory: MemoryConfig;
-  database: DatabaseConfig;
-  performance: PerformanceConfig;
-  monitoring: MonitoringConfig;
-  resilience: ResilienceConfig;
-}
+export const terminalConfig = {
+  // WebSocket Configuration
+  websocket: {
+    port: parseInt(process.env.TERMINAL_WS_PORT || '4001'),
+    host: process.env.WS_HOST || '127.0.0.1',
+    claudePort: parseInt(process.env.CLAUDE_WS_PORT || '4002'),
+    timeout: parseInt(process.env.WS_TIMEOUT || '5000'),
+    reconnectAttempts: parseInt(process.env.WS_RECONNECT_ATTEMPTS || '3'),
+    reconnectDelay: parseInt(process.env.WS_RECONNECT_DELAY || '1000'),
+  },
 
-export interface MemoryConfig {
-  maxSessions: number;
-  maxSessionsPerProject: number;
-  bufferSize: number;
-  sessionTimeout: number;
-  poolSize: number;
-  gcThreshold: number;
-}
+  // Memory Management
+  memory: {
+    // RSS Memory thresholds in MB
+    rssWarningThreshold: parseInt(process.env.MEMORY_RSS_WARNING || '2048'),
+    rssEmergencyThreshold: parseInt(process.env.MEMORY_RSS_EMERGENCY || '6144'),
+    heapWarningThreshold: parseInt(process.env.MEMORY_HEAP_WARNING || '4000'),
+    
+    // Session limits
+    maxTotalSessions: parseInt(process.env.MAX_TERMINAL_SESSIONS || '50'),
+    maxSessionsPerProject: parseInt(process.env.MAX_SESSIONS_PER_PROJECT || '20'),
+    maxFocusedPerProject: parseInt(process.env.MAX_FOCUSED_PER_PROJECT || '10'),
+    
+    // Cleanup intervals (in ms)
+    cleanupInterval: parseInt(process.env.MEMORY_CLEANUP_INTERVAL || '300000'), // 5 minutes
+    emergencyCheckInterval: parseInt(process.env.MEMORY_EMERGENCY_CHECK || '120000'), // 2 minutes
+    sessionTimeout: parseInt(process.env.SESSION_TIMEOUT || '300000'), // 5 minutes
+  },
 
-export interface DatabaseConfig {
-  enabled: boolean;
-  connectionTimeout: number;
-  retryAttempts: number;
-  retryDelay: number;
-  fallbackToMemory: boolean;
-  persistenceInterval: number;
-}
-
-export interface PerformanceConfig {
-  maxConcurrentSessions: number;
-  maxBufferSize: number;
-  compressionEnabled: boolean;
-  streamingChunkSize: number;
-  debounceDelay: number;
-}
-
-export interface MonitoringConfig {
-  enabled: boolean;
-  metricsInterval: number;
-  healthCheckInterval: number;
-  alertThresholds: {
-    memory: number;
-    cpu: number;
-    sessions: number;
-    errorRate: number;
-  };
-}
-
-export interface ResilienceConfig {
-  circuitBreaker: {
-    enabled: boolean;
-    threshold: number;
-    timeout: number;
-    resetTimeout: number;
-  };
+  // Rate Limiting
   rateLimit: {
-    enabled: boolean;
-    maxRequests: number;
-    windowMs: number;
-  };
-  gracefulShutdown: {
-    enabled: boolean;
-    timeout: number;
-  };
-}
+    maxCreationsPerMinute: parseInt(process.env.MAX_TERMINAL_CREATIONS_PER_MIN || '10'),
+    circuitBreakerResetTime: parseInt(process.env.CIRCUIT_BREAKER_RESET || '300000'), // 5 minutes
+  },
 
-// Environment-specific configurations
-const development: TerminalConfig = {
-  mode: 'memory',
-  memory: {
-    maxSessions: 20,
-    maxSessionsPerProject: 5,
-    bufferSize: 1000,
-    sessionTimeout: 30 * 60 * 1000, // 30 minutes
-    poolSize: 20,
-    gcThreshold: 500 * 1024 * 1024 // 500MB
+  // Project Switching
+  projectSwitch: {
+    debounceMs: parseInt(process.env.TERMINAL_SWITCH_DEBOUNCE || '500'),
+    queueProcessDelay: parseInt(process.env.QUEUE_PROCESS_DELAY || '100'),
+    operationQueueDelay: parseInt(process.env.OPERATION_QUEUE_DELAY || '50'),
   },
-  database: {
-    enabled: false,
-    connectionTimeout: 5000,
-    retryAttempts: 1,
-    retryDelay: 1000,
-    fallbackToMemory: true,
-    persistenceInterval: 60000
+
+  // Suspension
+  suspension: {
+    maxSuspensionTime: parseInt(process.env.MAX_SUSPENSION_TIME || '1800000'), // 30 minutes
+    cleanupInterval: parseInt(process.env.SUSPENSION_CLEANUP_INTERVAL || '600000'), // 10 minutes
+    maxResumeAttempts: parseInt(process.env.MAX_RESUME_ATTEMPTS || '3'),
+    bufferedOutputLimit: parseInt(process.env.BUFFERED_OUTPUT_LIMIT || '1000'),
   },
-  performance: {
-    maxConcurrentSessions: 10,
-    maxBufferSize: 1000,
-    compressionEnabled: false,
-    streamingChunkSize: 1024,
-    debounceDelay: 100
+
+  // Terminal Naming
+  naming: {
+    prefix: process.env.TERMINAL_NAME_PREFIX || 'Terminal',
+    separator: process.env.TERMINAL_NAME_SEPARATOR || ' ',
   },
-  monitoring: {
-    enabled: true,
-    metricsInterval: 60000,
-    healthCheckInterval: 30000,
-    alertThresholds: {
-      memory: 1024, // 1GB
-      cpu: 80,
-      sessions: 50,
-      errorRate: 5
-    }
+
+  // Activity Tracking
+  activity: {
+    backgroundCheckInterval: parseInt(process.env.BACKGROUND_CHECK_INTERVAL || '2000'),
+    activityTimeout: parseInt(process.env.ACTIVITY_TIMEOUT || '300000'), // 5 minutes
   },
-  resilience: {
-    circuitBreaker: {
-      enabled: true,
-      threshold: 5,
-      timeout: 60000,
-      resetTimeout: 30000
-    },
-    rateLimit: {
-      enabled: false,
-      maxRequests: 100,
-      windowMs: 60000
-    },
-    gracefulShutdown: {
-      enabled: true,
-      timeout: 10000
-    }
-  }
 };
 
-const production: TerminalConfig = {
-  mode: 'hybrid',
-  memory: {
-    maxSessions: 100,
-    maxSessionsPerProject: 10,
-    bufferSize: 500,
-    sessionTimeout: 15 * 60 * 1000, // 15 minutes
-    poolSize: 50,
-    gcThreshold: 2 * 1024 * 1024 * 1024 // 2GB
-  },
-  database: {
-    enabled: true,
-    connectionTimeout: 3000,
-    retryAttempts: 3,
-    retryDelay: 2000,
-    fallbackToMemory: true,
-    persistenceInterval: 30000
-  },
-  performance: {
-    maxConcurrentSessions: 50,
-    maxBufferSize: 500,
-    compressionEnabled: true,
-    streamingChunkSize: 512,
-    debounceDelay: 200
-  },
-  monitoring: {
-    enabled: true,
-    metricsInterval: 30000,
-    healthCheckInterval: 15000,
-    alertThresholds: {
-      memory: 3072, // 3GB
-      cpu: 90,
-      sessions: 80,
-      errorRate: 2
-    }
-  },
-  resilience: {
-    circuitBreaker: {
-      enabled: true,
-      threshold: 10,
-      timeout: 30000,
-      resetTimeout: 60000
-    },
-    rateLimit: {
-      enabled: true,
-      maxRequests: 1000,
-      windowMs: 60000
-    },
-    gracefulShutdown: {
-      enabled: true,
-      timeout: 30000
-    }
-  }
-};
-
-// Get configuration based on environment
-export function getTerminalConfig(): TerminalConfig {
-  const env = process.env.NODE_ENV || 'development';
-  return env === 'production' ? production : development;
+// Helper function to get WebSocket URL
+export function getWebSocketUrl(type: 'system' | 'claude' = 'system'): string {
+  const { websocket } = terminalConfig;
+  const port = type === 'system' ? websocket.port : websocket.claudePort;
+  const protocol = process.env.NODE_ENV === 'production' ? 'wss' : 'ws';
+  return `${protocol}://${websocket.host}:${port}`;
 }
 
-// Configuration validator
-export function validateConfig(config: TerminalConfig): boolean {
-  // Basic validation rules
-  if (config.memory.maxSessions < 1) return false;
-  if (config.memory.bufferSize < 100) return false;
-  if (config.database.connectionTimeout < 1000) return false;
-  if (config.performance.maxConcurrentSessions < 1) return false;
-  
-  return true;
-}
+// Validation function to ensure required environment variables
+export function validateTerminalConfig(): void {
+  const required = [
+    'TERMINAL_WS_PORT',
+    'WS_HOST',
+  ];
 
-// Dynamic configuration updater
-export class ConfigManager {
-  private static instance: ConfigManager;
-  private config: TerminalConfig;
+  const missing = required.filter(key => !process.env[key]);
   
-  private constructor() {
-    this.config = getTerminalConfig();
-  }
-  
-  public static getInstance(): ConfigManager {
-    if (!this.instance) {
-      this.instance = new ConfigManager();
-    }
-    return this.instance;
-  }
-  
-  public getConfig(): TerminalConfig {
-    return this.config;
-  }
-  
-  public updateConfig(updates: Partial<TerminalConfig>): void {
-    this.config = { ...this.config, ...updates };
-    console.log('[ConfigManager] Configuration updated:', updates);
-  }
-  
-  public getMemoryConfig(): MemoryConfig {
-    return this.config.memory;
-  }
-  
-  public getDatabaseConfig(): DatabaseConfig {
-    return this.config.database;
-  }
-  
-  public isHybridMode(): boolean {
-    return this.config.mode === 'hybrid';
-  }
-  
-  public isDatabaseEnabled(): boolean {
-    return this.config.database.enabled && this.config.mode !== 'memory';
+  if (missing.length > 0 && process.env.NODE_ENV === 'production') {
+    console.warn('[Terminal Config] Missing environment variables:', missing.join(', '));
+    console.warn('[Terminal Config] Using default values. This may cause issues in production.');
   }
 }
 
-export const configManager = ConfigManager.getInstance();
+export default terminalConfig;

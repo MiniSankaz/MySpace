@@ -9,7 +9,7 @@ import { TerminalMemoryPool } from './terminal-memory-pool.service';
 import { TerminalLifecycleService, SessionState } from './terminal-lifecycle.service';
 import { TerminalMetricsService } from './terminal-metrics.service';
 import { CircuitBreakerManager } from '@/utils/circuit-breaker';
-import { ConfigManager } from '@/config/terminal.config';
+import { terminalConfig } from '@/config/terminal.config';
 
 export interface OrchestratedSession {
   id: string;

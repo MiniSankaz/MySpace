@@ -5,7 +5,7 @@
 
 import { EventEmitter } from 'events';
 import { terminalMemoryPool } from './terminal-memory-pool.service';
-import { configManager } from '@/config/terminal.config';
+import { terminalConfig } from '@/config/terminal.config';
 import { circuitBreakerManager } from '@/utils/circuit-breaker';
 
 export enum SessionState {

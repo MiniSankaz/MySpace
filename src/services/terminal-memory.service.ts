@@ -5,6 +5,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 
 // Terminal session types
 export type TerminalType = 'terminal'; // Single terminal type
@@ -57,20 +58,20 @@ export class InMemoryTerminalService extends EventEmitter {
   
   // Multi-focus support: Track multiple focused sessions per project
   private focusedSessions: Map<string, Set<string>> = new Map();
-  private readonly MAX_FOCUSED_PER_PROJECT = 10; // Increased for better multi-terminal support
+  private readonly MAX_FOCUSED_PER_PROJECT = terminalConfig.memory.maxFocusedPerProject;
   
-  // Memory safety limits - Increased for better performance
-  private readonly MAX_TOTAL_SESSIONS = 50; // Increased to support more sessions
-  private readonly MAX_SESSIONS_PER_PROJECT = 20; // Increased for multi-terminal work
+  // Memory safety limits
+  private readonly MAX_TOTAL_SESSIONS = terminalConfig.memory.maxTotalSessions;
+  private readonly MAX_SESSIONS_PER_PROJECT = terminalConfig.memory.maxSessionsPerProject;
   private sessionActivity: Map<string, Date> = new Map();
   
   // CRITICAL FIX: Circuit breaker protection against infinite loops
   private creationRateLimit = new Map<string, number[]>(); // projectId -> timestamps
-  private readonly MAX_CREATIONS_PER_MINUTE = 10;
+  private readonly MAX_CREATIONS_PER_MINUTE = terminalConfig.rateLimit.maxCreationsPerMinute;
   private circuitBreakerTripped = new Map<string, boolean>();
   
   // Suspension timeout management
-  private readonly MAX_SUSPENSION_TIME = 30 * 60 * 1000; // 30 minutes
+  private readonly MAX_SUSPENSION_TIME = terminalConfig.suspension.maxSuspensionTime;
   private suspensionCleanupTimer?: NodeJS.Timeout;
   
   // WebSocket readiness tracking
@@ -102,20 +103,20 @@ export class InMemoryTerminalService extends EventEmitter {
     super();
     console.log('[InMemoryTerminalService] Initialized');
     
-    // Cleanup inactive sessions every 5 minutes - MORE FREQUENT
+    // Cleanup inactive sessions
     setInterval(() => {
       this.cleanupInactiveSessions();
-    }, 5 * 60 * 1000);
+    }, terminalConfig.memory.cleanupInterval);
     
-    // Cleanup expired suspended sessions every 10 minutes
+    // Cleanup expired suspended sessions
     this.suspensionCleanupTimer = setInterval(() => {
       this.cleanupExpiredSuspendedSessions();
-    }, 10 * 60 * 1000);
+    }, terminalConfig.suspension.cleanupInterval);
     
-    // Emergency memory monitor every 2 minutes
+    // Emergency memory monitor
     setInterval(() => {
       this.emergencyMemoryCheck();
-    }, 2 * 60 * 1000);
+    }, terminalConfig.memory.emergencyCheckInterval);
   }
   
   /**
@@ -144,34 +145,54 @@ export class InMemoryTerminalService extends EventEmitter {
    * Get WebSocket URL for terminal
    */
   private getWebSocketUrl(): string {
-    // All terminals use the same WebSocket server now
-    return `ws://localhost:4001`;
+    // Use configuration instead of hardcoded value
+    return getWebSocketUrl('system');
   }
   
   /**
    * Get next tab name for project
    */
   private getNextTabName(projectId: string): string {
-    // Calculate based on existing sessions to avoid duplicates
-    const existingSessions = this.projectSessions.get(projectId);
-    let maxNumber = 0;
-    
-    if (existingSessions) {
-      existingSessions.forEach(sessionId => {
-        const session = this.sessions.get(sessionId);
-        if (session && session.tabName) {
-          const match = session.tabName.match(/Terminal (\d+)/);
-          if (match) {
-            maxNumber = Math.max(maxNumber, parseInt(match[1]));
+    try {
+      // Validate input
+      if (!projectId) {
+        console.error('[InMemoryTerminalService] getNextTabName called with invalid projectId');
+        return `${terminalConfig.naming.prefix}${terminalConfig.naming.separator}1`;
+      }
+      
+      // Calculate based on existing sessions to avoid duplicates
+      const existingSessions = this.projectSessions.get(projectId);
+      let maxNumber = 0;
+      
+      if (existingSessions && existingSessions.size > 0) {
+        existingSessions.forEach(sessionId => {
+          try {
+            const session = this.sessions.get(sessionId);
+            if (session && session.tabName) {
+              const pattern = new RegExp(`${terminalConfig.naming.prefix}${terminalConfig.naming.separator}(\\d+)`);
+              const match = session.tabName.match(pattern);
+              if (match && match[1]) {
+                const num = parseInt(match[1], 10);
+                if (!isNaN(num)) {
+                  maxNumber = Math.max(maxNumber, num);
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`[InMemoryTerminalService] Error parsing session ${sessionId}:`, err);
           }
-        }
-      });
+        });
+      }
+      
+      const count = maxNumber + 1;
+      this.sessionCounters.set(projectId, count);
+      console.log(`[InMemoryTerminalService] Next terminal name for project ${projectId}: ${terminalConfig.naming.prefix}${terminalConfig.naming.separator}${count} (max existing: ${maxNumber})`);
+      return `${terminalConfig.naming.prefix}${terminalConfig.naming.separator}${count}`;
+    } catch (error) {
+      console.error('[InMemoryTerminalService] Error in getNextTabName:', error);
+      // Return a safe default
+      return `${terminalConfig.naming.prefix}${terminalConfig.naming.separator}${Date.now()}`;
     }
-    
-    const count = maxNumber + 1;
-    this.sessionCounters.set(projectId, count);
-    console.log(`[InMemoryTerminalService] Next terminal name for project ${projectId}: Terminal ${count} (max existing: ${maxNumber})`);
-    return `Terminal ${count}`;
   }
   
   /**
@@ -209,7 +230,7 @@ export class InMemoryTerminalService extends EventEmitter {
         console.log(`[InMemoryTerminalService] Resetting circuit breaker for project ${projectId}`);
         this.circuitBreakerTripped.delete(projectId);
         this.creationRateLimit.delete(projectId);
-      }, 5 * 60 * 1000);
+      }, terminalConfig.rateLimit.circuitBreakerResetTime);
       
       throw new Error(`Session creation loop detected: ${recentCreations.length} sessions in 1 minute`);
     }
@@ -590,12 +611,12 @@ export class InMemoryTerminalService extends EventEmitter {
    */
   private cleanupInactiveSessions(): void {
     const now = Date.now();
-    const timeout = 5 * 60 * 1000; // 5 minutes - REDUCED FROM 30 minutes
+    const timeout = terminalConfig.memory.sessionTimeout;
     
     // Check memory pressure
     const memoryUsage = process.memoryUsage();
     const memoryUsageMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-    const isMemoryPressure = memoryUsageMB > 4000; // 4GB threshold (with 8GB total)
+    const isMemoryPressure = memoryUsageMB > terminalConfig.memory.heapWarningThreshold;
     
     if (isMemoryPressure) {
       console.warn(`[InMemoryTerminalService] Memory pressure detected: ${memoryUsageMB}MB (threshold: 4GB) - Aggressive cleanup`);
@@ -633,8 +654,8 @@ export class InMemoryTerminalService extends EventEmitter {
     
     console.log(`[InMemoryTerminalService] Memory: RSS=${rssMB}MB, Heap=${heapUsedMB}MB, External=${externalMB}MB, Sessions=${this.sessions.size}`);
     
-    // CRITICAL: Emergency cleanup if RSS > 6GB (with 8GB limit)
-    if (rssMB > 6144) {
+    // CRITICAL: Emergency cleanup if RSS exceeds threshold
+    if (rssMB > terminalConfig.memory.rssEmergencyThreshold) {
       console.error(`🚨 EMERGENCY: RSS memory ${rssMB}MB > 6GB - EMERGENCY CLEANUP`);
       
       // Close ALL sessions immediately to prevent crash
@@ -650,8 +671,8 @@ export class InMemoryTerminalService extends EventEmitter {
       
       console.error(`🚨 EMERGENCY: Closed ${sessionCount} sessions, forcing GC`);
     }
-    // WARNING: High memory cleanup if RSS > 2GB  
-    else if (rssMB > 2048) {
+    // WARNING: High memory cleanup if RSS exceeds warning threshold
+    else if (rssMB > terminalConfig.memory.rssWarningThreshold) {
       console.warn(`⚠️ HIGH MEMORY: RSS ${rssMB}MB > 2GB - Aggressive cleanup`);
       this.cleanupOldestSessions(Math.ceil(this.sessions.size / 2)); // Close half
       
@@ -807,7 +828,7 @@ export class InMemoryTerminalService extends EventEmitter {
         }
         
         // Add small delay between operations to prevent race conditions
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, terminalConfig.projectSwitch.operationQueueDelay));
         
       } catch (error) {
         console.error(`[InMemoryTerminalService] Error processing ${operation.type} for project ${operation.projectId}:`, error);
@@ -987,10 +1008,10 @@ export class InMemoryTerminalService extends EventEmitter {
   public bufferOutputForSuspended(sessionId: string, output: string): void {
     const suspendedState = this.suspendedSessions.get(sessionId);
     if (suspendedState) {
-      // Keep only last 1000 lines
+      // Keep only last N lines based on config
       suspendedState.bufferedOutput.push(output);
-      if (suspendedState.bufferedOutput.length > 1000) {
-        suspendedState.bufferedOutput = suspendedState.bufferedOutput.slice(-1000);
+      if (suspendedState.bufferedOutput.length > terminalConfig.suspension.bufferedOutputLimit) {
+        suspendedState.bufferedOutput = suspendedState.bufferedOutput.slice(-terminalConfig.suspension.bufferedOutputLimit);
       }
       this.suspendedSessions.set(sessionId, suspendedState);
     }
