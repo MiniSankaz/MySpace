@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Plus, X, AlertCircle, Loader2, Grid, Columns, Rows, Square, Command } from 'lucide-react';
 import { Project } from '../../types';
 
-// Lazy load XTermViewV2 for better performance
-const XTermViewV2 = lazy(() => import('./XTermViewV2'));
+// Lazy load XTermViewV3 for better performance
+const XTermViewV3 = lazy(() => import('./XTermViewV3'));
 
 // Configuration - ใช้ API version ไหน
 const USE_NEW_API = process.env.NEXT_PUBLIC_USE_NEW_TERMINAL_API === 'true' || true; // Default to new API
@@ -322,9 +322,12 @@ const TerminalContainerV4: React.FC<TerminalContainerV4Props> = ({ project }) =>
                       <Loader2 className="w-6 h-6 text-gray-600 animate-spin" />
                     </div>
                   }>
-                    <XTermViewV2 
+                    <XTermViewV3 
                       sessionId={session.id} 
                       mode={session.mode}
+                      projectId={project.id}
+                      projectPath={project.settings?.path}
+                      isFocused={session.isFocused}
                     />
                   </Suspense>
                 </motion.div>

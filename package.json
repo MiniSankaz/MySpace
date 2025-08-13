@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node --max-old-space-size=8192 --expose-gc server.js",
+    "dev:v2": "node --max-old-space-size=8192 --expose-gc server-v2.js",
     "dev:next": "next dev -p 4000",
     "build": "next build && tsc src/server/websocket/terminal-ws.ts --outDir dist --esModuleInterop --skipLibCheck",
     "start": "NODE_ENV=production node --max-old-space-size=8192 --expose-gc server.js",
