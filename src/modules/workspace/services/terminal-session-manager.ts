@@ -213,6 +213,7 @@ export class TerminalSessionManager extends EventEmitter {
         console.error(`Failed to create terminal session in database:`, error);
         throw error;
       }
+      }
     }
     
     // If we still don't have a session, fall back to in-memory
