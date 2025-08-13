@@ -149,8 +149,25 @@ export class InMemoryTerminalService extends EventEmitter {
    * Get next tab name for project
    */
   private getNextTabName(projectId: string): string {
-    const count = (this.sessionCounters.get(projectId) || 0) + 1;
+    // Calculate based on existing sessions to avoid duplicates
+    const existingSessions = this.projectSessions.get(projectId);
+    let maxNumber = 0;
+    
+    if (existingSessions) {
+      existingSessions.forEach(sessionId => {
+        const session = this.sessions.get(sessionId);
+        if (session && session.tabName) {
+          const match = session.tabName.match(/Terminal (\d+)/);
+          if (match) {
+            maxNumber = Math.max(maxNumber, parseInt(match[1]));
+          }
+        }
+      });
+    }
+    
+    const count = maxNumber + 1;
     this.sessionCounters.set(projectId, count);
+    console.log(`[InMemoryTerminalService] Next terminal name for project ${projectId}: Terminal ${count} (max existing: ${maxNumber})`);
     return `Terminal ${count}`;
   }
   
