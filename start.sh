@@ -20,9 +20,10 @@ PID_FILE="./server.pid"
 MAX_RETRIES=3
 RETRY_DELAY=5
 
-# Terminal Storage Configuration
-TERMINAL_STORAGE_MODE=${TERMINAL_STORAGE_MODE:-LOCAL}
-TERMINAL_COMPATIBILITY_MODE=${TERMINAL_COMPATIBILITY_MODE:-hybrid}
+# Terminal V2 Configuration
+TERMINAL_MIGRATION_MODE=${TERMINAL_MIGRATION_MODE:-progressive}
+TERMINAL_USE_V2=${TERMINAL_USE_V2:-false}
+USE_NEW_TERMINAL_API=${USE_NEW_TERMINAL_API:-false}
 
 # ASCII Art Banner
 show_banner() {
@@ -36,7 +37,7 @@ show_banner() {
     echo "║       ██║     ╚██████╔╝██║  ██║   ██║                           ║"
     echo "║       ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝                           ║"
     echo "║                                                                   ║"
-    echo "║              🚀 Enhanced Development Server v2.0 🚀               ║"
+    echo "║           🚀 Stock Portfolio System - Legacy Mode 🚀             ║"
     echo "╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -44,7 +45,8 @@ show_banner() {
 # Function to display header
 show_header() {
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║         🚀 DF ERP System - Development Server 🚀          ║${NC}"
+    echo -e "${BLUE}║      🚀 Stock Portfolio System - Legacy Terminal 🚀       ║${NC}"
+    echo -e "${BLUE}║               (For V2, use: ./start-v2.sh)                 ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -333,60 +335,22 @@ check_build() {
     
     local need_rebuild=false
     
-    # Always rebuild terminal-memory service
-    echo -e "${CYAN}🔧 Building terminal-memory service...${NC}"
+    # Check Terminal V2 vs Legacy mode
+    echo -e "${CYAN}🔧 Checking Terminal system...${NC}"
     
-    # Create dist/services directory if it doesn't exist
-    if [ ! -d "dist/services" ]; then
-        mkdir -p dist/services
-        echo -e "${GREEN}✅ Created dist/services directory${NC}"
+    if [ "$TERMINAL_USE_V2" = "true" ]; then
+        echo -e "${YELLOW}⚠️  Terminal V2 detected but using Legacy starter${NC}"
+        echo -e "${YELLOW}   Recommendation: Use ./start-v2.sh for Terminal V2${NC}"
+        echo -e "${YELLOW}   This script runs Legacy terminal system${NC}"
+    else
+        echo -e "${GREEN}✅ Running Legacy terminal system${NC}"
     fi
     
-    # Compile terminal-memory.service.ts to JavaScript
+    # Legacy terminal service check
     if [ -f "src/services/terminal-memory.service.ts" ]; then
-        # Check if TypeScript compiler is available
-        if command -v tsc &> /dev/null || [ -f "node_modules/.bin/tsc" ]; then
-            # Use local tsc if available, otherwise global
-            TSC_CMD="tsc"
-            if [ -f "node_modules/.bin/tsc" ]; then
-                TSC_CMD="node_modules/.bin/tsc"
-            fi
-            
-            # Compile the TypeScript file
-            $TSC_CMD src/services/terminal-memory.service.ts \
-                --outDir dist \
-                --module commonjs \
-                --target es2018 \
-                --esModuleInterop \
-                --skipLibCheck \
-                --allowJs \
-                --resolveJsonModule \
-                --downlevelIteration \
-                --moduleResolution node \
-                --noEmit false \
-                --declaration false 2>/dev/null
-            
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✅ Terminal-memory service compiled successfully${NC}"
-            else
-                # If TypeScript compilation fails, try simpler approach
-                echo -e "${YELLOW}⚠️  TypeScript compilation had issues, using fallback...${NC}"
-                
-                # Copy the compiled file if it exists
-                if [ -f "src/services/terminal-memory.service.js.compiled" ]; then
-                    cp src/services/terminal-memory.service.js.compiled dist/services/terminal-memory.service.js
-                    echo -e "${GREEN}✅ Used pre-compiled terminal-memory service${NC}"
-                fi
-            fi
-        else
-            # No TypeScript compiler, use pre-compiled version if available
-            if [ -f "src/services/terminal-memory.service.js.compiled" ]; then
-                cp src/services/terminal-memory.service.js.compiled dist/services/terminal-memory.service.js
-                echo -e "${GREEN}✅ Used pre-compiled terminal-memory service${NC}"
-            else
-                echo -e "${YELLOW}⚠️  Terminal-memory service not compiled (optional)${NC}"
-            fi
-        fi
+        echo -e "${GREEN}✅ Legacy terminal-memory service found${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Legacy terminal service may be missing${NC}"
     fi
     
     # Check if .next exists for Next.js
@@ -453,9 +417,10 @@ get_network_info() {
     echo -e "${BLUE}╠════════════════════════════════════════════════════════════╣${NC}"
     echo -e "${BLUE}║                  🔌 WebSocket Services 🔌                  ║${NC}"
     echo -e "${BLUE}╠════════════════════════════════════════════════════════════╣${NC}"
-    printf "${BLUE}║${NC} ${MAGENTA}%-16s${NC} ws://127.0.0.1:%-29s ${BLUE}║${NC}\n" "Terminal WS:" "$WS_PORT"
-    printf "${BLUE}║${NC} ${MAGENTA}%-16s${NC} ws://127.0.0.1:%-29s ${BLUE}║${NC}\n" "Claude Term:" "$CLAUDE_WS_PORT"
+    printf "${BLUE}║${NC} ${MAGENTA}%-16s${NC} ws://127.0.0.1:%-29s ${BLUE}║${NC}\n" "Legacy Terminal:" "$WS_PORT"
+    printf "${BLUE}║${NC} ${MAGENTA}%-16s${NC} ws://127.0.0.1:%-29s ${BLUE}║${NC}\n" "Claude Terminal:" "$CLAUDE_WS_PORT"
     printf "${BLUE}║${NC} ${MAGENTA}%-16s${NC} ws://127.0.0.1:%-29s ${BLUE}║${NC}\n" "Claude Chat:" "$PORT/ws/claude"
+    printf "${BLUE}║${NC} ${YELLOW}%-16s${NC} Use ./start-v2.sh for Terminal V2   ${BLUE}║${NC}\n" "V2 Available:"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -467,8 +432,9 @@ show_status() {
     echo -e "${CYAN}╠════════════════════════════════════════════════════════════╣${NC}"
     printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Environment:" "$NODE_ENV"
     printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Main Port:" "$PORT"
-    printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Terminal Port:" "$WS_PORT"
+    printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Legacy Terminal:" "$WS_PORT"
     printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Claude Port:" "$CLAUDE_WS_PORT"
+    printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Terminal Mode:" "Legacy (use start-v2.sh for V2)"
     printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Hot Reload:" "$([ "$NODE_ENV" = "development" ] && echo "Enabled ♻️" || echo "Disabled")"
     printf "${CYAN}║${NC} ${WHITE}%-16s${NC} %-41s ${CYAN}║${NC}\n" "Log File:" "$(basename $LOG_FILE)"
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
@@ -513,10 +479,18 @@ monitor_server() {
 start_server() {
     local mode=$1
     
+    # Show Terminal V2 notice
+    if [ -f "./start-v2.sh" ]; then
+        echo -e "${CYAN}💡 Notice: Terminal V2 available${NC}"
+        echo -e "${CYAN}   For better performance, use: ./start-v2.sh${NC}"
+        echo -e "${CYAN}   This script uses Legacy terminal system${NC}"
+        echo ""
+    fi
+    
     show_status
     get_network_info
     
-    echo -e "${YELLOW}🚀 Starting server...${NC}"
+    echo -e "${YELLOW}🚀 Starting Legacy server...${NC}"
     echo -e "${YELLOW}📝 Logs: tail -f $LOG_FILE${NC}"
     echo -e "${YELLOW}🛑 Press Ctrl+C to stop${NC}"
     echo ""
@@ -755,6 +729,9 @@ main() {
         "--help"|"-h")
             echo "Usage: ./start.sh [OPTIONS]"
             echo ""
+            echo "⚠️  NOTICE: This is the Legacy Terminal starter"
+            echo "   For Terminal V2 (recommended), use: ./start-v2.sh"
+            echo ""
             echo "Options:"
             echo "  --production, -p   Start in production mode"
             echo "  --development, -d  Start in development mode (default)"
@@ -766,15 +743,18 @@ main() {
             echo ""
             echo "Environment Variables:"
             echo "  PORT              Main server port (default: 4000)"
-            echo "  WS_PORT           Terminal WebSocket port (default: 4001)"
+            echo "  WS_PORT           Legacy Terminal WebSocket port (default: 4001)"
             echo "  CLAUDE_WS_PORT    Claude Terminal port (default: 4002)"
             echo "  NODE_ENV          Environment (development/production)"
             echo ""
+            echo "Terminal System:"
+            echo "  Legacy Terminal:  ws://localhost:4001"
+            echo "  Terminal V2:      Use ./start-v2.sh instead"
+            echo ""
             echo "Examples:"
-            echo "  ./start.sh                  # Start in development mode"
-            echo "  ./start.sh --production     # Start in production mode"
-            echo "  ./start.sh --status         # Check if server is running"
-            echo "  PORT=3000 ./start.sh        # Start on port 3000"
+            echo "  ./start.sh                  # Start Legacy system"
+            echo "  ./start.sh --production     # Start Legacy in production"
+            echo "  ./start-v2.sh --progressive # Start Terminal V2 (recommended)"
             echo ""
             exit 0
             ;;
