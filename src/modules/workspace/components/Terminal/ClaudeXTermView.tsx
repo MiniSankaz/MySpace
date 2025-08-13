@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -65,7 +66,7 @@ const ClaudeXTermView: React.FC<ClaudeXTermViewProps> = ({
       console.log('[ClaudeXTermView] Creating new global multiplexer');
       const token = localStorage.getItem('accessToken');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = '127.0.0.1:4002'; // Claude terminal port
+      const wsHost = '127.0.0.1:terminalConfig.websocket.claudePort'; // Claude terminal port
       
       claudeMultiplexer = new TerminalWebSocketMultiplexer({
         url: `${protocol}//${wsHost}`,

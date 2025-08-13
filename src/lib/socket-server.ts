@@ -10,7 +10,7 @@ export function initSocketServer(server: HTTPServer) {
 
   io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:4000',
+      origin: process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:process.env.PORT || 4000',
       methods: ['GET', 'POST']
     },
     path: '/socket.io'

@@ -68,7 +68,7 @@ export const RealTimeActivityFeed: React.FC<RealTimeActivityFeedProps> = ({
   // WebSocket connection for real-time updates (future enhancement)
   useEffect(() => {
     // TODO: Implement WebSocket connection
-    // const ws = new WebSocket('ws://localhost:3000/ws/dashboard/activity');
+    // const ws = new WebSocket('ws://localhost:process.env.PORT || 3000/ws/dashboard/activity');
     // ws.onmessage = (event) => {
     //   const newActivity = JSON.parse(event.data);
     //   setActivities(prev => [newActivity, ...prev].slice(0, maxItems));

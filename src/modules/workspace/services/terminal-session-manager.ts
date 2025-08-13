@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { TerminalSession, TerminalMessage } from '../types';
 import { prisma } from '@/core/database/prisma';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,7 +38,7 @@ export class TerminalSessionManager extends EventEmitter {
     try {
       // EMERGENCY FIX: Add timeout to prevent blocking on database connection failure
       const timeout = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Database connection timeout')), 5000)
+        setTimeout(() => reject(new Error('Database connection timeout')), terminalConfig.websocket.timeout)
       );
       
       console.log('Attempting to connect to database for terminal session initialization...');
@@ -116,7 +117,7 @@ export class TerminalSessionManager extends EventEmitter {
     try {
       // EMERGENCY FIX: Add timeout to database operations
       const timeout = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Database operation timeout')), 3000)
+        setTimeout(() => reject(new Error('Database operation timeout')), process.env.PORT || 3000)
       );
       
       // First attempt: try with projectId

@@ -1,3 +1,5 @@
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
+
 const { WebSocketServer } = require('ws');
 const pty = require('node-pty');
 const os = require('os');
@@ -19,7 +21,7 @@ try {
 }
 
 class TerminalWebSocketServer {
-  constructor(port = 4001) {
+  constructor(port = terminalConfig.websocket.port) {
     this.port = port;
     this.sessions = new Map();
     this.loggingService = terminalLoggingService;
@@ -443,9 +445,9 @@ class TerminalWebSocketServer {
         // Check close code to determine if we should keep the session alive
         // 1000 = Normal closure, 1001 = Going away (page refresh/navigation)
         // 1006 = Abnormal closure (network failure, browser crash)
-        // 4000-4999 = Application-specific codes
+        // process.env.PORT || 4000-4999 = Application-specific codes
         const isCleanClose = code === 1000 || code === 1001;
-        const isCircuitBreakerClose = code >= 4000 && code <= 4099;
+        const isCircuitBreakerClose = code >= process.env.PORT || 4000 && code <= 4099;
         
         if (isCleanClose) {
           // Clean close - end the session properly

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 
 interface TerminalWebSocketOptions {
   projectId: string;
@@ -36,7 +37,7 @@ export const useTerminalWebSocket = ({
       const token = localStorage.getItem('accessToken');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       // Use separate WebSocket port
-      const wsHost = '127.0.0.1:4001';
+      const wsHost = '127.0.0.1:terminalConfig.websocket.port';
       
       const params = new URLSearchParams({
         projectId,
@@ -137,7 +138,7 @@ export const useTerminalWebSocket = ({
         //   reconnectTimeoutRef.current = setTimeout(() => {
         //     console.log('Attempting to reconnect...');
         //     connect();
-        //   }, 3000);
+        //   }, process.env.PORT || 3000);
         // }
       };
 

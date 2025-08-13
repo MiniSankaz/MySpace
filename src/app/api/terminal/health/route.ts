@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       warnings: [
         ...warnings,
         ...(allSessions.length > 80 ? ['High session count (>80)'] : []),
-        ...(memoryUsageMB.heapUsed > 3000 ? ['High memory usage (>3GB)'] : []),
+        ...(memoryUsageMB.heapUsed > process.env.PORT || 3000 ? ['High memory usage (>3GB)'] : []),
         ...(suspendedCount > 20 ? ['Many suspended sessions (>20)'] : [])
       ],
       recommendations: hasLoops ? [

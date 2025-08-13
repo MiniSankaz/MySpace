@@ -1,3 +1,5 @@
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
+
 import { 
   GitStatus, 
   GitBranch, 
@@ -53,7 +55,7 @@ export class GitService {
       }
       
       // Client-side: use the API endpoint
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4000';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:process.env.PORT || 4000';
       
       // Setup headers
       let headers: HeadersInit = {
@@ -558,7 +560,7 @@ export class GitWebSocketPool {
    */
   private createConnection(projectId: string): Promise<WebSocket> {
     return new Promise((resolve, reject) => {
-      const wsUrl = `ws://localhost:4001/git/${projectId}`;
+      const wsUrl = `ws://localhost:terminalConfig.websocket.port/git/${projectId}`;
       const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {

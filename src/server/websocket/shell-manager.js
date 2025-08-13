@@ -121,7 +121,7 @@ class ShellManager {
         : `"${shellPath}" -c "echo test"`;
         
       const { stdout } = await execAsync(testCommand, {
-        timeout: 3000,
+        timeout: process.env.PORT || 3000,
         encoding: 'utf8'
       });
       
@@ -151,7 +151,7 @@ class ShellManager {
     for (const shellName of shellsToFind) {
       try {
         const { stdout } = await execAsync(`${searchCommand} ${shellName}`, {
-          timeout: 3000,
+          timeout: process.env.PORT || 3000,
           encoding: 'utf8'
         });
         

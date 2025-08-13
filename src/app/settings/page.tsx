@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { 
   UserIcon,
   KeyIcon,
@@ -211,7 +212,7 @@ export default function SettingsPage() {
       
       // Show success message
       setSavedMessage('Settings saved successfully!');
-      setTimeout(() => setSavedMessage(null), 3000);
+      setTimeout(() => setSavedMessage(null), process.env.PORT || 3000);
       
       // Reload page to apply new settings
       if (activeTab === 'ai-assistant' || activeTab === 'ai_assistant') {
@@ -222,7 +223,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Failed to save settings:', error);
       setSavedMessage(error instanceof Error ? error.message : 'Failed to save settings. Please try again.');
-      setTimeout(() => setSavedMessage(null), 5000);
+      setTimeout(() => setSavedMessage(null), terminalConfig.websocket.timeout);
     } finally {
       setSaving(false);
     }

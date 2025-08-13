@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
     const host = request.headers.get('host');
     if (host && host.startsWith('localhost:')) {
       const url = request.nextUrl.clone();
-      url.hostname = '127.0.0.1';
+      url.hostname = process.env.HOST || "127.0.0.1";
       return NextResponse.redirect(url);
     }
   }
@@ -95,9 +95,9 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api')) {
     const origin = request.headers.get('origin');
     const allowedOrigins = [
-      process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:4000',
-      'http://localhost:3000',
-      'http://127.0.0.1:4000',
+      process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:process.env.PORT || 4000',
+      'http://localhost:process.env.PORT || 3000',
+      'http://127.0.0.1:process.env.PORT || 4000',
     ];
     
     if (origin && allowedOrigins.includes(origin)) {

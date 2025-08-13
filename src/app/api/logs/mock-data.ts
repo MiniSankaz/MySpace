@@ -103,7 +103,7 @@ export const mockAssistantLogs = {
       projectId: 'default',
       model: 'gpt-4',
       temperature: 0.8,
-      maxTokens: 3000,
+      maxTokens: process.env.PORT || 3000,
       totalTokensUsed: 7730,
       totalCost: 0.00773,
       startedAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
@@ -230,7 +230,7 @@ export const mockTerminalLogs = {
       workingDir: '/Users/sem4pro/Stock/port'
     },
     {
-      command: 'curl http://localhost:4000/api/health',
+      command: 'curl http://localhost:process.env.PORT || 4000/api/health',
       timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
       exitCode: 0,
       duration: 250,

@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { terminalSessionManager } from './terminal-session-manager';
 import { createTerminalMultiplexer, TerminalWebSocketMultiplexer } from './terminal-websocket-multiplexer';
 import { terminalService } from './terminal.service';
@@ -15,8 +16,8 @@ export class TerminalIntegrationService extends EventEmitter {
 
   constructor() {
     super();
-    // Use the standalone WebSocket server on port 4001 for system terminals
-    this.wsUrl = process.env.TERMINAL_WS_URL || 'ws://127.0.0.1:4001';
+    // Use the standalone WebSocket server on port terminalConfig.websocket.port for system terminals
+    this.wsUrl = process.env.TERMINAL_WS_URL || 'ws://127.0.0.1:terminalConfig.websocket.port';
     // Initialize will be called when needed, not immediately
     // this.initialize();
   }

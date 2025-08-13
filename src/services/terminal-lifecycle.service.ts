@@ -4,8 +4,8 @@
  */
 
 import { EventEmitter } from 'events';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { terminalMemoryPool } from './terminal-memory-pool.service';
-import { terminalConfig } from '@/config/terminal.config';
 import { circuitBreakerManager } from '@/utils/circuit-breaker';
 
 export enum SessionState {
@@ -250,7 +250,7 @@ export class TerminalLifecycleService extends EventEmitter {
     // Remove from tracking after delay
     setTimeout(() => {
       this.sessions.delete(session.id);
-    }, 5000);
+    }, terminalConfig.websocket.timeout);
   }
   
   private handleError(session: SessionLifecycle): void {

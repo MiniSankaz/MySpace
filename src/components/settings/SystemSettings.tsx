@@ -114,7 +114,7 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
       
       if (response.ok) {
         setTestEmailSent(true);
-        setTimeout(() => setTestEmailSent(false), 3000);
+        setTimeout(() => setTestEmailSent(false), process.env.PORT || 3000);
       }
     } catch (error) {
       console.error('Failed to send test email:', error);
@@ -250,7 +250,7 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
           <pre className="text-green-400 text-xs font-mono">
             {`[2025-08-09 10:23:45] INFO: System started successfully
 [2025-08-09 10:23:46] INFO: Database connection established
-[2025-08-09 10:23:47] INFO: API server listening on port 3000
+[2025-08-09 10:23:47] INFO: API server listening on port process.env.PORT || 3000
 [2025-08-09 10:24:15] INFO: User authentication successful (user@example.com)
 [2025-08-09 10:25:30] INFO: API request: GET /api/assistant/chat
 [2025-08-09 10:25:31] INFO: Claude API response received (200ms)

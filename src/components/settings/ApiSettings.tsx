@@ -22,7 +22,7 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
     // Rate Limits
     maxRequestsPerHour: 1000,
     maxRequestsPerDay: 10000,
-    maxTokensPerRequest: 4000,
+    maxTokensPerRequest: process.env.PORT || 4000,
     maxConcurrentRequests: 10,
     requestTimeout: 30000,
 

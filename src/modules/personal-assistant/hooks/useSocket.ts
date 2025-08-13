@@ -23,7 +23,7 @@ export function useSocket({
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:4000';
+    const socketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:process.env.PORT || 4000';
     const newSocket = io(socketUrl, {
       path: '/socket.io',
       transports: ['websocket', 'polling']

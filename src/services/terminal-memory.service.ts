@@ -557,7 +557,7 @@ export class InMemoryTerminalService extends EventEmitter {
     // Remove session from memory after a delay (for cleanup)
     setTimeout(() => {
       this.sessions.delete(sessionId);
-    }, 5000);
+    }, terminalConfig.websocket.timeout);
     
     console.log(`[InMemoryTerminalService] Closed session ${sessionId}`);
     this.emit('sessionClosed', session);

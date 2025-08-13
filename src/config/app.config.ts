@@ -1,4 +1,5 @@
 import path from 'path';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import os from 'os';
 
 interface AppConfig {
@@ -32,8 +33,8 @@ interface AppConfig {
 }
 
 export const getConfig = (): AppConfig => {
-  const host = process.env.HOST || '127.0.0.1';
-  const port = parseInt(process.env.PORT || '4000');
+  const host = process.env.HOST || process.env.HOST || "127.0.0.1";
+  const port = parseInt(process.env.PORT || 'process.env.PORT || 4000');
   
   return {
     app: {
@@ -42,8 +43,8 @@ export const getConfig = (): AppConfig => {
       baseUrl: process.env.NEXT_PUBLIC_APP_URL || `http://${host}:${port}`,
     },
     websocket: {
-      systemPort: parseInt(process.env.WS_SYSTEM_PORT || '4001'),
-      claudePort: parseInt(process.env.WS_CLAUDE_PORT || '4002'),
+      systemPort: parseInt(process.env.WS_SYSTEM_PORT || 'terminalConfig.websocket.port'),
+      claudePort: parseInt(process.env.WS_CLAUDE_PORT || 'terminalConfig.websocket.claudePort'),
       host: process.env.WS_HOST || host,
     },
     storage: {

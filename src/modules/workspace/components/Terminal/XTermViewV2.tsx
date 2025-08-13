@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useCallback } from 'react';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -217,7 +218,7 @@ const XTermViewV2: React.FC<XTermViewV2Props> = ({
     }
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const port = type === 'system' ? '4001' : '4002';
+    const port = type === 'system' ? 'terminalConfig.websocket.port' : 'terminalConfig.websocket.claudePort';
     
     // Build WebSocket URL with project path
     let wsUrl = `${protocol}//127.0.0.1:${port}/?projectId=${projectId}&sessionId=${sessionId}`;

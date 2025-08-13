@@ -4,6 +4,7 @@
  */
 
 import { ClaudeBackgroundService } from '@/services/claude-background.service';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { EventEmitter } from 'events';
 
 interface ClaudeSession {
@@ -64,7 +65,7 @@ export class ClaudeRealtimeService extends EventEmitter {
         // Auto-restart if unexpected exit
         if (code !== 0) {
           console.log('Attempting to restart Claude background service...');
-          setTimeout(() => this.initialize(), 5000);
+          setTimeout(() => this.initialize(), terminalConfig.websocket.timeout);
         }
       });
 

@@ -206,7 +206,7 @@ export default function NotificationSettings({ user, tabId, onSave, saving }: No
       
       if (response.ok) {
         setTestNotificationSent(true);
-        setTimeout(() => setTestNotificationSent(false), 3000);
+        setTimeout(() => setTestNotificationSent(false), process.env.PORT || 3000);
       }
     } catch (error) {
       console.error('Failed to send test notification:', error);

@@ -308,7 +308,7 @@ export abstract class BaseStorageProvider extends EventEmitter implements ITermi
       const memoryUsage = process.memoryUsage();
       const memoryUsageMB = memoryUsage.heapUsed / 1024 / 1024;
       
-      if (memoryUsageMB > 4000) {
+      if (memoryUsageMB > process.env.PORT || 4000) {
         issues.push(`High memory usage: ${Math.round(memoryUsageMB)}MB`);
       }
       

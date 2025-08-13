@@ -307,15 +307,18 @@ must_review:
 ### Enforcement Priorities
 
 #### Level 1 - CRITICAL (Auto-Reject)
-1. **Hardcoded Values**
-   - Scan all code for hardcoded paths, URLs, ports
-   - Check for embedded credentials
-   - Verify configuration usage
+1. **Hardcoded Values** - ZERO TOLERANCE POLICY
+   - Scan all code for hardcoded paths, URLs, ports (4001, 4002, 3000, 5555)
+   - Check for embedded credentials and API keys
+   - Verify all values use environment variables or configuration helpers
+   - **Automatic rejection criteria**: ANY hardcoded localhost, IP addresses, or protocol URLs
+   - **Tools**: Use `scripts/sop-compliance-validator.js` for automated checking
 
 2. **Security Violations**
-   - Exposed secrets
-   - Unsafe operations
-   - Missing authentication
+   - Exposed secrets or API keys
+   - Missing authentication configuration
+   - Unsafe operations without input validation
+   - Missing rate limiting or security headers
 
 #### Level 2 - HIGH
 1. **SOP Compliance**
@@ -344,21 +347,46 @@ interface EnforcementResult {
   blockers: string[];  // Issues that must be fixed
   warnings: string[];  // Issues that should be fixed
   suggestions: string[]; // Nice to have improvements
+  score: number;       // 0-100 compliance score
 }
 
-// Example enforcement
+// Example enforcement for hardcoded values
 if (hasHardcodedValues(code)) {
   return {
     status: 'FAIL',
-    blockers: ['Remove all hardcoded values'],
+    score: 25, // Critical failure = 25/100
+    blockers: [
+      'CRITICAL: Remove all hardcoded ports (4001, 4002, 3000)',
+      'CRITICAL: Replace hardcoded URLs with getWebSocketUrl() helper',
+      'CRITICAL: Use environment variables for all configuration'
+    ],
     violations: [{
       type: 'HARDCODED_VALUE',
       severity: 'CRITICAL',
       location: 'file:line',
-      fix: 'Use environment variable or config'
-    }]
+      fix: 'Use terminalRefactorConfig.websocket.systemPort or getWebSocketUrl("system")'
+    }],
+    suggestions: [
+      'Run: node scripts/fix-hardcoded-values.js',
+      'Run: node scripts/sop-compliance-validator.js',
+      'Install pre-commit hook: ln -sf ../../scripts/pre-commit-sop-check.sh .git/hooks/pre-commit'
+    ]
   };
 }
+```
+
+### Zero Hardcoding Policy Tools
+
+```bash
+# Required scripts for enforcement
+scripts/sop-compliance-validator.js     # Validate compliance (required before commits)
+scripts/fix-hardcoded-values.js        # Auto-fix common violations  
+scripts/pre-commit-sop-check.sh         # Git pre-commit hook (mandatory)
+
+# Usage
+node scripts/sop-compliance-validator.js              # Check compliance
+node scripts/fix-hardcoded-values.js --dry-run       # Preview fixes
+node scripts/fix-hardcoded-values.js                 # Apply fixes
 ```
 
 ### Enforcement Report Format

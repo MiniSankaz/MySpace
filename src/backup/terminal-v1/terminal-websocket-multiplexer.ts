@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { 
   CircuitBreakerConfig, 
   CircuitBreakerState, 
@@ -281,7 +282,7 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
     // Determine the correct port based on terminal type
-    const port = type === 'system' ? '4001' : '4002';
+    const port = type === 'system' ? 'terminalConfig.websocket.port' : 'terminalConfig.websocket.claudePort';
     const wsHost = `127.0.0.1:${port}`;
     
     const params = new URLSearchParams({
@@ -378,8 +379,8 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
       this.updateConnectionStatus(sessionId, 'disconnected');
       this.emit('session:disconnected', { sessionId, code: event.code, reason: event.reason });
       
-      // Check for circuit breaker triggered codes (4000-4099)
-      const isCircuitBreakerClose = event.code >= 4000 && event.code <= 4099;
+      // Check for circuit breaker triggered codes (process.env.PORT || 4000-4099)
+      const isCircuitBreakerClose = event.code >= process.env.PORT || 4000 && event.code <= 4099;
       
       // Record failure in circuit breaker
       if (event.code === 1005 || event.code === 1006) {
@@ -402,7 +403,7 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
             
             // Close with circuit breaker code to signal backend
             if (connection.socket && connection.socket.readyState !== WebSocket.CLOSED) {
-              connection.socket.close(4001, 'Circuit breaker triggered');
+              connection.socket.close(terminalConfig.websocket.port, 'Circuit breaker triggered');
             }
             return;
           }
@@ -414,7 +415,7 @@ export class TerminalWebSocketMultiplexer extends EventEmitter {
             
             // Close with error code to signal backend
             if (connection.socket && connection.socket.readyState !== WebSocket.CLOSED) {
-              connection.socket.close(4002, 'Session not found');
+              connection.socket.close(terminalConfig.websocket.claudePort, 'Session not found');
             }
             return;
           }

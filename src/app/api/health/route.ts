@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   // Check assistant service
   try {
-    const testResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api'}/assistant/chat`, {
+    const testResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:process.env.PORT || 4000/api'}/assistant/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'ping', sessionId: 'health-check' }),

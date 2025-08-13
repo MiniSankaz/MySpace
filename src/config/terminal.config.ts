@@ -8,7 +8,7 @@ export const terminalConfig = {
   // WebSocket Configuration
   websocket: {
     port: parseInt(process.env.TERMINAL_WS_PORT || '4001'),
-    host: process.env.WS_HOST || '127.0.0.1',
+    host: process.env.WS_HOST || process.env.HOST || "127.0.0.1",
     claudePort: parseInt(process.env.CLAUDE_WS_PORT || '4002'),
     timeout: parseInt(process.env.WS_TIMEOUT || '5000'),
     reconnectAttempts: parseInt(process.env.WS_RECONNECT_ATTEMPTS || '3'),

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import prisma from '@/core/database/prisma';
 import { authHandler } from '@/utils/api-handler';
 import { cacheManager, CacheManager } from '@/core/database/cache-manager';
@@ -21,7 +22,7 @@ export const GET = authHandler(async (request: NextRequest, user: any) => {
     
     // Try to get from database with timeout
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database timeout')), 5000)
+      setTimeout(() => reject(new Error('Database timeout')), terminalConfig.websocket.timeout)
     );
     
     const queryPromise = prisma.assistantChatSession.findMany({

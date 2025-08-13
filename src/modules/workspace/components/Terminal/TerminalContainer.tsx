@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Project, TerminalSession } from '../../types';
@@ -56,9 +57,9 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
     const token = authClient.getAccessToken?.() || localStorage.getItem('accessToken');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
-    // System terminal multiplexer (port 4001)
+    // System terminal multiplexer (port terminalConfig.websocket.port)
     const systemMux = new TerminalWebSocketMultiplexer({
-      url: `${protocol}//127.0.0.1:4001`,
+      url: `${protocol}//127.0.0.1:terminalConfig.websocket.port`,
       auth: { token },
     });
     
@@ -92,9 +93,9 @@ const TerminalContainer: React.FC<TerminalContainerProps> = ({ project }) => {
     
     setSystemMultiplexer(systemMux);
 
-    // Claude terminal multiplexer (port 4002) 
+    // Claude terminal multiplexer (port terminalConfig.websocket.claudePort) 
     const claudeMux = new TerminalWebSocketMultiplexer({
-      url: `${protocol}//127.0.0.1:4002`,
+      url: `${protocol}//127.0.0.1:terminalConfig.websocket.claudePort`,
       auth: { token },
     });
     

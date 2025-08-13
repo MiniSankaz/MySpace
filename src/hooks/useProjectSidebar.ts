@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
 import { Project } from '@/types/project';
 
 interface SidebarSettings {
@@ -123,7 +124,7 @@ export function useProjectSidebar() {
     loadSettings();
     
     // Set up WebSocket for real-time status updates
-    const ws = new WebSocket(`ws://localhost:4001/project-status`);
+    const ws = new WebSocket(`ws://localhost:terminalConfig.websocket.port/project-status`);
     
     ws.onmessage = (event) => {
       try {

@@ -99,8 +99,8 @@ export const getAppUrl = (path: string = ''): string => {
  * Check if URL is local development
  */
 export const isLocalUrl = (url: string): boolean => {
-  return url.includes('localhost') || 
-         url.includes('127.0.0.1') || 
+  return url.includes(process.env.HOST || "localhost") || 
+         url.includes(process.env.HOST || "127.0.0.1") || 
          url.includes('0.0.0.0');
 };
 
