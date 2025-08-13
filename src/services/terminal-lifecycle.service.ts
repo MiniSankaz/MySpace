@@ -306,7 +306,7 @@ export class TerminalLifecycleService extends EventEmitter {
   private startLifecycleMonitor(): void {
     setInterval(() => {
       const now = Date.now();
-      const config = configManager.getMemoryConfig();
+      const config = terminalConfig.memory;
       
       for (const session of this.sessions.values()) {
         const idleTime = now - session.lastActivity.getTime();

@@ -29,7 +29,6 @@ export class TerminalOrchestratorService extends EventEmitter {
   private lifecycleService!: TerminalLifecycleService;
   private metricsService!: TerminalMetricsService;
   private circuitManager!: CircuitBreakerManager;
-  private configManager!: ConfigManager;
   
   // Orchestration state
   private sessions: Map<string, OrchestratedSession> = new Map();
@@ -58,7 +57,6 @@ export class TerminalOrchestratorService extends EventEmitter {
       this.lifecycleService = TerminalLifecycleService.getInstance();
       this.metricsService = TerminalMetricsService.getInstance();
       this.circuitManager = CircuitBreakerManager.getInstance();
-      this.configManager = ConfigManager.getInstance();
       
       // Setup event listeners
       this.setupEventListeners();
@@ -106,7 +104,7 @@ export class TerminalOrchestratorService extends EventEmitter {
    * Setup database circuit breaker
    */
   private setupDatabaseCircuit(): void {
-    const config = this.configManager.getConfig();
+    const config = terminalConfig;
     
     this.circuitManager.getCircuit('database', {
       threshold: config.resilience.circuitBreaker.threshold,
@@ -118,12 +116,12 @@ export class TerminalOrchestratorService extends EventEmitter {
         
         if (state === 'open') {
           // Switch to memory-only mode
-          this.configManager.updateConfig({ mode: 'memory' });
+          console.log('[Orchestrator] Database circuit open, using memory-only mode');
         } else if (state === 'closed') {
           // Restore hybrid mode
           const env = process.env.NODE_ENV || 'development';
           if (env === 'production') {
-            this.configManager.updateConfig({ mode: 'hybrid' });
+            console.log('[Orchestrator] Database circuit closed, restored hybrid mode');
           }
         }
       }
@@ -159,7 +157,7 @@ export class TerminalOrchestratorService extends EventEmitter {
       );
       
       // 3. Skip database persistence for now (no prisma import)
-      if (this.configManager.isDatabaseEnabled()) {
+      if (terminalConfig.database.enabled) {
         const dbCircuit = this.circuitManager.getCircuit('database');
         
         await dbCircuit.executeWithFallback(
@@ -232,7 +230,7 @@ export class TerminalOrchestratorService extends EventEmitter {
       this.memoryService.closeSession(sessionId);
       
       // 3. Skip database update for now (no prisma import)
-      if (this.configManager.isDatabaseEnabled()) {
+      if (terminalConfig.database.enabled) {
         const dbCircuit = this.circuitManager.getCircuit('database');
         
         await dbCircuit.executeWithFallback(
@@ -431,8 +429,8 @@ export class TerminalOrchestratorService extends EventEmitter {
       initialized: this.initialized,
       sessions: this.sessions.size,
       config: {
-        mode: this.configManager.getConfig().mode,
-        databaseEnabled: this.configManager.isDatabaseEnabled()
+        mode: terminalConfig.mode,
+        databaseEnabled: terminalConfig.database.enabled
       },
       services: {
         memory: this.memoryService.getAllSessions().length,
@@ -460,7 +458,7 @@ export class TerminalOrchestratorService extends EventEmitter {
     checks.memory = memUsage.heapUsed < 3 * 1024 * 1024 * 1024; // 3GB limit
     
     // Check database
-    if (this.configManager.isDatabaseEnabled()) {
+    if (terminalConfig.database.enabled) {
       const dbCircuit = this.circuitManager.getCircuit('database');
       
       try {

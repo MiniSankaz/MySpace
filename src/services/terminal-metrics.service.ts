@@ -149,7 +149,7 @@ export class TerminalMetricsService extends EventEmitter {
    * Start monitoring
    */
   private startMonitoring(): void {
-    const config = configManager.getConfig().monitoring;
+    const config = terminalConfig.monitoring;
     
     if (!config.enabled) {
       console.log('[Metrics] Monitoring disabled');
@@ -267,7 +267,7 @@ export class TerminalMetricsService extends EventEmitter {
    * Check for alert conditions
    */
   private checkAlerts(): void {
-    const config = configManager.getConfig().monitoring.alertThresholds;
+    const config = terminalConfig.monitoring.alertThresholds;
     const alerts: string[] = [];
     
     // Memory alert
