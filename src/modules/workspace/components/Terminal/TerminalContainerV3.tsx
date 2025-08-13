@@ -413,10 +413,17 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   // Suspend sessions for a project
   const suspendProjectSessions = async (projectId: string) => {
     try {
+      // Save current layout before suspending
+      saveProjectLayout(currentLayout);
+      console.log(`[Terminal] Saving layout ${currentLayout} for project ${projectId} before suspension`);
+      
       const response = await fetch('/api/terminal/suspend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId })
+        body: JSON.stringify({ 
+          projectId,
+          uiState: { currentLayout } 
+        })
       });
       
       if (response.ok) {
@@ -454,6 +461,22 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
           // Restore UI state if available
           if (data.uiState?.currentLayout) {
             setCurrentLayout(data.uiState.currentLayout);
+            console.log(`[Terminal] Restored layout ${data.uiState.currentLayout} from resume data`);
+          } else {
+            // Load saved layout from localStorage as fallback
+            try {
+              const savedLayouts = localStorage.getItem('terminalLayouts');
+              if (savedLayouts) {
+                const layouts = JSON.parse(savedLayouts);
+                const projectLayout = layouts[projectId];
+                if (projectLayout && LAYOUTS[projectLayout as LayoutType]) {
+                  setCurrentLayout(projectLayout as LayoutType);
+                  console.log(`[Terminal] Restored layout ${projectLayout} from localStorage for project ${projectId}`);
+                }
+              }
+            } catch (error) {
+              console.error('[Terminal] Failed to restore layout from localStorage:', error);
+            }
           }
           
           console.log(`[TerminalContainer] Resumed ${data.sessions.length} sessions for project ${projectId}`);

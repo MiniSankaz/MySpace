@@ -922,11 +922,43 @@ export class InMemoryTerminalService extends EventEmitter {
       }
     });
     
+    // Reset counter based on resumed sessions
+    if (resumedSessions.length > 0) {
+      let maxTerminalNumber = 0;
+      resumedSessions.forEach(session => {
+        if (session.tabName) {
+          const match = session.tabName.match(/Terminal (\d+)/);
+          if (match) {
+            maxTerminalNumber = Math.max(maxTerminalNumber, parseInt(match[1]));
+          }
+        }
+      });
+      this.sessionCounters.set(projectId, maxTerminalNumber);
+      console.log(`[InMemoryTerminalService] Reset counter for project ${projectId} to ${maxTerminalNumber} based on resumed sessions`);
+    }
+    
     return {
       resumed: resumedSessions.length > 0,
       sessions: resumedSessions,
-      uiState: { currentLayout: '1x1' } // Default layout
+      uiState: { 
+        currentLayout: this.projectLayouts.get(projectId) || '1x1' // Get saved layout or default
+      }
     };
+  }
+  
+  /**
+   * Save project layout
+   */
+  public saveProjectLayout(projectId: string, layout: string): void {
+    this.projectLayouts.set(projectId, layout);
+    console.log(`[InMemoryTerminalService] Saved layout ${layout} for project ${projectId}`);
+  }
+  
+  /**
+   * Get project layout
+   */
+  public getProjectLayout(projectId: string): string | null {
+    return this.projectLayouts.get(projectId) || null;
   }
   
   /**

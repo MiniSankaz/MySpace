@@ -17,7 +17,7 @@ try {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { projectId } = body;
+    const { projectId, uiState } = body;
     
     if (!projectId) {
       return NextResponse.json(
@@ -31,6 +31,12 @@ export async function POST(request: NextRequest) {
         { error: 'Terminal service not available' },
         { status: 503 }
       );
+    }
+    
+    // Save layout if provided
+    if (uiState?.currentLayout) {
+      inMemoryTerminalService.saveProjectLayout(projectId, uiState.currentLayout);
+      console.log(`[Terminal Suspend API] Saved layout ${uiState.currentLayout} for project ${projectId}`);
     }
     
     // Suspend all sessions for the project (now async)
