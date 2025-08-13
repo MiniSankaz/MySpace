@@ -80,6 +80,9 @@ export class InMemoryTerminalService extends EventEmitter {
   // Session counter for tab naming
   private sessionCounters: Map<string, number> = new Map();
   
+  // Project layouts storage
+  private projectLayouts: Map<string, string> = new Map();
+  
   // Suspension state tracking
   private suspendedSessions: Map<string, {
     suspendedAt: Date;
