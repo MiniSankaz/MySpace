@@ -128,7 +128,6 @@ export class LocalStorageProvider extends BaseStorageProvider {
       this.projectSessions.get(params.projectId)!.add(session.id);
       
       // Auto-focus if under limit and requested
-      const projectFocused = this.focusedSessions.get(params.projectId) || new Set();
       const autoFocus = params.metadata?.autoFocus !== false;
       if (autoFocus && projectFocused.size < this.maxFocusedPerProject) {
         await this.setSessionFocus(session.id, true);

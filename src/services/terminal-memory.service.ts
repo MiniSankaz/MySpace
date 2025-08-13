@@ -64,6 +64,11 @@ export class InMemoryTerminalService extends EventEmitter {
   private readonly MAX_SESSIONS_PER_PROJECT = 20; // Increased for multi-terminal work
   private sessionActivity: Map<string, Date> = new Map();
   
+  // CRITICAL FIX: Circuit breaker protection against infinite loops
+  private creationRateLimit = new Map<string, number[]>(); // projectId -> timestamps
+  private readonly MAX_CREATIONS_PER_MINUTE = 10;
+  private circuitBreakerTripped = new Map<string, boolean>();
+  
   // WebSocket readiness tracking
   private wsReadiness: Map<string, boolean> = new Map();
   private wsReadyPromises: Map<string, Promise<boolean>> = new Map();
