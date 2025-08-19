@@ -1,5 +1,4 @@
 import express from "express";
-import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort } from '@/shared/config/ports.config';
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -25,7 +24,26 @@ import { startPortfolioCalculationJob } from "./jobs/portfolio-calculator";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 4500;
+
+// Portfolio service configuration with fallback
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4160; // Default portfolio port
+
+// Always use fallback configuration for simplicity
+const getServiceUrl = (service: string) => {
+  const servicePorts: Record<string, number> = {
+    frontend: 4100,
+    gateway: 4110,
+    user: 4120,
+    ai: 4130,
+    terminal: 4140,
+    workspace: 4150,
+    portfolio: 4160,
+    market: 4170
+  };
+  const port = servicePorts[service] || 4000;
+  return `http://127.0.0.1:${port}`;
+};
+
 const SERVICE_NAME = "portfolio";
 
 // Initialize Prisma Client
@@ -35,10 +53,12 @@ export const prisma = new PrismaClient();
 app.use(helmet());
 // CORS configuration - support both localhost and 127.0.0.1
 const corsOrigins = [
-  "http://${getFrontendPort()}",
-  "http://127.0.0.1:3000",
-  "http://${getGatewayPort()}", // Gateway service
-  "http://127.0.0.1:4000"  // Gateway service
+  getServiceUrl('frontend'),
+  "http://127.0.0.1:3000", // Legacy support
+  getServiceUrl('gateway'),
+  "http://127.0.0.1:4000", // Legacy support
+  "http://localhost:4100", // Frontend
+  "http://localhost:4110"  // Gateway
 ];
 
 // Add custom FRONTEND_URL if defined

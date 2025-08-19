@@ -95,7 +95,8 @@ export class PortConfig {
    */
   public getServiceUrl(serviceName: ServiceName, protocol: 'http' | 'https' = 'http'): string {
     const port = this.getServicePort(serviceName);
-    return `${protocol}://127.0.0.1:${port}`;
+    const host = process.env.SERVICE_HOST || '127.0.0.1';
+    return `${protocol}://${host}:${port}`;
   }
 
   /**

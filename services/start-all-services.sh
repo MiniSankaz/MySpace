@@ -15,23 +15,32 @@ start_service() {
     
     echo "Starting $service_name on port $port..."
     cd "$service_dir"
-    npm start &
+    
+    # Set PORT environment variable and start service
+    PORT=$port npm start &
     local pid=$!
     echo "$pid" > "../$service_name.pid"
     cd ..
-    sleep 2
+    sleep 3
 }
 
-# Start services
-echo "📦 Starting Gateway Service (Port 4000)..."
-start_service "gateway" "gateway" "4000"
+# Start services using new v3.0 port configuration
+echo "📦 Starting Gateway Service (Port 4110)..."
+start_service "gateway" "gateway" "4110"
 
-echo "👤 Starting User Management Service (Port 4100)..."
-start_service "user-management" "user-management" "4100"
+echo "👤 Starting User Management Service (Port 4120)..."
+start_service "user-management" "user-management" "4120"
 
-echo "🖥️  Starting Terminal Service (Port 4300)..."
-start_service "terminal" "terminal" "4300"
+echo "🤖 Starting AI Assistant Service (Port 4130)..."
+start_service "ai-assistant" "ai-assistant" "4130"
 
+echo "🖥️  Starting Terminal Service (Port 4140)..."
+start_service "terminal" "terminal" "4140"
+
+echo "📁 Starting Workspace Service (Port 4150)..."
+start_service "workspace" "workspace" "4150"
+
+echo "💼 Portfolio Service (Port 4160) - Already running..."
 echo "📊 Starting Market Data Service (Port 4170)..."
 start_service "market-data" "market-data" "4170"
 

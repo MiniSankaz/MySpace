@@ -7,6 +7,8 @@ import {
   StockPriceHistory,
   TradeType,
   TradeStatus,
+  Market,
+  Currency,
 } from "./index";
 
 // In-memory storage
@@ -611,6 +613,9 @@ class MockDatabase {
         name: mockStock.name,
         exchange: mockStock.exchange,
         sector: mockStock.sector,
+        market: mockStock.exchange === 'NASDAQ' || mockStock.exchange === 'NYSE' ? Market.NYSE : Market.SET,
+        country: mockStock.exchange === 'NASDAQ' || mockStock.exchange === 'NYSE' ? 'US' : 'TH',
+        currency: mockStock.exchange === 'NASDAQ' || mockStock.exchange === 'NYSE' ? Currency.USD : Currency.THB,
         currentPrice: mockStock.price,
         previousClose: mockStock.price,
         dayChange: 0,

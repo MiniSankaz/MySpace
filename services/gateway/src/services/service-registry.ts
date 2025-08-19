@@ -29,9 +29,9 @@ export class ServiceRegistry {
     
     this.register({
       id: "user-management-1",
-      name: "user-management",
+      name: "user-management", 
       host: "localhost",
-      port: 4120,  // Changed from 4100 to 4120
+      port: 4120,  // Updated to v3.0 port
       healthUrl: "http://localhost:4120/health",
       isHealthy: true,
       metadata: {
@@ -44,7 +44,7 @@ export class ServiceRegistry {
       id: "ai-assistant-1",
       name: "ai-assistant",
       host: "localhost",
-      port: 4130,  // Changed from 4200 to 4130
+      port: 4130,  // Updated to v3.0 port
       healthUrl: "http://localhost:4130/health",
       isHealthy: true,
       metadata: {
@@ -57,7 +57,7 @@ export class ServiceRegistry {
       id: "terminal-1",
       name: "terminal",
       host: "localhost",
-      port: 4140,  // Changed from 4300 to 4140
+      port: 4140,  // Updated to v3.0 port
       healthUrl: "http://localhost:4140/health",
       isHealthy: true,
       metadata: {
@@ -67,10 +67,10 @@ export class ServiceRegistry {
     });
 
     this.register({
-      id: "workspace-1",
+      id: "workspace-1", 
       name: "workspace",
       host: "localhost",
-      port: 4150,  // Changed from 4400 to 4150
+      port: 4150,  // Updated to v3.0 port
       healthUrl: "http://localhost:4150/health",
       isHealthy: true,
       metadata: {
@@ -81,9 +81,9 @@ export class ServiceRegistry {
 
     this.register({
       id: "portfolio-1",
-      name: "portfolio",
+      name: "portfolio", 
       host: "localhost",
-      port: 4160,  // Changed from 4500 to 4160
+      port: 4160,  // Updated to v3.0 port
       healthUrl: "http://localhost:4160/health",
       isHealthy: true,
       metadata: {

@@ -252,7 +252,7 @@ router.get("/:id/value", async (req: Request, res: Response) => {
       return {
         ...h,
         currentPrice,
-        marketValue: currentPrice * quantity,
+        marketValue: Number(currentPrice) * Number(quantity),
         change: quote?.change || 0,
         changePercent: quote?.changePercent || 0
       };

@@ -11,30 +11,30 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getWebSocketUrl = exports.getServiceUrl = exports.getServicePort = exports.PortConfig = void 0;
 class PortConfig {
-    static instance;
-    // New port assignments (migrated from old ports)
-    defaultPorts = {
-        frontend: 4100, // was 3000
-        gateway: 4110, // was 4000 
-        user: 4120, // was 4100
-        ai: 4130, // was 4200
-        terminal: 4140, // was 4300
-        workspace: 4150, // was 4400
-        portfolio: 4160, // was 4500
-        market: 4170 // was 4600
-    };
-    // Old to new port mapping for migration
-    portMigrationMap = {
-        3000: 4100, // Frontend
-        4000: 4110, // Gateway
-        4100: 4120, // User Management (was old User port)
-        4200: 4130, // AI Assistant
-        4300: 4140, // Terminal
-        4400: 4150, // Workspace
-        4500: 4160, // Portfolio
-        4600: 4170 // Market Data
-    };
-    constructor() { }
+    constructor() {
+        // New port assignments (migrated from old ports)
+        this.defaultPorts = {
+            frontend: 4100, // was 3000
+            gateway: 4110, // was 4000 
+            user: 4120, // was 4100
+            ai: 4130, // was 4200
+            terminal: 4140, // was 4300
+            workspace: 4150, // was 4400
+            portfolio: 4160, // was 4500
+            market: 4170 // was 4600
+        };
+        // Old to new port mapping for migration
+        this.portMigrationMap = {
+            3000: 4100, // Frontend
+            4000: 4110, // Gateway
+            4100: 4120, // User Management (was old User port)
+            4200: 4130, // AI Assistant
+            4300: 4140, // Terminal
+            4400: 4150, // Workspace
+            4500: 4160, // Portfolio
+            4600: 4170 // Market Data
+        };
+    }
     static getInstance() {
         if (!PortConfig.instance) {
             PortConfig.instance = new PortConfig();
@@ -151,4 +151,3 @@ const getWebSocketUrl = (serviceName) => {
     return PortConfig.getInstance().getWebSocketUrl(serviceName);
 };
 exports.getWebSocketUrl = getWebSocketUrl;
-//# sourceMappingURL=ports.config.js.map

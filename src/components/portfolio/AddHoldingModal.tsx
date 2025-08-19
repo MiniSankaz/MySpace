@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, Search } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Search, ChevronDown, Loader2 } from "lucide-react";
 
 interface AddHoldingModalProps {
   isOpen: boolean;
@@ -13,6 +13,13 @@ interface AddHoldingModalProps {
     averagePrice: number;
     purchaseDate?: string;
   }) => Promise<void>;
+}
+
+interface StockSearchResult {
+  symbol: string;
+  name: string;
+  market: string;
+  currency: string;
 }
 
 export function AddHoldingModal({ 
@@ -29,6 +36,11 @@ export function AddHoldingModal({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,10 +88,58 @@ export function AddHoldingModal({
     }
   };
 
+  // Search stocks function
+  const searchStocks = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:4170/api/v1/market/search?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setSearchResults(data.data);
+        setShowDropdown(data.data.length > 0);
+      } else {
+        setSearchResults([]);
+        setShowDropdown(false);
+      }
+    } catch (err) {
+      console.error('Stock search error:', err);
+      setSearchResults([]);
+      setShowDropdown(false);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError(null);
+
+    // Handle stock symbol search
+    if (name === 'symbol') {
+      // Clear previous timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      // Debounced search
+      searchTimeoutRef.current = setTimeout(() => {
+        searchStocks(value);
+      }, 500);
+    }
+  };
+
+  const selectStock = (stock: StockSearchResult) => {
+    setFormData(prev => ({ ...prev, symbol: stock.symbol }));
+    setShowDropdown(false);
+    setSearchResults([]);
   };
 
   const handleClose = () => {
@@ -91,9 +151,35 @@ export function AddHoldingModal({
         purchaseDate: new Date().toISOString().split('T')[0],
       });
       setError(null);
+      setSearchResults([]);
+      setShowDropdown(false);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
       onClose();
     }
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!isOpen || !portfolioId) return null;
 
@@ -122,7 +208,7 @@ export function AddHoldingModal({
             </div>
           )}
 
-          <div>
+          <div className="relative" ref={dropdownRef}>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Stock Symbol *
             </label>
@@ -132,13 +218,57 @@ export function AddHoldingModal({
                 name="symbol"
                 value={formData.symbol}
                 onChange={handleInputChange}
-                placeholder="e.g., AAPL, MSFT"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                onFocus={() => formData.symbol.length >= 2 && searchResults.length > 0 && setShowDropdown(true)}
+                placeholder="e.g., AAPL, MSFT or search by name"
+                className="w-full pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                 disabled={isSubmitting}
                 required
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+              )}
+              {!isSearching && showDropdown && (
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              )}
             </div>
+
+            {/* Search Results Dropdown */}
+            {showDropdown && searchResults.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {searchResults.map((stock, index) => (
+                  <button
+                    key={`${stock.symbol}-${index}`}
+                    type="button"
+                    onClick={() => selectStock(stock)}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white text-sm">
+                          {stock.symbol}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {stock.name}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500">
+                        {stock.market}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* No results message */}
+            {showDropdown && searchResults.length === 0 && formData.symbol.length >= 2 && !isSearching && (
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg px-4 py-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  No stocks found for "{formData.symbol}"
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

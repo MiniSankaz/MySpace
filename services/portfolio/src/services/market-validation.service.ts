@@ -137,7 +137,7 @@ export class MarketValidationService {
       [Market.ASX]: { open: '10:00', close: '16:00' }
     };
     
-    const hours = marketHours[market] || { open: '09:00', close: '17:00' };
+    const hours = marketHours[market as keyof typeof marketHours] || { open: '09:00', close: '17:00' };
     
     return {
       timezone: info.timezone,

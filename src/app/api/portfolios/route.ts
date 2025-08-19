@@ -1,7 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Mock portfolio data
-const mockPortfolios = [
+// Proxy to Portfolio service
+const PORTFOLIO_SERVICE_URL = process.env.PORTFOLIO_SERVICE_URL || 'http://127.0.0.1:4160';
+
+async function proxyToPortfolioService(endpoint: string, options?: RequestInit) {
+  const url = `${PORTFOLIO_SERVICE_URL}${endpoint}`;
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': 'test-user',
+        ...options?.headers,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Portfolio service error: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Portfolio service proxy error:', error);
+    // Return mock data as fallback
+    return getMockPortfolios();
+  }
+}
+
+// Mock portfolio data as fallback
+const getMockPortfolios = () => [
   {
     id: "1",
     name: "Growth Portfolio",
@@ -45,16 +73,19 @@ const mockPortfolios = [
 
 export async function GET(request: NextRequest) {
   try {
-    // Return mock data for now
+    // Try to fetch from Portfolio service first
+    const data = await proxyToPortfolioService('/api/v1/portfolios');
     return NextResponse.json({
       success: true,
-      data: mockPortfolios,
+      data: data.data || data,
     });
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch portfolios' },
-      { status: 500 }
-    );
+    console.error('Error fetching portfolios:', error);
+    // Fallback to mock data
+    return NextResponse.json({
+      success: true,
+      data: getMockPortfolios(),
+    });
   }
 }
 

@@ -67,7 +67,7 @@ router.post('/test/:provider', async (req: Request, res: Response) => {
     logger.error(`Error testing ${req.params.provider} provider:`, error);
     res.status(500).json({
       success: false,
-      error: `Failed to test ${req.params.provider} provider: ${error.message}`
+      error: `Failed to test ${req.params.provider} provider: ${error instanceof Error ? error.message : String(error)}`
     });
   }
 });

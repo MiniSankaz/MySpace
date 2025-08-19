@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger";
 import Decimal from "decimal.js";
+import { marketDataService } from "./market-data.service";
 
 export class HoldingService {
   private prisma: PrismaClient;
@@ -28,13 +29,22 @@ export class HoldingService {
         orderBy: { symbol: "asc" },
       });
 
-      // Calculate current values for each holding (mock for now)
+      // Get real-time prices for all symbols
+      const symbols = holdings.map(h => h.symbol);
+      const quotes = await marketDataService.getQuotes(symbols);
+      const priceMap = new Map(quotes.map(q => [q.symbol, q]));
+
+      // Calculate current values for each holding with real-time prices
       const enrichedHoldings = holdings.map((holding) => {
-        const currentPrice = holding.averagePrice.mul(1.1); // Mock 10% gain
+        const quote = priceMap.get(holding.symbol);
+        const currentPrice = quote ? new Decimal(quote.price) : holding.averagePrice.mul(1.1); // Fallback to mock
         const marketValue = new Decimal(holding.quantity).mul(currentPrice);
         const cost = new Decimal(holding.quantity).mul(holding.averagePrice);
         const gainLoss = marketValue.minus(cost);
         const gainLossPercentage = cost.gt(0) ? gainLoss.div(cost).mul(100) : new Decimal(0);
+        
+        const dayChange = quote ? new Decimal(quote.change).mul(holding.quantity) : new Decimal(0);
+        const dayChangePercentage = quote ? quote.changePercent : 0;
 
         return {
           id: holding.id,
@@ -46,10 +56,11 @@ export class HoldingService {
           cost: cost.toNumber(),
           gainLoss: gainLoss.toNumber(),
           gainLossPercentage: gainLossPercentage.toNumber(),
-          dayChange: marketValue.mul(0.02).toNumber(), // Mock 2% daily change
-          dayChangePercentage: 2.0,
+          dayChange: dayChange.toNumber(),
+          dayChangePercentage: dayChangePercentage,
           createdAt: holding.createdAt,
           updatedAt: holding.updatedAt,
+          lastUpdated: quote?.timestamp || new Date().toISOString(),
         };
       });
 

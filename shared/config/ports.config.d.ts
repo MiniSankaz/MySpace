@@ -1,143 +1,75 @@
 /**
  * Centralized Port Configuration System
+ * Safe port migration for all services
  *
- * This module provides a single source of truth for all port configurations
- * across the entire application. It supports environment variable overrides
- * and provides type-safe access to port configurations.
- *
- * @version 3.0.0
- * @since 2025-08-19
+ * Usage:
+ * - import { PortConfig } from 'shared/config/ports.config';
+ * - const config = PortConfig.getInstance();
+ * - const port = config.getServicePort('ai');
  */
-export interface PortConfiguration {
-    frontend: {
-        main: number;
-        devServer?: number;
-    };
-    gateway: {
-        main: number;
-        admin?: number;
-    };
-    services: {
-        userManagement: number;
-        aiAssistant: number;
-        terminal: number;
-        workspace: number;
-        portfolio: number;
-        marketData: number;
-    };
-    websocket: {
-        system: number;
-        claude: number;
-        terminal: number;
-        portfolio: number;
-    };
-    database: {
-        postgres: number;
-        prismaStudio: number;
-        redis?: number;
-    };
-    monitoring?: {
-        prometheus?: number;
-        grafana?: number;
-    };
+export interface ServicePortMapping {
+    frontend: number;
+    gateway: number;
+    user: number;
+    ai: number;
+    terminal: number;
+    workspace: number;
+    portfolio: number;
+    market: number;
 }
-export type ServiceName = keyof PortConfiguration['services'];
-export type WebSocketType = keyof PortConfiguration['websocket'];
-export type DatabaseType = keyof PortConfiguration['database'];
-/**
- * Port configuration singleton class
- */
+export type ServiceName = keyof ServicePortMapping;
 export declare class PortConfig {
     private static instance;
-    private config;
-    private envPrefix;
+    private readonly defaultPorts;
+    private readonly portMigrationMap;
     private constructor();
-    /**
-     * Get singleton instance
-     */
     static getInstance(): PortConfig;
     /**
-     * Load configuration with environment overrides
+     * Get port for a specific service
+     * Supports environment variable override
      */
-    private loadConfiguration;
+    getServicePort(serviceName: ServiceName): number;
     /**
-     * Get base port configuration
+     * Get all service ports
      */
-    private getBaseConfiguration;
-    /**
-     * Apply environment variable overrides
-     */
-    private applyEnvironmentOverrides;
-    /**
-     * Get complete configuration
-     */
-    getConfig(): PortConfiguration;
-    /**
-     * Get frontend port
-     */
-    getFrontendPort(): number;
-    /**
-     * Get gateway port
-     */
-    getGatewayPort(): number;
-    /**
-     * Get service port by name
-     */
-    getServicePort(service: ServiceName): number;
-    /**
-     * Get WebSocket port by type
-     */
-    getWebSocketPort(type: WebSocketType): number;
-    /**
-     * Get database port by type
-     */
-    getDatabasePort(db: DatabaseType): number | undefined;
+    getAllServicePorts(): ServicePortMapping;
     /**
      * Get service URL
      */
-    getServiceUrl(service: ServiceName, host?: string, protocol?: string): string;
+    getServiceUrl(serviceName: ServiceName, protocol?: 'http' | 'https'): string;
     /**
-     * Get WebSocket URL
+     * Get WebSocket URL for a service
      */
-    getWebSocketUrl(type: WebSocketType, host?: string, secure?: boolean): string;
+    getWebSocketUrl(serviceName: ServiceName): string;
     /**
-     * Get gateway API URL for a service
+     * Check if a port should be migrated
      */
-    getGatewayServiceUrl(service: ServiceName, host?: string, protocol?: string): string;
+    shouldMigratePort(oldPort: number): boolean;
     /**
-     * Validate port configuration for conflicts
+     * Get new port for migration
      */
-    validatePorts(): {
+    getNewPortForMigration(oldPort: number): number | null;
+    /**
+     * Get migration mapping
+     */
+    getPortMigrationMap(): Record<number, number>;
+    /**
+     * Validate that all services have different ports
+     */
+    validatePortConfiguration(): {
         valid: boolean;
-        conflicts: Array<{
-            port: number;
-            services: string[];
-        }>;
+        errors: string[];
     };
-    private addPortToMap;
     /**
-     * Generate environment variable template
+     * Reset singleton instance (for testing)
      */
-    generateEnvTemplate(): string;
-    /**
-     * Export configuration as JSON
-     */
-    toJSON(): string;
+    static resetInstance(): void;
 }
-export declare const portConfig: PortConfig;
-export declare const getPorts: () => PortConfiguration;
-export declare const getFrontendPort: () => number;
-export declare const getGatewayPort: () => number;
-export declare const getServicePort: (service: ServiceName) => number;
-export declare const getServiceUrl: (service: ServiceName, host?: string, protocol?: string) => string;
-export declare const getWebSocketUrl: (type: WebSocketType, host?: string, secure?: boolean) => string;
-export declare const getGatewayServiceUrl: (service: ServiceName, host?: string, protocol?: string) => string;
-export declare const validatePorts: () => {
-    valid: boolean;
-    conflicts: Array<{
-        port: number;
-        services: string[];
-    }>;
-};
-export type { ServiceName, WebSocketType, DatabaseType } from './ports.config';
+export default PortConfig;
+/**
+ * Convenience functions for direct usage
+ */
+export declare const getServicePort: (serviceName: ServiceName) => number;
+export declare const getServiceUrl: (serviceName: ServiceName, protocol?: "http" | "https") => string;
+export declare const getWebSocketUrl: (serviceName: ServiceName) => string;
 //# sourceMappingURL=ports.config.d.ts.map

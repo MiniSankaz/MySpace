@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort } from '@/shared/config/ports.config';
+// Market data service fallback config
 import { logger } from '../utils/logger';
 import { Market } from '../types';
 import { MarketValidationService } from './market-validation.service';
@@ -64,7 +64,7 @@ export class MarketDataService {
   private maxRetries: number = 3;
 
   constructor() {
-    this.baseUrl = process.env.MARKET_DATA_URL || `http://${getServiceUrl("marketData")}`;
+    this.baseUrl = process.env.MARKET_DATA_URL || 'http://127.0.0.1:4170';
     this.cache = new Map();
   }
 
@@ -106,7 +106,7 @@ export class MarketDataService {
         }
 
         const currentPrice = meta.regularMarketPrice || quote.close?.[quote.close.length - 1] || 0;
-        const previousClose = meta.previousClose || meta.chartPreviousClose || quote.close?.[quote.close.length - 2] || currentPrice;
+        const previousClose = meta.previousClose || quote.close?.[quote.close.length - 2] || currentPrice;
         const change = currentPrice - previousClose;
         const changePercent = previousClose !== 0 ? (change / previousClose) * 100 : 0;
 
@@ -312,7 +312,10 @@ export class MarketDataService {
         );
 
         if (response.data?.success && response.data?.data) {
-          const fetchedQuotes = response.data.data;
+          const quotesData = response.data.data;
+          
+          // Convert object to array format
+          const fetchedQuotes = Object.values(quotesData) as MarketQuote[];
           
           // Update cache for each quote and reset failure count
           fetchedQuotes.forEach((quote: MarketQuote) => {
