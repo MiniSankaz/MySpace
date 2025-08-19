@@ -1,29 +1,29 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { authClient } from '@/core/auth/auth-client';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/core/auth/auth-client";
 
 export function LoginForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    emailOrUsername: '',
-    password: '',
-    rememberMe: false
+    emailOrUsername: "",
+    password: "",
+    rememberMe: false,
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const response = await fetch('/api/ums/auth/login', {
-        method: 'POST',
+      const response = await fetch("/api/ums/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
@@ -33,25 +33,20 @@ export function LoginForm() {
       if (data.success) {
         // Store tokens using auth client
         authClient.storeTokens(data.tokens);
-        
-        // Store user info
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Set cookie for server-side auth
-        // If expiresIn is -1 (never expire), set max-age to 10 years
-        const maxAge = data.tokens.expiresIn === -1 ? 315360000 : data.tokens.expiresIn;
-        document.cookie = `accessToken=${data.tokens.accessToken}; path=/; max-age=${maxAge}`;
-        
+
+        // Store user info using auth client
+        await authClient.storeUser(data.user);
+
         // Initialize auth client for auto-refresh
         authClient.init();
-        
+
         // Redirect to dashboard
-        router.push('/dashboard');
+        router.push("/dashboard");
       } else {
-        setError(data.error || 'Login failed');
+        setError(data.error || "Login failed");
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError("An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -123,13 +118,19 @@ export function LoginForm() {
                   setFormData({ ...formData, rememberMe: e.target.checked })
                 }
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-900"
+              >
                 Remember me
               </label>
             </div>
 
             <div className="text-sm">
-              <a href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <a
+                href="/forgot-password"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
                 Forgot your password?
               </a>
             </div>
@@ -141,14 +142,17 @@ export function LoginForm() {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </div>
 
           <div className="text-center">
             <span className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <a href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Don't have an account?{" "}
+              <a
+                href="/register"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
                 Sign up
               </a>
             </span>

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { terminalLoggingService } from '@/services/terminal-logging.service';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { terminalLoggingService } from "@/services/terminal-logging.service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,27 +11,36 @@ export async function GET(req: NextRequest) {
     // }
 
     const { searchParams } = new URL(req.url);
-    const sessionId = searchParams.get('sessionId');
-    const userId = searchParams.get('userId');
-    const limit = parseInt(searchParams.get('limit') || '1000');
+    const sessionId = searchParams.get("sessionId");
+    const userId = searchParams.get("userId");
+    const limit = parseInt(searchParams.get("limit") || "1000");
 
     if (sessionId) {
       // Get logs for specific session
-      const logs = await terminalLoggingService.getSessionLogs(sessionId, limit);
+      const logs = await terminalLoggingService.getSessionLogs(
+        sessionId,
+        limit,
+      );
       return NextResponse.json({ logs });
     } else if (userId) {
       // Get user analytics
-      const days = parseInt(searchParams.get('days') || '30');
-      const analytics = await terminalLoggingService.getUserAnalytics(userId, days);
+      const days = parseInt(searchParams.get("days") || "30");
+      const analytics = await terminalLoggingService.getUserAnalytics(
+        userId,
+        days,
+      );
       return NextResponse.json({ analytics });
     } else {
-      return NextResponse.json({ error: 'sessionId or userId required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "sessionId or userId required" },
+        { status: 400 },
+      );
     }
   } catch (error) {
-    console.error('Failed to get terminal logs:', error);
+    console.error("Failed to get terminal logs:", error);
     return NextResponse.json(
-      { error: 'Failed to retrieve logs' },
-      { status: 500 }
+      { error: "Failed to retrieve logs" },
+      { status: 500 },
     );
   }
 }

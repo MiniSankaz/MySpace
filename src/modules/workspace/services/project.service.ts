@@ -1,12 +1,18 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import { Project, FileNode, CreateProjectDTO, UpdateProjectDTO, Script } from '../types';
-import prisma from '@/core/database/prisma';
+import { promises as fs } from "fs";
+import path from "path";
+import {
+  Project,
+  FileNode,
+  CreateProjectDTO,
+  UpdateProjectDTO,
+  Script,
+} from "../types";
+import prisma from "@/core/database/prisma";
 
 export class ProjectService {
   async createProject(data: CreateProjectDTO): Promise<Project> {
     const structure = await this.scanProjectStructure(data.path);
-    
+
     const project = await prisma.project.create({
       data: {
         name: data.name,
@@ -16,9 +22,9 @@ export class ProjectService {
         envVariables: {},
         scripts: [],
         settings: {
-          theme: 'dark',
+          theme: "dark",
           fontSize: 14,
-          fontFamily: 'monospace',
+          fontFamily: "monospace",
           terminalHeight: 50,
           autoSave: true,
           autoReconnect: true,
@@ -31,7 +37,7 @@ export class ProjectService {
 
   async getProjects(): Promise<Project[]> {
     const projects = await prisma.project.findMany({
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { updatedAt: "desc" },
     });
 
     return projects.map(this.formatProject);
@@ -47,7 +53,7 @@ export class ProjectService {
 
   async updateProject(id: string, data: UpdateProjectDTO): Promise<Project> {
     const updateData: any = { ...data, updatedAt: new Date() };
-    
+
     // Convert TypeScript objects to JSON for Prisma
     if (data.scripts) {
       updateData.scripts = data.scripts as any;
@@ -73,12 +79,20 @@ export class ProjectService {
     });
   }
 
-  async scanProjectStructure(projectPath: string, maxDepth: number = 3): Promise<FileNode[]> {
+  async scanProjectStructure(
+    projectPath: string,
+    maxDepth: number = 3,
+  ): Promise<FileNode[]> {
     try {
-      const structure = await this.scanDirectory(projectPath, projectPath, 0, maxDepth);
+      const structure = await this.scanDirectory(
+        projectPath,
+        projectPath,
+        0,
+        maxDepth,
+      );
       return structure;
     } catch (error) {
-      console.error('Error scanning project structure:', error);
+      console.error("Error scanning project structure:", error);
       return [];
     }
   }
@@ -87,7 +101,7 @@ export class ProjectService {
     dirPath: string,
     basePath: string,
     currentDepth: number,
-    maxDepth: number
+    maxDepth: number,
   ): Promise<FileNode[]> {
     if (currentDepth >= maxDepth) {
       return [];
@@ -96,8 +110,15 @@ export class ProjectService {
     const items = await fs.readdir(dirPath, { withFileTypes: true });
     const nodes: FileNode[] = [];
 
-    const ignoredDirs = ['node_modules', '.git', 'dist', 'build', '.next', 'coverage'];
-    const ignoredFiles = ['.DS_Store', 'Thumbs.db'];
+    const ignoredDirs = [
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      ".next",
+      "coverage",
+    ];
+    const ignoredFiles = [".DS_Store", "Thumbs.db"];
 
     for (const item of items) {
       if (ignoredDirs.includes(item.name) || ignoredFiles.includes(item.name)) {
@@ -108,10 +129,15 @@ export class ProjectService {
       const relativePath = path.relative(basePath, itemPath);
 
       if (item.isDirectory()) {
-        const children = await this.scanDirectory(itemPath, basePath, currentDepth + 1, maxDepth);
+        const children = await this.scanDirectory(
+          itemPath,
+          basePath,
+          currentDepth + 1,
+          maxDepth,
+        );
         nodes.push({
           name: item.name,
-          type: 'directory',
+          type: "directory",
           path: relativePath,
           children,
         });
@@ -119,7 +145,7 @@ export class ProjectService {
         const stats = await fs.stat(itemPath);
         nodes.push({
           name: item.name,
-          type: 'file',
+          type: "file",
           path: relativePath,
           size: stats.size,
           extension: path.extname(item.name),
@@ -131,18 +157,18 @@ export class ProjectService {
       if (a.type === b.type) {
         return a.name.localeCompare(b.name);
       }
-      return a.type === 'directory' ? -1 : 1;
+      return a.type === "directory" ? -1 : 1;
     });
   }
 
   async refreshProjectStructure(id: string): Promise<Project> {
     const project = await this.getProject(id);
     if (!project) {
-      throw new Error('Project not found');
+      throw new Error("Project not found");
     }
 
     const structure = await this.scanProjectStructure(project.path);
-    
+
     const updated = await prisma.project.update({
       where: { id },
       data: {
@@ -154,10 +180,13 @@ export class ProjectService {
     return this.formatProject(updated);
   }
 
-  async addScript(projectId: string, script: Omit<Script, 'id'>): Promise<Project> {
+  async addScript(
+    projectId: string,
+    script: Omit<Script, "id">,
+  ): Promise<Project> {
     const project = await this.getProject(projectId);
     if (!project) {
-      throw new Error('Project not found');
+      throw new Error("Project not found");
     }
 
     const newScript = {
@@ -173,16 +202,16 @@ export class ProjectService {
   async removeScript(projectId: string, scriptId: string): Promise<Project> {
     const project = await this.getProject(projectId);
     if (!project) {
-      throw new Error('Project not found');
+      throw new Error("Project not found");
     }
 
-    const scripts = project.scripts.filter(s => s.id !== scriptId);
+    const scripts = project.scripts.filter((s) => s.id !== scriptId);
     return this.updateProject(projectId, { scripts });
   }
 
   async updateEnvVariables(
     projectId: string,
-    envVariables: Record<string, string>
+    envVariables: Record<string, string>,
   ): Promise<Project> {
     return this.updateProject(projectId, { envVariables });
   }
@@ -190,13 +219,13 @@ export class ProjectService {
   async exportProject(id: string): Promise<string> {
     const project = await this.getProject(id);
     if (!project) {
-      throw new Error('Project not found');
+      throw new Error("Project not found");
     }
 
     const exportData = {
       ...project,
       exportedAt: new Date(),
-      version: '1.0.0',
+      version: "1.0.0",
     };
 
     return JSON.stringify(exportData, null, 2);
@@ -204,8 +233,9 @@ export class ProjectService {
 
   async importProject(jsonData: string): Promise<Project> {
     const data = JSON.parse(jsonData);
-    
-    const { id, createdAt, updatedAt, exportedAt, version, ...projectData } = data;
+
+    const { id, createdAt, updatedAt, exportedAt, version, ...projectData } =
+      data;
 
     return this.createProject({
       name: `${projectData.name} (Imported)`,

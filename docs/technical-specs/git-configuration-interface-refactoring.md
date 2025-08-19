@@ -3,9 +3,11 @@
 ## 1. Overview
 
 ### Business Context
+
 The Git Configuration interface requires refactoring to provide developers with an intuitive, modern git management experience integrated into the Stock Portfolio Management System workspace. The interface must support all standard git operations while maintaining performance and reliability.
 
 ### Technical Scope
+
 - Complete refactoring of existing git interface components
 - Integration with workspace terminal system
 - Real-time git status monitoring via WebSocket
@@ -13,6 +15,7 @@ The Git Configuration interface requires refactoring to provide developers with 
 - TypeScript-first implementation with comprehensive type safety
 
 ### Dependencies
+
 - Existing Terminal System V2 (WebSocket ports 4001-4002)
 - Workspace file management system
 - Next.js 15.4.5 App Router
@@ -21,6 +24,7 @@ The Git Configuration interface requires refactoring to provide developers with 
 ## 2. System Architecture
 
 ### High-Level Architecture
+
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Git UI        │    │   Git Service    │    │   Git Terminal  │
@@ -35,6 +39,7 @@ The Git Configuration interface requires refactoring to provide developers with 
 ```
 
 ### Component Architecture
+
 ```
 GitConfigurationInterface/
 ├── GitStatusPanel/
@@ -56,6 +61,7 @@ GitConfigurationInterface/
 ```
 
 ### Data Flow Architecture
+
 ```
 User Interaction → Component State → Service Layer → Git Commands
       ↓                ↓                ↓              ↓
@@ -69,7 +75,9 @@ User Interaction → Component State → Service Layer → Git Commands
 ### Core Components
 
 #### GitConfigurationInterface
+
 Main container component managing the entire git interface
+
 ```typescript
 interface GitConfigurationInterfaceProps {
   projectId: string;
@@ -92,7 +100,9 @@ interface GitStatus {
 ```
 
 #### QuickBranchSwitcher
+
 Branch selection component with search and status indicators
+
 ```typescript
 interface QuickBranchSwitcherProps {
   branches: Branch[];
@@ -104,17 +114,19 @@ interface QuickBranchSwitcherProps {
 
 interface Branch {
   name: string;
-  type: 'local' | 'remote' | 'tracking';
+  type: "local" | "remote" | "tracking";
   isActive: boolean;
   lastCommit: CommitInfo;
   ahead: number;
   behind: number;
-  status: 'clean' | 'dirty' | 'conflicted';
+  status: "clean" | "dirty" | "conflicted";
 }
 ```
 
 #### VisualStatusIndicators
+
 Visual representation of repository state
+
 ```typescript
 interface VisualStatusIndicatorsProps {
   status: GitStatus;
@@ -128,14 +140,16 @@ interface RepositoryHealth {
 }
 
 interface HealthIssue {
-  type: 'warning' | 'error' | 'info';
+  type: "warning" | "error" | "info";
   message: string;
   action?: string;
 }
 ```
 
 #### SmartCommitInterface
+
 Intelligent commit interface with templates and validation
+
 ```typescript
 interface SmartCommitInterfaceProps {
   stagedFiles: FileStatus[];
@@ -165,7 +179,9 @@ interface CommitTemplate {
 ### Supporting Components
 
 #### BranchManagement
+
 Complete branch operations interface
+
 ```typescript
 interface BranchManagementProps {
   branches: Branch[];
@@ -177,7 +193,9 @@ interface BranchManagementProps {
 ```
 
 #### StashManagement
+
 Stash operations interface
+
 ```typescript
 interface StashManagementProps {
   stashes: GitStash[];
@@ -199,6 +217,7 @@ interface GitStash {
 ## 4. API Specifications
 
 ### Git Status API
+
 ```typescript
 // GET /api/workspace/git/status
 interface GitStatusResponse {
@@ -223,6 +242,7 @@ interface GitStatusResponse {
 ```
 
 ### Branch Operations API
+
 ```typescript
 // POST /api/workspace/git/branches
 interface CreateBranchRequest {
@@ -246,6 +266,7 @@ interface DeleteBranchRequest {
 ```
 
 ### Commit Operations API
+
 ```typescript
 // POST /api/workspace/git/commits
 interface CreateCommitRequest {
@@ -273,6 +294,7 @@ interface CommitHistoryResponse {
 ```
 
 ### Stash Operations API
+
 ```typescript
 // POST /api/workspace/git/stash
 interface CreateStashRequest {
@@ -290,6 +312,7 @@ interface ApplyStashRequest {
 ```
 
 ### Git Settings API
+
 ```typescript
 // GET /api/workspace/git/config
 // PUT /api/workspace/git/config
@@ -304,7 +327,7 @@ interface GitConfigRequest {
     ignorecase: boolean;
   };
   push: {
-    default: 'simple' | 'matching' | 'current';
+    default: "simple" | "matching" | "current";
   };
   pull: {
     rebase: boolean;
@@ -316,20 +339,21 @@ interface GitConfigRequest {
 ## 5. WebSocket Events for Real-Time Updates
 
 ### Event Types
+
 ```typescript
 interface GitWebSocketEvents {
   // Outbound events (Client → Server)
-  'git:subscribe': { projectId: string };
-  'git:unsubscribe': { projectId: string };
-  'git:status': { projectId: string };
-  'git:branch:switch': { projectId: string; branch: string };
-  
+  "git:subscribe": { projectId: string };
+  "git:unsubscribe": { projectId: string };
+  "git:status": { projectId: string };
+  "git:branch:switch": { projectId: string; branch: string };
+
   // Inbound events (Server → Client)
-  'git:status:update': GitStatusUpdate;
-  'git:branch:changed': BranchChangeEvent;
-  'git:operation:progress': OperationProgressEvent;
-  'git:operation:complete': OperationCompleteEvent;
-  'git:error': GitErrorEvent;
+  "git:status:update": GitStatusUpdate;
+  "git:branch:changed": BranchChangeEvent;
+  "git:operation:progress": OperationProgressEvent;
+  "git:operation:complete": OperationCompleteEvent;
+  "git:error": GitErrorEvent;
 }
 
 interface GitStatusUpdate {
@@ -355,6 +379,7 @@ interface OperationProgressEvent {
 ```
 
 ### WebSocket Message Protocol
+
 ```typescript
 interface GitWebSocketMessage {
   type: keyof GitWebSocketEvents;
@@ -365,11 +390,12 @@ interface GitWebSocketMessage {
 ```
 
 ### Real-Time Status Monitoring
+
 ```typescript
 class GitWebSocketManager {
   private ws: WebSocket;
   private subscriptions: Set<string> = new Set();
-  
+
   subscribe(projectId: string): void;
   unsubscribe(projectId: string): void;
   sendCommand(type: string, payload: any): Promise<any>;
@@ -380,6 +406,7 @@ class GitWebSocketManager {
 ## 6. Database Schema Changes
 
 ### Git User Preferences Table
+
 ```sql
 CREATE TABLE git_user_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -388,7 +415,7 @@ CREATE TABLE git_user_preferences (
   preferences JSONB NOT NULL DEFAULT '{}',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
+
   UNIQUE(user_id, project_path)
 );
 
@@ -396,6 +423,7 @@ CREATE INDEX idx_git_user_preferences_user_project ON git_user_preferences(user_
 ```
 
 ### Commit Templates Table
+
 ```sql
 CREATE TABLE git_commit_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -415,6 +443,7 @@ CREATE INDEX idx_git_commit_templates_global ON git_commit_templates(is_global) 
 ```
 
 ### Git Operation History Table
+
 ```sql
 CREATE TABLE git_operation_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -434,6 +463,7 @@ CREATE INDEX idx_git_operation_history_created_at ON git_operation_history(creat
 ```
 
 ### Migration Script
+
 ```sql
 -- Migration: 20250812_git_interface_tables.sql
 -- Up
@@ -461,22 +491,27 @@ COMMIT;
 ## 7. State Management Architecture
 
 ### Zustand Store Structure
+
 ```typescript
 interface GitStore {
   // State
   projects: Record<string, ProjectGitState>;
   currentProject: string | null;
   globalSettings: GitGlobalSettings;
-  
+
   // Actions
   setCurrentProject: (projectId: string) => void;
   updateProjectStatus: (projectId: string, status: GitStatus) => void;
   updateBranches: (projectId: string, branches: Branch[]) => void;
-  
+
   // Async Actions
   refreshStatus: (projectId: string) => Promise<void>;
   switchBranch: (projectId: string, branch: string) => Promise<void>;
-  createBranch: (projectId: string, name: string, from: string) => Promise<void>;
+  createBranch: (
+    projectId: string,
+    name: string,
+    from: string,
+  ) => Promise<void>;
   commit: (projectId: string, commitData: CommitData) => Promise<void>;
 }
 
@@ -492,6 +527,7 @@ interface ProjectGitState {
 ```
 
 ### State Persistence
+
 ```typescript
 const useGitStore = create<GitStore>()(
   persist(
@@ -499,93 +535,121 @@ const useGitStore = create<GitStore>()(
       // Store implementation
     }),
     {
-      name: 'git-store',
+      name: "git-store",
       partialize: (state) => ({
         globalSettings: state.globalSettings,
         // Don't persist project states (too large)
       }),
-    }
-  )
+    },
+  ),
 );
 ```
 
 ## 8. Service Layer Architecture
 
 ### Git Service Interface
+
 ```typescript
 class GitService {
   constructor(private terminalService: TerminalService) {}
-  
+
   // Status Operations
   async getStatus(projectPath: string): Promise<GitStatus>;
   async refreshStatus(projectPath: string): Promise<GitStatus>;
-  
+
   // Branch Operations
   async getBranches(projectPath: string): Promise<Branch[]>;
   async switchBranch(projectPath: string, branch: string): Promise<void>;
-  async createBranch(projectPath: string, name: string, from: string): Promise<void>;
-  async deleteBranch(projectPath: string, name: string, force: boolean): Promise<void>;
-  async mergeBranch(projectPath: string, from: string, to: string): Promise<void>;
-  
+  async createBranch(
+    projectPath: string,
+    name: string,
+    from: string,
+  ): Promise<void>;
+  async deleteBranch(
+    projectPath: string,
+    name: string,
+    force: boolean,
+  ): Promise<void>;
+  async mergeBranch(
+    projectPath: string,
+    from: string,
+    to: string,
+  ): Promise<void>;
+
   // Commit Operations
   async commit(projectPath: string, commitData: CommitData): Promise<void>;
-  async getCommitHistory(projectPath: string, options: HistoryOptions): Promise<CommitInfo[]>;
-  
+  async getCommitHistory(
+    projectPath: string,
+    options: HistoryOptions,
+  ): Promise<CommitInfo[]>;
+
   // Stash Operations
   async getStashes(projectPath: string): Promise<GitStash[]>;
-  async createStash(projectPath: string, message: string, options: StashOptions): Promise<void>;
-  async applyStash(projectPath: string, stashId: string, pop: boolean): Promise<void>;
-  
+  async createStash(
+    projectPath: string,
+    message: string,
+    options: StashOptions,
+  ): Promise<void>;
+  async applyStash(
+    projectPath: string,
+    stashId: string,
+    pop: boolean,
+  ): Promise<void>;
+
   // File Operations
   async stageFiles(projectPath: string, files: string[]): Promise<void>;
   async unstageFiles(projectPath: string, files: string[]): Promise<void>;
   async discardChanges(projectPath: string, files: string[]): Promise<void>;
-  
+
   // Configuration
   async getConfig(projectPath: string): Promise<GitConfig>;
-  async setConfig(projectPath: string, config: Partial<GitConfig>): Promise<void>;
+  async setConfig(
+    projectPath: string,
+    config: Partial<GitConfig>,
+  ): Promise<void>;
 }
 ```
 
 ### Terminal Integration Service
+
 ```typescript
 class GitTerminalService {
   constructor(private terminalService: TerminalService) {}
-  
+
   private async executeGitCommand(
-    projectPath: string, 
-    command: string[], 
-    options?: ExecutionOptions
+    projectPath: string,
+    command: string[],
+    options?: ExecutionOptions,
   ): Promise<CommandResult> {
     const sessionId = await this.terminalService.createSession({
       projectId: this.getProjectId(projectPath),
-      type: 'system',
-      autoClose: true
+      type: "system",
+      autoClose: true,
     });
-    
+
     try {
       const result = await this.terminalService.executeCommand(
-        sessionId, 
-        ['git', ...command],
-        { 
+        sessionId,
+        ["git", ...command],
+        {
           cwd: projectPath,
           timeout: options?.timeout || 30000,
-          parseOutput: true
-        }
+          parseOutput: true,
+        },
       );
-      
+
       return result;
     } finally {
       await this.terminalService.closeSession(sessionId);
     }
   }
-  
+
   async getStatus(projectPath: string): Promise<GitStatus> {
     const [statusResult, branchResult] = await Promise.all([
-      this.executeGitCommand(projectPath, ['status', '--porcelain=v2']),
-      this.executeGitCommand(projectPath, ['branch', '-vv', '--no-color'])
+      this.executeGitCommand(projectPath, ["status", "--porcelain=v2"]),
+      this.executeGitCommand(projectPath, ["branch", "-vv", "--no-color"]),
     ]);
-    
+
     return this.parseGitStatus(statusResult.output, branchResult.output);
   }
 }
@@ -594,15 +658,16 @@ class GitTerminalService {
 ## 9. Performance Optimization Strategies
 
 ### 1. Command Execution Optimization
+
 ```typescript
 class GitCommandOptimizer {
   private commandCache = new Map<string, { result: any; timestamp: number }>();
   private readonly CACHE_TTL = 5000; // 5 seconds
-  
+
   async executeWithCache<T>(
     key: string,
     command: () => Promise<T>,
-    cacheable = true
+    cacheable = true,
   ): Promise<T> {
     if (cacheable && this.commandCache.has(key)) {
       const cached = this.commandCache.get(key)!;
@@ -610,19 +675,19 @@ class GitCommandOptimizer {
         return cached.result;
       }
     }
-    
+
     const result = await command();
-    
+
     if (cacheable) {
       this.commandCache.set(key, {
         result,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }
-    
+
     return result;
   }
-  
+
   clearCache(pattern?: string): void {
     if (pattern) {
       for (const key of this.commandCache.keys()) {
@@ -638,37 +703,39 @@ class GitCommandOptimizer {
 ```
 
 ### 2. Incremental Status Updates
+
 ```typescript
 class IncrementalStatusManager {
   private lastStatus = new Map<string, GitStatus>();
-  
+
   async getStatusDiff(projectPath: string): Promise<GitStatusDiff> {
     const currentStatus = await this.gitService.getStatus(projectPath);
     const lastStatus = this.lastStatus.get(projectPath);
-    
+
     if (!lastStatus) {
       this.lastStatus.set(projectPath, currentStatus);
-      return { type: 'full', status: currentStatus };
+      return { type: "full", status: currentStatus };
     }
-    
+
     const diff = this.calculateDiff(lastStatus, currentStatus);
     this.lastStatus.set(projectPath, currentStatus);
-    
-    return { type: 'incremental', diff, status: currentStatus };
+
+    return { type: "incremental", diff, status: currentStatus };
   }
-  
+
   private calculateDiff(old: GitStatus, current: GitStatus): StatusChanges {
     return {
       branchChanged: old.currentBranch !== current.currentBranch,
       stagedChanges: this.getFileDiff(old.staged, current.staged),
       unstagedChanges: this.getFileDiff(old.unstaged, current.unstaged),
-      untrackedChanges: this.getArrayDiff(old.untracked, current.untracked)
+      untrackedChanges: this.getArrayDiff(old.untracked, current.untracked),
     };
   }
 }
 ```
 
 ### 3. Virtual Scrolling for History
+
 ```typescript
 import { FixedSizeList as List } from 'react-window';
 
@@ -681,7 +748,7 @@ const CommitHistoryVirtualized: React.FC<{
       <CommitItem commit={commits[index]} />
     </div>
   );
-  
+
   return (
     <List
       height={400}
@@ -700,43 +767,62 @@ const CommitHistoryVirtualized: React.FC<{
 ```
 
 ### 4. Debounced File Watching
+
 ```typescript
 class GitFileWatcher {
   private watchers = new Map<string, fs.FSWatcher>();
   private debounceTimers = new Map<string, NodeJS.Timeout>();
-  
+
   watchProject(projectPath: string, callback: () => void): void {
-    const gitDir = path.join(projectPath, '.git');
+    const gitDir = path.join(projectPath, ".git");
     const workingDir = projectPath;
-    
+
     // Watch .git directory for ref changes
-    const gitWatcher = fs.watch(gitDir, { recursive: true }, (eventType, filename) => {
-      if (filename?.includes('refs/') || filename === 'HEAD' || filename === 'index') {
-        this.debouncedCallback(projectPath, callback);
-      }
-    });
-    
+    const gitWatcher = fs.watch(
+      gitDir,
+      { recursive: true },
+      (eventType, filename) => {
+        if (
+          filename?.includes("refs/") ||
+          filename === "HEAD" ||
+          filename === "index"
+        ) {
+          this.debouncedCallback(projectPath, callback);
+        }
+      },
+    );
+
     // Watch working directory for file changes
-    const workWatcher = fs.watch(workingDir, { recursive: true }, (eventType, filename) => {
-      if (!filename?.includes('.git/') && !filename?.includes('node_modules/')) {
-        this.debouncedCallback(projectPath, callback);
-      }
-    });
-    
+    const workWatcher = fs.watch(
+      workingDir,
+      { recursive: true },
+      (eventType, filename) => {
+        if (
+          !filename?.includes(".git/") &&
+          !filename?.includes("node_modules/")
+        ) {
+          this.debouncedCallback(projectPath, callback);
+        }
+      },
+    );
+
     this.watchers.set(projectPath, gitWatcher);
     this.watchers.set(`${projectPath}:work`, workWatcher);
   }
-  
+
   private debouncedCallback(projectPath: string, callback: () => void): void {
     const existingTimer = this.debounceTimers.get(projectPath);
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
-    
-    this.debounceTimers.set(projectPath, setTimeout(() => {
-      callback();
-      this.debounceTimers.delete(projectPath);
-    }, 300));
+
+    this.debounceTimers.set(
+      projectPath,
+      setTimeout(() => {
+        callback();
+        this.debounceTimers.delete(projectPath);
+      }, 300),
+    );
   }
 }
 ```
@@ -744,124 +830,158 @@ class GitFileWatcher {
 ## 10. Security Considerations
 
 ### 1. Command Injection Prevention
+
 ```typescript
 class GitCommandValidator {
   private static readonly ALLOWED_COMMANDS = new Set([
-    'status', 'branch', 'checkout', 'commit', 'push', 'pull',
-    'merge', 'rebase', 'stash', 'log', 'diff', 'add', 'reset',
-    'clean', 'remote', 'config', 'tag'
+    "status",
+    "branch",
+    "checkout",
+    "commit",
+    "push",
+    "pull",
+    "merge",
+    "rebase",
+    "stash",
+    "log",
+    "diff",
+    "add",
+    "reset",
+    "clean",
+    "remote",
+    "config",
+    "tag",
   ]);
-  
+
   private static readonly DANGEROUS_PATTERNS = [
-    /[;&|`$()]/,  // Shell metacharacters
+    /[;&|`$()]/, // Shell metacharacters
     /\.\.\//, // Directory traversal
     /--exec/, // Dangerous git options
-    /--upload-pack/, /--receive-pack/ // Remote execution
+    /--upload-pack/,
+    /--receive-pack/, // Remote execution
   ];
-  
+
   static validateCommand(command: string[]): boolean {
-    if (command.length === 0 || command[0] !== 'git') {
+    if (command.length === 0 || command[0] !== "git") {
       return false;
     }
-    
+
     const gitCommand = command[1];
     if (!this.ALLOWED_COMMANDS.has(gitCommand)) {
       return false;
     }
-    
-    const fullCommand = command.join(' ');
-    return !this.DANGEROUS_PATTERNS.some(pattern => pattern.test(fullCommand));
+
+    const fullCommand = command.join(" ");
+    return !this.DANGEROUS_PATTERNS.some((pattern) =>
+      pattern.test(fullCommand),
+    );
   }
-  
+
   static sanitizeFilePaths(paths: string[]): string[] {
     return paths
-      .filter(path => !path.includes('..'))
-      .map(path => path.replace(/[^\w\-_.\/]/g, ''))
-      .filter(path => path.length > 0);
+      .filter((path) => !path.includes(".."))
+      .map((path) => path.replace(/[^\w\-_.\/]/g, ""))
+      .filter((path) => path.length > 0);
   }
 }
 ```
 
 ### 2. Path Traversal Protection
+
 ```typescript
 class PathValidator {
-  static isValidProjectPath(projectPath: string, allowedBasePaths: string[]): boolean {
+  static isValidProjectPath(
+    projectPath: string,
+    allowedBasePaths: string[],
+  ): boolean {
     const normalizedPath = path.normalize(path.resolve(projectPath));
-    
-    return allowedBasePaths.some(basePath => {
+
+    return allowedBasePaths.some((basePath) => {
       const normalizedBase = path.normalize(path.resolve(basePath));
       return normalizedPath.startsWith(normalizedBase);
     });
   }
-  
+
   static sanitizeGitPath(gitPath: string): string {
-    return path.normalize(gitPath)
-      .replace(/\.\.+/g, '')  // Remove parent directory references
-      .replace(/[<>:"|?*]/g, '') // Remove invalid filename characters
+    return path
+      .normalize(gitPath)
+      .replace(/\.\.+/g, "") // Remove parent directory references
+      .replace(/[<>:"|?*]/g, "") // Remove invalid filename characters
       .trim();
   }
 }
 ```
 
 ### 3. Authentication & Authorization
+
 ```typescript
 class GitSecurityManager {
   async validateGitOperation(
     userId: string,
     projectPath: string,
-    operation: string
+    operation: string,
   ): Promise<boolean> {
     // Verify user has access to project
-    const hasAccess = await this.userService.hasProjectAccess(userId, projectPath);
+    const hasAccess = await this.userService.hasProjectAccess(
+      userId,
+      projectPath,
+    );
     if (!hasAccess) {
-      throw new Error('Insufficient permissions for git operation');
+      throw new Error("Insufficient permissions for git operation");
     }
-    
+
     // Check operation-specific permissions
     const permissions = await this.getGitPermissions(userId, projectPath);
     return this.checkOperationPermission(operation, permissions);
   }
-  
-  private async getGitPermissions(userId: string, projectPath: string): Promise<GitPermissions> {
+
+  private async getGitPermissions(
+    userId: string,
+    projectPath: string,
+  ): Promise<GitPermissions> {
     // Implementation depends on your authorization system
     return {
       canRead: true,
       canWrite: true,
       canPush: true,
-      canForceDelete: false
+      canForceDelete: false,
     };
   }
 }
 ```
 
 ### 4. Credential Management
+
 ```typescript
 class GitCredentialManager {
   private credentialStore = new Map<string, GitCredentials>();
-  
+
   async getCredentials(remoteUrl: string): Promise<GitCredentials | null> {
     // Check if credentials are cached (encrypted)
     const cached = this.credentialStore.get(remoteUrl);
     if (cached && !this.isExpired(cached)) {
       return cached;
     }
-    
+
     // Retrieve from secure storage
     const stored = await this.secureStorage.getCredentials(remoteUrl);
     if (stored) {
       this.credentialStore.set(remoteUrl, stored);
       return stored;
     }
-    
+
     return null;
   }
-  
-  async setCredentials(remoteUrl: string, credentials: GitCredentials): Promise<void> {
+
+  async setCredentials(
+    remoteUrl: string,
+    credentials: GitCredentials,
+  ): Promise<void> {
     // Encrypt and store credentials
     await this.secureStorage.setCredentials(remoteUrl, credentials);
     this.credentialStore.set(remoteUrl, credentials);
   }
-  
+
   clearCredentials(remoteUrl?: string): void {
     if (remoteUrl) {
       this.credentialStore.delete(remoteUrl);
@@ -875,86 +995,90 @@ class GitCredentialManager {
 ## 11. Testing Strategy
 
 ### 1. Unit Tests
+
 ```typescript
 // Example test for GitService
-describe('GitService', () => {
+describe("GitService", () => {
   let gitService: GitService;
   let mockTerminalService: jest.Mocked<TerminalService>;
-  
+
   beforeEach(() => {
     mockTerminalService = createMockTerminalService();
     gitService = new GitService(mockTerminalService);
   });
-  
-  describe('getStatus', () => {
-    it('should parse git status correctly', async () => {
+
+  describe("getStatus", () => {
+    it("should parse git status correctly", async () => {
       mockTerminalService.executeCommand.mockResolvedValue({
-        stdout: '1 M. N... 100644 100644 100644 abc123... def456... file.txt\n',
-        stderr: '',
-        exitCode: 0
+        stdout: "1 M. N... 100644 100644 100644 abc123... def456... file.txt\n",
+        stderr: "",
+        exitCode: 0,
       });
-      
-      const status = await gitService.getStatus('/test/project');
-      
+
+      const status = await gitService.getStatus("/test/project");
+
       expect(status.staged).toHaveLength(0);
       expect(status.unstaged).toHaveLength(1);
-      expect(status.unstaged[0].path).toBe('file.txt');
-      expect(status.unstaged[0].status).toBe('modified');
+      expect(status.unstaged[0].path).toBe("file.txt");
+      expect(status.unstaged[0].status).toBe("modified");
     });
-    
-    it('should handle git command errors', async () => {
+
+    it("should handle git command errors", async () => {
       mockTerminalService.executeCommand.mockRejectedValue(
-        new Error('Not a git repository')
+        new Error("Not a git repository"),
       );
-      
-      await expect(gitService.getStatus('/test/project'))
-        .rejects.toThrow('Not a git repository');
+
+      await expect(gitService.getStatus("/test/project")).rejects.toThrow(
+        "Not a git repository",
+      );
     });
   });
 });
 ```
 
 ### 2. Integration Tests
+
 ```typescript
-describe('Git Integration Tests', () => {
+describe("Git Integration Tests", () => {
   let testRepo: string;
   let gitService: GitService;
-  
+
   beforeEach(async () => {
     testRepo = await createTestGitRepository();
     gitService = new GitService(new TerminalService());
   });
-  
+
   afterEach(async () => {
     await cleanupTestRepository(testRepo);
   });
-  
-  it('should create and switch to new branch', async () => {
-    await gitService.createBranch(testRepo, 'feature/test', 'main');
-    await gitService.switchBranch(testRepo, 'feature/test');
-    
+
+  it("should create and switch to new branch", async () => {
+    await gitService.createBranch(testRepo, "feature/test", "main");
+    await gitService.switchBranch(testRepo, "feature/test");
+
     const status = await gitService.getStatus(testRepo);
-    expect(status.currentBranch).toBe('feature/test');
+    expect(status.currentBranch).toBe("feature/test");
   });
-  
-  it('should commit staged changes', async () => {
-    await fs.writeFile(path.join(testRepo, 'test.txt'), 'content');
-    await gitService.stageFiles(testRepo, ['test.txt']);
-    
+
+  it("should commit staged changes", async () => {
+    await fs.writeFile(path.join(testRepo, "test.txt"), "content");
+    await gitService.stageFiles(testRepo, ["test.txt"]);
+
     await gitService.commit(testRepo, {
-      message: 'Test commit',
-      selectedFiles: ['test.txt'],
+      message: "Test commit",
+      selectedFiles: ["test.txt"],
       signOff: false,
-      amend: false
+      amend: false,
     });
-    
+
     const history = await gitService.getCommitHistory(testRepo, { limit: 1 });
-    expect(history[0].message).toBe('Test commit');
+    expect(history[0].message).toBe("Test commit");
   });
 });
 ```
 
 ### 3. Component Tests
+
 ```typescript
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QuickBranchSwitcher } from '../QuickBranchSwitcher';
@@ -980,7 +1104,7 @@ describe('QuickBranchSwitcher', () => {
       status: 'dirty'
     }
   ];
-  
+
   it('should display all branches', () => {
     render(
       <QuickBranchSwitcher
@@ -991,14 +1115,14 @@ describe('QuickBranchSwitcher', () => {
         canSwitchBranch={true}
       />
     );
-    
+
     expect(screen.getByText('main')).toBeInTheDocument();
     expect(screen.getByText('feature/test')).toBeInTheDocument();
   });
-  
+
   it('should call onBranchSwitch when branch is selected', async () => {
     const mockOnBranchSwitch = jest.fn().mockResolvedValue(undefined);
-    
+
     render(
       <QuickBranchSwitcher
         branches={mockBranches}
@@ -1008,9 +1132,9 @@ describe('QuickBranchSwitcher', () => {
         canSwitchBranch={true}
       />
     );
-    
+
     fireEvent.click(screen.getByText('feature/test'));
-    
+
     await waitFor(() => {
       expect(mockOnBranchSwitch).toHaveBeenCalledWith('feature/test');
     });
@@ -1019,44 +1143,50 @@ describe('QuickBranchSwitcher', () => {
 ```
 
 ### 4. End-to-End Tests
-```typescript
-import { test, expect } from '@playwright/test';
 
-test.describe('Git Interface E2E', () => {
+```typescript
+import { test, expect } from "@playwright/test";
+
+test.describe("Git Interface E2E", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/workspace');
+    await page.goto("/workspace");
     await page.waitForSelector('[data-testid="git-interface"]');
   });
-  
-  test('should switch branches using quick switcher', async ({ page }) => {
+
+  test("should switch branches using quick switcher", async ({ page }) => {
     // Open branch switcher
     await page.click('[data-testid="branch-switcher-trigger"]');
     await expect(page.locator('[data-testid="branch-list"]')).toBeVisible();
-    
+
     // Select feature branch
     await page.click('[data-testid="branch-item-feature/test"]');
-    
+
     // Verify branch switched
-    await expect(page.locator('[data-testid="current-branch"]')).toHaveText('feature/test');
+    await expect(page.locator('[data-testid="current-branch"]')).toHaveText(
+      "feature/test",
+    );
   });
-  
-  test('should commit changes with template', async ({ page }) => {
+
+  test("should commit changes with template", async ({ page }) => {
     // Stage files
     await page.click('[data-testid="stage-all-button"]');
-    
+
     // Open commit interface
     await page.click('[data-testid="commit-button"]');
-    
+
     // Select template
-    await page.selectOption('[data-testid="commit-template"]', 'Feature');
-    
+    await page.selectOption('[data-testid="commit-template"]', "Feature");
+
     // Fill commit message
-    await page.fill('[data-testid="commit-summary"]', 'Add new feature');
-    await page.fill('[data-testid="commit-description"]', 'Detailed description');
-    
+    await page.fill('[data-testid="commit-summary"]', "Add new feature");
+    await page.fill(
+      '[data-testid="commit-description"]',
+      "Detailed description",
+    );
+
     // Submit commit
     await page.click('[data-testid="submit-commit"]');
-    
+
     // Verify success
     await expect(page.locator('[data-testid="commit-success"]')).toBeVisible();
   });
@@ -1066,11 +1196,13 @@ test.describe('Git Interface E2E', () => {
 ## 12. Implementation Phases
 
 ### Phase 1: Core Foundation (Week 1-2)
+
 **Priority**: P0 Critical
 **Duration**: 10 days
 **Team**: 2 Frontend, 1 Backend
 
 #### Tasks:
+
 1. **Database Schema Implementation**
    - Create git user preferences table
    - Create commit templates table
@@ -1090,6 +1222,7 @@ test.describe('Git Interface E2E', () => {
    - Visual status indicators
 
 #### Acceptance Criteria:
+
 - [ ] Database tables created and migrated
 - [ ] GitService can execute basic git commands
 - [ ] Branch switching works reliably
@@ -1097,11 +1230,13 @@ test.describe('Git Interface E2E', () => {
 - [ ] Security validation prevents command injection
 
 ### Phase 2: Advanced Features (Week 3-4)
+
 **Priority**: P1 High
 **Duration**: 10 days
 **Team**: 2 Frontend, 1 Backend
 
 #### Tasks:
+
 1. **Commit Interface**
    - SmartCommitInterface with templates
    - File staging/unstaging interface
@@ -1121,17 +1256,20 @@ test.describe('Git Interface E2E', () => {
    - File watching optimization
 
 #### Acceptance Criteria:
+
 - [ ] Smart commit interface with templates works
 - [ ] Branch operations (create/delete/merge) function
 - [ ] Performance benchmarks meet targets
 - [ ] Real-time updates are optimized
 
 ### Phase 3: Advanced Management (Week 5-6)
+
 **Priority**: P2 Medium
 **Duration**: 10 days
 **Team**: 2 Frontend, 1 Backend
 
 #### Tasks:
+
 1. **History & Visualization**
    - Commit history with virtual scrolling
    - Branch tree visualization
@@ -1151,17 +1289,20 @@ test.describe('Git Interface E2E', () => {
    - Keyboard shortcuts
 
 #### Acceptance Criteria:
+
 - [ ] Commit history displays efficiently
 - [ ] Stash operations work correctly
 - [ ] Settings are persisted and applied
 - [ ] UI is responsive and intuitive
 
 ### Phase 4: Polish & Testing (Week 7-8)
+
 **Priority**: P3 Low
 **Duration**: 10 days
 **Team**: 2 Frontend, 1 QA, 1 Backend
 
 #### Tasks:
+
 1. **Comprehensive Testing**
    - Unit test coverage > 90%
    - Integration test suite
@@ -1181,6 +1322,7 @@ test.describe('Git Interface E2E', () => {
    - Migration guides
 
 #### Acceptance Criteria:
+
 - [ ] Test coverage meets requirements
 - [ ] UI passes accessibility audit
 - [ ] Performance benchmarks achieved
@@ -1191,36 +1333,44 @@ test.describe('Git Interface E2E', () => {
 ### Technical Risks
 
 #### 1. Git Command Performance (HIGH)
+
 **Risk**: Complex git operations causing UI freezing
 **Impact**: Poor user experience, system unresponsiveness
 **Mitigation**:
+
 - All git commands run in background processes
 - Implement command timeouts (30 seconds max)
 - Show progress indicators for long operations
 - Cache frequently accessed data
 
 #### 2. File System Watching Scale (MEDIUM)
+
 **Risk**: File watching in large repositories causing performance issues
 **Impact**: High CPU usage, memory consumption
 **Mitigation**:
+
 - Implement smart file watching with exclusion patterns
 - Use debounced event handling
 - Limit watching to git-relevant files only
 - Provide option to disable auto-refresh
 
 #### 3. WebSocket Connection Stability (MEDIUM)
+
 **Risk**: WebSocket disconnections causing state desync
 **Impact**: Stale git status, missed updates
 **Mitigation**:
+
 - Implement auto-reconnection with exponential backoff
 - Add heartbeat monitoring
 - Fallback to polling when WebSocket fails
 - Store connection state in persistent store
 
 #### 4. Concurrent Git Operations (HIGH)
+
 **Risk**: Multiple git operations conflicting with each other
 **Impact**: Repository corruption, operation failures
 **Mitigation**:
+
 - Implement operation queue with single-operation execution
 - Add operation locking per repository
 - Show operation status and queue state
@@ -1229,18 +1379,22 @@ test.describe('Git Interface E2E', () => {
 ### Security Risks
 
 #### 1. Command Injection (CRITICAL)
+
 **Risk**: Malicious input executing arbitrary system commands
 **Impact**: System compromise, data theft
 **Mitigation**:
+
 - Strict command validation with allowlist
 - Input sanitization for all parameters
 - No direct shell execution, use git CLI only
 - Audit logging for all git operations
 
 #### 2. Path Traversal (HIGH)
+
 **Risk**: Access to files outside project directory
 **Impact**: Unauthorized file access, data leakage
 **Mitigation**:
+
 - Path validation against allowed base directories
 - Normalize and resolve all paths before use
 - Sandbox git operations to project directory
@@ -1249,18 +1403,22 @@ test.describe('Git Interface E2E', () => {
 ### Business Risks
 
 #### 1. User Adoption (MEDIUM)
+
 **Risk**: Users preferring external git tools
 **Impact**: Low feature utilization, wasted development
 **Mitigation**:
+
 - Conduct user research and feedback sessions
 - Provide migration path from external tools
 - Ensure feature parity with popular git clients
 - Implement user onboarding and tutorials
 
-#### 2. Maintenance Complexity (MEDIUM)  
+#### 2. Maintenance Complexity (MEDIUM)
+
 **Risk**: Complex codebase difficult to maintain
 **Impact**: High maintenance cost, slow feature development
 **Mitigation**:
+
 - Modular architecture with clear boundaries
 - Comprehensive test coverage and documentation
 - Code review process and quality gates
@@ -1269,24 +1427,28 @@ test.describe('Git Interface E2E', () => {
 ## 14. Success Metrics & KPIs
 
 ### Performance Metrics
+
 - **Git Command Response Time**: < 2 seconds for common operations
 - **UI Responsiveness**: < 100ms interaction feedback
 - **Memory Usage**: < 50MB additional RAM consumption
 - **CPU Usage**: < 10% during idle, < 30% during operations
 
 ### User Experience Metrics
+
 - **Feature Adoption Rate**: > 70% of users use git interface within 30 days
 - **Operation Success Rate**: > 98% of git operations complete successfully
 - **User Satisfaction Score**: > 4.0/5.0 in user feedback
 - **Support Ticket Reduction**: 50% fewer git-related support requests
 
 ### Technical Metrics
+
 - **Test Coverage**: > 90% code coverage
 - **Bug Report Rate**: < 1 bug per 1000 operations
 - **System Uptime**: > 99.5% availability
 - **WebSocket Connection Stability**: > 95% successful connections
 
 ### Business Metrics
+
 - **Development Efficiency**: 25% reduction in time spent on git operations
 - **User Retention**: Maintain current retention with new features
 - **Feature Usage**: > 60% monthly active users use git features
@@ -1295,6 +1457,7 @@ test.describe('Git Interface E2E', () => {
 ## 15. Monitoring & Observability
 
 ### Application Metrics
+
 ```typescript
 interface GitMetrics {
   operations: {
@@ -1320,13 +1483,14 @@ class GitMetricsCollector {
     return {
       operations: await this.getOperationMetrics(),
       connections: await this.getConnectionMetrics(),
-      performance: await this.getPerformanceMetrics()
+      performance: await this.getPerformanceMetrics(),
     };
   }
 }
 ```
 
 ### Error Tracking
+
 ```typescript
 class GitErrorTracker {
   reportError(error: GitError, context: GitOperationContext): void {
@@ -1338,9 +1502,9 @@ class GitErrorTracker {
       timestamp: new Date(),
       stackTrace: error.stack,
       gitVersion: context.gitVersion,
-      systemInfo: this.getSystemInfo()
+      systemInfo: this.getSystemInfo(),
     };
-    
+
     // Send to monitoring service
     this.monitoringService.reportError(errorData);
   }
@@ -1348,6 +1512,7 @@ class GitErrorTracker {
 ```
 
 ### Health Checks
+
 ```typescript
 // GET /api/health/git
 class GitHealthChecker {
@@ -1356,17 +1521,19 @@ class GitHealthChecker {
       this.checkGitAvailability(),
       this.checkWebSocketConnection(),
       this.checkDatabaseConnection(),
-      this.checkFileSystemAccess()
+      this.checkFileSystemAccess(),
     ]);
-    
+
     return {
-      status: checks.every(c => c.status === 'fulfilled') ? 'healthy' : 'degraded',
+      status: checks.every((c) => c.status === "fulfilled")
+        ? "healthy"
+        : "degraded",
       checks: checks.map((check, index) => ({
         name: this.CHECK_NAMES[index],
-        status: check.status === 'fulfilled' ? 'pass' : 'fail',
-        message: check.status === 'rejected' ? check.reason.message : 'OK'
+        status: check.status === "fulfilled" ? "pass" : "fail",
+        message: check.status === "rejected" ? check.reason.message : "OK",
       })),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
 }

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source port configuration
+source "$(dirname "$0")/../shared/config/ports.sh"
+
 echo "╔══════════════════════════════════════════════════╗"
 echo "║   🚀 Personal Assistant - Production Mode       ║"
 echo "╚══════════════════════════════════════════════════╝"
@@ -105,10 +108,10 @@ echo ""
 IP_ADDRESS=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
 
 echo -e "${BLUE}📍 Access Points:${NC}"
-echo -e "   • ${GREEN}Local:${NC}    http://localhost:4000/assistant"
+echo -e "   • ${GREEN}Local:${NC}    http://localhost:$PORT_GATEWAY_MAIN/assistant"
 echo -e "   • ${GREEN}Network:${NC}  http://${IP_ADDRESS}:4000/assistant"
-echo -e "   • ${GREEN}API:${NC}      http://localhost:4000/api"
-echo -e "   • ${GREEN}Health:${NC}   http://localhost:4000/api/health"
+echo -e "   • ${GREEN}API:${NC}      http://localhost:$PORT_GATEWAY_MAIN/api"
+echo -e "   • ${GREEN}Health:${NC}   http://localhost:$PORT_GATEWAY_MAIN/api/health"
 echo ""
 echo -e "${BLUE}🎯 Features:${NC}"
 echo -e "   • ${GREEN}✅${NC} Task Management"

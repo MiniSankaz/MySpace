@@ -3,9 +3,9 @@ import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-inter"
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -20,7 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className={`${inter.className} antialiased min-h-screen bg-background`}>
+      <body
+        className={`${inter.className} antialiased min-h-screen bg-background`}
+      >
         {children}
         <Toaster position="bottom-right" />
       </body>

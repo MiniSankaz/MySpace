@@ -1,0 +1,556 @@
+{
+  "timestamp": "2025-08-19T06:28:47.340Z",
+  "summary": {
+    "total": 15,
+    "passed": 10,
+    "failed": 0,
+    "warnings": 5
+  },
+  "services": {
+    "gateway": {
+      "port": 4110,
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 24,
+      "url": "http://localhost:4110/health",
+      "attempt": 1,
+      "data": {
+        "service": "gateway",
+        "status": "OK",
+        "timestamp": "2025-08-19T06:28:47.362Z",
+        "uptime": 635.207000625,
+        "memory": {
+          "rss": 72237056,
+          "heapTotal": 28000256,
+          "heapUsed": 24580304,
+          "external": 4626243,
+          "arrayBuffers": 308953
+        },
+        "version": "3.0.0",
+        "environment": "development"
+      }
+    },
+    "user-management": {
+      "port": 4120,
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 30,
+      "url": "http://localhost:4120/health",
+      "attempt": 1,
+      "data": {
+        "service": "user-management",
+        "status": "OK",
+        "timestamp": "2025-08-19T06:28:47.395Z",
+        "uptime": 8055.307520333,
+        "memory": {
+          "rss": 62046208,
+          "heapTotal": 30720000,
+          "heapUsed": 28662088,
+          "external": 4990258,
+          "arrayBuffers": 174875
+        },
+        "version": "3.0.0",
+        "environment": "development",
+        "database": {
+          "status": "connected",
+          "url": "configured"
+        },
+        "redis": {
+          "status": "connected",
+          "url": "configured"
+        }
+      }
+    },
+    "ai-assistant": {
+      "port": 4130,
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 36,
+      "url": "http://localhost:4130/health",
+      "attempt": 1,
+      "data": {
+        "service": "ai-assistant",
+        "status": "OK",
+        "timestamp": "2025-08-19T06:28:47.431Z",
+        "uptime": 73.787669041,
+        "memory": {
+          "rss": 95256576,
+          "heapTotal": 26361856,
+          "heapUsed": 23382112,
+          "external": 5949679,
+          "arrayBuffers": 125590
+        },
+        "version": "3.0.0",
+        "environment": "development",
+        "claude": {
+          "apiKey": "not configured",
+          "model": "claude-3-sonnet-20240229",
+          "maxTokens": 4096
+        },
+        "websocket": {
+          "connected": 0,
+          "status": "active"
+        },
+        "dependencies": [
+          {
+            "name": "claude-api",
+            "status": "CLI_MODE",
+            "responseTime": 0,
+            "lastChecked": "2025-08-19T06:28:47.397Z"
+          },
+          {
+            "name": "database",
+            "status": "OK",
+            "responseTime": 34,
+            "lastChecked": "2025-08-19T06:28:47.431Z"
+          }
+        ],
+        "metrics": {
+          "requestsPerMinute": 0,
+          "averageResponseTime": 34,
+          "errorRate": 0
+        }
+      }
+    },
+    "terminal": {
+      "port": 4140,
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 2,
+      "url": "http://localhost:4140/health",
+      "attempt": 1,
+      "data": {
+        "service": "terminal",
+        "status": "OK",
+        "timestamp": "2025-08-19T06:28:47.433Z",
+        "uptime": 8049.193075,
+        "memory": {
+          "rss": 53575680,
+          "heapTotal": 24772608,
+          "heapUsed": 21952904,
+          "external": 4967620,
+          "arrayBuffers": 154511
+        },
+        "version": "3.0.0",
+        "environment": "development",
+        "terminals": {
+          "active": 0,
+          "total": 0
+        }
+      }
+    },
+    "workspace": {
+      "port": 4150,
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 2,
+      "url": "http://localhost:4150/health",
+      "attempt": 1,
+      "data": {
+        "service": "workspace",
+        "status": "OK",
+        "timestamp": "2025-08-19T06:28:47.435Z",
+        "uptime": 8046.108433834,
+        "memory": {
+          "rss": 48627712,
+          "heapTotal": 18186240,
+          "heapUsed": 15095448,
+          "external": 2720802,
+          "arrayBuffers": 109027
+        },
+        "version": "3.0.0",
+        "environment": "development",
+        "workspace": {
+          "root": "./workspaces",
+          "maxFileSize": "10MB",
+          "allowedExtensions": [
+            ".js",
+            ".ts",
+            ".jsx",
+            ".tsx",
+            ".json",
+            ".md"
+          ],
+          "gitEnabled": true
+        },
+        "redis": {
+          "url": "configured"
+        }
+      }
+    },
+    "portfolio": {
+      "port": 4160,
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 2,
+      "url": "http://localhost:4160/health",
+      "attempt": 1,
+      "data": {
+        "service": "portfolio",
+        "status": "OK",
+        "timestamp": "2025-08-19T06:28:47.437Z",
+        "uptime": 8043.000343875,
+        "memory": {
+          "rss": 53035008,
+          "heapTotal": 29474816,
+          "heapUsed": 26636544,
+          "external": 6049950,
+          "arrayBuffers": 100748
+        },
+        "version": "3.0.0",
+        "environment": "development",
+        "marketData": {
+          "provider": "Alpha Vantage",
+          "apiKey": "not configured",
+          "cacheTTL": "300 seconds",
+          "lastSync": "Not implemented"
+        },
+        "portfolio": {
+          "calculationInterval": "60000ms",
+          "lastCalculation": "Not implemented"
+        },
+        "database": {
+          "status": "connected",
+          "url": "configured"
+        },
+        "features": {
+          "mockPrices": false,
+          "priceUpdateInterval": 5000,
+          "maxPortfoliosPerUser": 10,
+          "maxPositionsPerPortfolio": 100
+        }
+      }
+    },
+    "market-data": {
+      "port": 4170,
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 2,
+      "url": "http://localhost:4170/health",
+      "attempt": 1,
+      "data": {
+        "status": "healthy",
+        "service": "market-data",
+        "port": "4170",
+        "timestamp": "2025-08-19T06:28:47.438Z",
+        "uptime": 273.952792167,
+        "memory": {
+          "rss": 280182784,
+          "heapTotal": 245891072,
+          "heapUsed": 238103824,
+          "external": 9047188,
+          "arrayBuffers": 4970296
+        }
+      }
+    }
+  },
+  "gateway": {
+    "healthAll": {
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 51,
+      "data": {
+        "gateway": {
+          "service": "gateway",
+          "status": "OK",
+          "timestamp": "2025-08-19T06:28:47.440Z",
+          "uptime": 635.284493333,
+          "memory": {
+            "rss": 72957952,
+            "heapTotal": 28000256,
+            "heapUsed": 24789296,
+            "external": 4626243,
+            "arrayBuffers": 308953
+          },
+          "version": "3.0.0",
+          "environment": "development",
+          "metrics": {
+            "requestsPerMinute": 0,
+            "averageResponseTime": 0,
+            "errorRate": 0,
+            "activeConnections": 0
+          }
+        },
+        "services": {
+          "user": {
+            "service": "user",
+            "status": "OK",
+            "timestamp": "2025-08-19T06:28:47.484Z",
+            "uptime": 8055.396231542,
+            "memory": {
+              "rss": 62242816,
+              "heapTotal": 30720000,
+              "heapUsed": 28753592,
+              "external": 4990265,
+              "arrayBuffers": 174882
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 44,
+              "lastChecked": "2025-08-19T06:28:47.484Z"
+            }
+          },
+          "ai": {
+            "service": "ai",
+            "status": "OK",
+            "timestamp": "2025-08-19T06:28:47.486Z",
+            "uptime": 73.842194833,
+            "memory": {
+              "rss": 95633408,
+              "heapTotal": 26361856,
+              "heapUsed": 23604752,
+              "external": 5949679,
+              "arrayBuffers": 125590
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [
+              {
+                "name": "claude-api",
+                "status": "CLI_MODE",
+                "responseTime": 0,
+                "lastChecked": "2025-08-19T06:28:47.443Z"
+              },
+              {
+                "name": "database",
+                "status": "OK",
+                "responseTime": 42,
+                "lastChecked": "2025-08-19T06:28:47.485Z"
+              }
+            ],
+            "metrics": {
+              "requestsPerMinute": 0,
+              "averageResponseTime": 42,
+              "errorRate": 0,
+              "responseTime": 45,
+              "lastChecked": "2025-08-19T06:28:47.486Z"
+            }
+          },
+          "terminal": {
+            "service": "terminal",
+            "status": "OK",
+            "timestamp": "2025-08-19T06:28:47.444Z",
+            "uptime": 8049.203264542,
+            "memory": {
+              "rss": 53641216,
+              "heapTotal": 24772608,
+              "heapUsed": 22024496,
+              "external": 4967620,
+              "arrayBuffers": 154511
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 3,
+              "lastChecked": "2025-08-19T06:28:47.444Z"
+            }
+          },
+          "workspace": {
+            "service": "workspace",
+            "status": "OK",
+            "timestamp": "2025-08-19T06:28:47.444Z",
+            "uptime": 8046.116911625,
+            "memory": {
+              "rss": 48791552,
+              "heapTotal": 18186240,
+              "heapUsed": 15164824,
+              "external": 2720802,
+              "arrayBuffers": 109027
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 3,
+              "lastChecked": "2025-08-19T06:28:47.444Z"
+            }
+          },
+          "portfolio": {
+            "service": "portfolio",
+            "status": "OK",
+            "timestamp": "2025-08-19T06:28:47.445Z",
+            "uptime": 8043.00819925,
+            "memory": {
+              "rss": 53100544,
+              "heapTotal": 29474816,
+              "heapUsed": 26707480,
+              "external": 6049950,
+              "arrayBuffers": 100748
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 4,
+              "lastChecked": "2025-08-19T06:28:47.445Z"
+            }
+          },
+          "market": {
+            "service": "market",
+            "status": "OK",
+            "timestamp": "2025-08-19T06:28:47.445Z",
+            "uptime": 273.959141458,
+            "memory": {
+              "rss": 280379392,
+              "heapTotal": 245891072,
+              "heapUsed": 238219728,
+              "external": 9047188,
+              "arrayBuffers": 4970296
+            },
+            "version": "unknown",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 3,
+              "lastChecked": "2025-08-19T06:28:47.445Z"
+            }
+          }
+        },
+        "overall": {
+          "status": "OK",
+          "servicesUp": 6,
+          "servicesTotal": 6,
+          "timestamp": "2025-08-19T06:28:47.486Z"
+        }
+      }
+    },
+    "serviceDiscovery": {
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseTime": 3,
+      "data": {
+        "success": true,
+        "data": {
+          "user-management": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "user-management-1",
+                "url": "http://localhost:4120",
+                "healthy": true
+              }
+            ]
+          },
+          "ai-assistant": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "ai-assistant-1",
+                "url": "http://localhost:4130",
+                "healthy": true
+              }
+            ]
+          },
+          "terminal": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "terminal-1",
+                "url": "http://localhost:4140",
+                "healthy": true
+              }
+            ]
+          },
+          "workspace": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "workspace-1",
+                "url": "http://localhost:4150",
+                "healthy": true
+              }
+            ]
+          },
+          "portfolio": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "portfolio-1",
+                "url": "http://localhost:4160",
+                "healthy": true
+              }
+            ]
+          },
+          "market-data": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "market-data-1",
+                "url": "http://localhost:4170",
+                "healthy": true
+              }
+            ]
+          }
+        },
+        "timestamp": "2025-08-19T06:28:47.492Z"
+      }
+    }
+  },
+  "interServiceCommunication": {
+    "user-management": {
+      "url": "http://localhost:4110/api/v1/users/health",
+      "responseTime": 6,
+      "status": "WARN",
+      "httpStatus": 404
+    },
+    "ai-assistant": {
+      "url": "http://localhost:4110/api/v1/chat/health",
+      "responseTime": 4,
+      "status": "WARN",
+      "httpStatus": 404
+    },
+    "terminal": {
+      "url": "http://localhost:4110/api/v1/terminal/health",
+      "responseTime": 3,
+      "status": "WARN",
+      "httpStatus": 404
+    },
+    "workspace": {
+      "url": "http://localhost:4110/api/v1/workspace/health",
+      "responseTime": 2,
+      "status": "WARN",
+      "httpStatus": 404
+    },
+    "portfolio": {
+      "url": "http://localhost:4110/api/v1/portfolios/health",
+      "responseTime": 459,
+      "status": "WARN",
+      "httpStatus": 404
+    },
+    "market-data": {
+      "url": "http://localhost:4110/api/v1/market/health",
+      "responseTime": 8,
+      "status": "PASS",
+      "httpStatus": 200
+    }
+  },
+  "performance": {
+    "Gateway Health": {
+      "average": 1,
+      "min": 1,
+      "max": 1,
+      "samples": 5
+    },
+    "Service Discovery": {
+      "average": 1,
+      "min": 1,
+      "max": 1,
+      "samples": 5
+    },
+    "Health Aggregation": {
+      "average": 2,
+      "min": 2,
+      "max": 2,
+      "samples": 5
+    }
+  }
+}

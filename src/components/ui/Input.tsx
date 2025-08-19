@@ -123,7 +123,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = "Input";
 
-export default Input;
+export { Input };
 
 // Search Input Component
 interface SearchInputProps extends Omit<InputProps, "leftIcon" | "type"> {
@@ -341,3 +341,6 @@ export function FileInput({
     </div>
   );
 }
+
+// Export as default for backward compatibility
+export default Input;

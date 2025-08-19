@@ -1,5 +1,5 @@
-import { prisma } from '@/core/database/prisma';
-import { randomBytes } from 'crypto';
+import { prisma } from "@/core/database/prisma";
+import { randomBytes } from "crypto";
 
 interface RoleData {
   name: string;
@@ -23,16 +23,16 @@ export class RoleService {
     try {
       // Check if role with same code exists
       const existing = await prisma.role.findUnique({
-        where: { code: data.code }
+        where: { code: data.code },
       });
 
       if (existing) {
-        throw new Error('Role with this code already exists');
+        throw new Error("Role with this code already exists");
       }
 
       const role = await prisma.role.create({
         data: {
-          id: `role_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `role_${Date.now()}_${randomBytes(8).toString("hex")}`,
           name: data.name,
           code: data.code,
           description: data.description,
@@ -41,31 +41,35 @@ export class RoleService {
           isActive: true,
           createdBy,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
 
       return role;
     } catch (error) {
-      console.error('Create role error:', error);
+      console.error("Create role error:", error);
       throw error;
     }
   }
 
-  async updateRole(roleId: string, data: Partial<RoleData>, updatedBy?: string) {
+  async updateRole(
+    roleId: string,
+    data: Partial<RoleData>,
+    updatedBy?: string,
+  ) {
     try {
       const role = await prisma.role.update({
         where: { id: roleId },
         data: {
           ...data,
           updatedBy,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
 
       return role;
     } catch (error) {
-      console.error('Update role error:', error);
+      console.error("Update role error:", error);
       throw error;
     }
   }
@@ -74,22 +78,22 @@ export class RoleService {
     try {
       // Check if it's a system role
       const role = await prisma.role.findUnique({
-        where: { id: roleId }
+        where: { id: roleId },
       });
 
       if (role?.isSystemRole) {
-        throw new Error('Cannot delete system role');
+        throw new Error("Cannot delete system role");
       }
 
       // Soft delete - deactivate the role
       await prisma.role.update({
         where: { id: roleId },
-        data: { isActive: false }
+        data: { isActive: false },
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Delete role error:', error);
+      console.error("Delete role error:", error);
       throw error;
     }
   }
@@ -101,8 +105,8 @@ export class RoleService {
         include: {
           RolePermission: {
             include: {
-              Permission: true
-            }
+              Permission: true,
+            },
           },
           UserRole: {
             where: { isActive: true },
@@ -112,25 +116,25 @@ export class RoleService {
                   id: true,
                   email: true,
                   username: true,
-                  displayName: true
-                }
-              }
-            }
-          }
-        }
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!role) {
-        throw new Error('Role not found');
+        throw new Error("Role not found");
       }
 
       return {
         ...role,
-        permissions: role.RolePermission.map(rp => rp.Permission),
-        users: role.UserRole.map(ur => ur.User)
+        permissions: role.RolePermission.map((rp) => rp.Permission),
+        users: role.UserRole.map((ur) => ur.User),
       };
     } catch (error) {
-      console.error('Get role error:', error);
+      console.error("Get role error:", error);
       throw error;
     }
   }
@@ -148,22 +152,22 @@ export class RoleService {
           _count: {
             select: {
               UserRole: true,
-              RolePermission: true
-            }
-          }
+              RolePermission: true,
+            },
+          },
         },
         orderBy: {
-          level: 'desc'
-        }
+          level: "desc",
+        },
       });
 
-      return roles.map(role => ({
+      return roles.map((role) => ({
         ...role,
         userCount: role._count.UserRole,
-        permissionCount: role._count.RolePermission
+        permissionCount: role._count.RolePermission,
       }));
     } catch (error) {
-      console.error('List roles error:', error);
+      console.error("List roles error:", error);
       throw error;
     }
   }
@@ -172,31 +176,31 @@ export class RoleService {
     try {
       // Check if permission exists
       const existing = await prisma.permission.findUnique({
-        where: { code: data.code }
+        where: { code: data.code },
       });
 
       if (existing) {
-        throw new Error('Permission with this code already exists');
+        throw new Error("Permission with this code already exists");
       }
 
       const permission = await prisma.permission.create({
         data: {
-          id: `perm_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `perm_${Date.now()}_${randomBytes(8).toString("hex")}`,
           code: data.code,
           name: data.name,
           description: data.description,
           resource: data.resource,
           action: data.action,
-          scope: data.scope || 'global',
+          scope: data.scope || "global",
           isActive: true,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
 
       return permission;
     } catch (error) {
-      console.error('Create permission error:', error);
+      console.error("Create permission error:", error);
       throw error;
     }
   }
@@ -210,27 +214,28 @@ export class RoleService {
 
       const permissions = await prisma.permission.findMany({
         where,
-        orderBy: [
-          { resource: 'asc' },
-          { action: 'asc' }
-        ]
+        orderBy: [{ resource: "asc" }, { action: "asc" }],
       });
 
       return permissions;
     } catch (error) {
-      console.error('List permissions error:', error);
+      console.error("List permissions error:", error);
       throw error;
     }
   }
 
-  async assignPermissionToRole(roleId: string, permissionId: string, grantedBy?: string) {
+  async assignPermissionToRole(
+    roleId: string,
+    permissionId: string,
+    grantedBy?: string,
+  ) {
     try {
       // Check if already assigned
       const existing = await prisma.rolePermission.findFirst({
         where: {
           roleId,
-          permissionId
-        }
+          permissionId,
+        },
       });
 
       if (existing) {
@@ -239,96 +244,105 @@ export class RoleService {
 
       const rolePermission = await prisma.rolePermission.create({
         data: {
-          id: `roleperm_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `roleperm_${Date.now()}_${randomBytes(8).toString("hex")}`,
           roleId,
           permissionId,
-          grantedBy
-        }
+          grantedBy,
+        },
       });
 
       // Log permission grant
       await prisma.auditLog.create({
         data: {
-          id: `audit_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `audit_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId: grantedBy,
-          action: 'permission_grant',
-          resource: 'role_permission',
+          action: "permission_grant",
+          resource: "role_permission",
           resourceId: rolePermission.id,
           metadata: { roleId, permissionId },
-          severity: 'info'
-        }
+          severity: "info",
+        },
       });
 
       return rolePermission;
     } catch (error) {
-      console.error('Assign permission error:', error);
+      console.error("Assign permission error:", error);
       throw error;
     }
   }
 
-  async removePermissionFromRole(roleId: string, permissionId: string, removedBy?: string) {
+  async removePermissionFromRole(
+    roleId: string,
+    permissionId: string,
+    removedBy?: string,
+  ) {
     try {
       const rolePermission = await prisma.rolePermission.findFirst({
         where: {
           roleId,
-          permissionId
-        }
+          permissionId,
+        },
       });
 
       if (!rolePermission) {
-        throw new Error('Permission not assigned to role');
+        throw new Error("Permission not assigned to role");
       }
 
       await prisma.rolePermission.delete({
-        where: { id: rolePermission.id }
+        where: { id: rolePermission.id },
       });
 
       // Log permission revoke
       await prisma.auditLog.create({
         data: {
-          id: `audit_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `audit_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId: removedBy,
-          action: 'permission_revoke',
-          resource: 'role_permission',
+          action: "permission_revoke",
+          resource: "role_permission",
           resourceId: rolePermission.id,
           metadata: { roleId, permissionId },
-          severity: 'info'
-        }
+          severity: "info",
+        },
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Remove permission error:', error);
+      console.error("Remove permission error:", error);
       throw error;
     }
   }
 
-  async checkUserPermission(userId: string, resource: string, action: string): Promise<boolean> {
+  async checkUserPermission(
+    userId: string,
+    resource: string,
+    action: string,
+  ): Promise<boolean> {
     try {
       const userRoles = await prisma.userRole.findMany({
         where: {
           userId,
-          isActive: true
+          isActive: true,
         },
         include: {
           Role: {
             include: {
               RolePermission: {
                 include: {
-                  Permission: true
-                }
-              }
-            }
-          }
-        }
+                  Permission: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       // Check if user has required permission through any role
       for (const userRole of userRoles) {
-        const hasPermission = userRole.Role.RolePermission.some(rp => 
-          rp.Permission.resource === resource &&
-          rp.Permission.action === action &&
-          rp.Permission.isActive
+        const hasPermission = userRole.Role.RolePermission.some(
+          (rp) =>
+            rp.Permission.resource === resource &&
+            rp.Permission.action === action &&
+            rp.Permission.isActive,
         );
 
         if (hasPermission) {
@@ -338,7 +352,7 @@ export class RoleService {
 
       return false;
     } catch (error) {
-      console.error('Check permission error:', error);
+      console.error("Check permission error:", error);
       return false;
     }
   }
@@ -348,19 +362,19 @@ export class RoleService {
       const userRoles = await prisma.userRole.findMany({
         where: {
           userId,
-          isActive: true
+          isActive: true,
         },
         include: {
           Role: {
             include: {
               RolePermission: {
                 include: {
-                  Permission: true
-                }
-              }
-            }
-          }
-        }
+                  Permission: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       // Collect all unique permissions
@@ -371,7 +385,7 @@ export class RoleService {
           if (rolePermission.Permission.isActive) {
             permissionsMap.set(
               rolePermission.Permission.code,
-              rolePermission.Permission
+              rolePermission.Permission,
             );
           }
         }
@@ -379,7 +393,7 @@ export class RoleService {
 
       return Array.from(permissionsMap.values());
     } catch (error) {
-      console.error('Get user permissions error:', error);
+      console.error("Get user permissions error:", error);
       throw error;
     }
   }
@@ -388,38 +402,38 @@ export class RoleService {
     try {
       const defaultRoles = [
         {
-          name: 'Administrator',
-          code: 'admin',
-          description: 'Full system access',
+          name: "Administrator",
+          code: "admin",
+          description: "Full system access",
           level: 100,
-          isSystemRole: true
+          isSystemRole: true,
         },
         {
-          name: 'Manager',
-          code: 'manager',
-          description: 'Management access',
+          name: "Manager",
+          code: "manager",
+          description: "Management access",
           level: 50,
-          isSystemRole: true
+          isSystemRole: true,
         },
         {
-          name: 'User',
-          code: 'user',
-          description: 'Standard user access',
+          name: "User",
+          code: "user",
+          description: "Standard user access",
           level: 10,
-          isSystemRole: true
+          isSystemRole: true,
         },
         {
-          name: 'Guest',
-          code: 'guest',
-          description: 'Limited guest access',
+          name: "Guest",
+          code: "guest",
+          description: "Limited guest access",
           level: 1,
-          isSystemRole: true
-        }
+          isSystemRole: true,
+        },
       ];
 
       for (const roleData of defaultRoles) {
         const existing = await prisma.role.findUnique({
-          where: { code: roleData.code }
+          where: { code: roleData.code },
         });
 
         if (!existing) {
@@ -431,31 +445,101 @@ export class RoleService {
       // Initialize default permissions
       const defaultPermissions = [
         // User permissions
-        { code: 'user.view', name: 'View Users', resource: 'user', action: 'view' },
-        { code: 'user.create', name: 'Create Users', resource: 'user', action: 'create' },
-        { code: 'user.update', name: 'Update Users', resource: 'user', action: 'update' },
-        { code: 'user.delete', name: 'Delete Users', resource: 'user', action: 'delete' },
-        
+        {
+          code: "user.view",
+          name: "View Users",
+          resource: "user",
+          action: "view",
+        },
+        {
+          code: "user.create",
+          name: "Create Users",
+          resource: "user",
+          action: "create",
+        },
+        {
+          code: "user.update",
+          name: "Update Users",
+          resource: "user",
+          action: "update",
+        },
+        {
+          code: "user.delete",
+          name: "Delete Users",
+          resource: "user",
+          action: "delete",
+        },
+
         // Role permissions
-        { code: 'role.view', name: 'View Roles', resource: 'role', action: 'view' },
-        { code: 'role.create', name: 'Create Roles', resource: 'role', action: 'create' },
-        { code: 'role.update', name: 'Update Roles', resource: 'role', action: 'update' },
-        { code: 'role.delete', name: 'Delete Roles', resource: 'role', action: 'delete' },
-        
+        {
+          code: "role.view",
+          name: "View Roles",
+          resource: "role",
+          action: "view",
+        },
+        {
+          code: "role.create",
+          name: "Create Roles",
+          resource: "role",
+          action: "create",
+        },
+        {
+          code: "role.update",
+          name: "Update Roles",
+          resource: "role",
+          action: "update",
+        },
+        {
+          code: "role.delete",
+          name: "Delete Roles",
+          resource: "role",
+          action: "delete",
+        },
+
         // System permissions
-        { code: 'system.config', name: 'System Configuration', resource: 'system', action: 'config' },
-        { code: 'system.audit', name: 'View Audit Logs', resource: 'system', action: 'audit' },
-        
+        {
+          code: "system.config",
+          name: "System Configuration",
+          resource: "system",
+          action: "config",
+        },
+        {
+          code: "system.audit",
+          name: "View Audit Logs",
+          resource: "system",
+          action: "audit",
+        },
+
         // Content permissions
-        { code: 'content.view', name: 'View Content', resource: 'content', action: 'view' },
-        { code: 'content.create', name: 'Create Content', resource: 'content', action: 'create' },
-        { code: 'content.update', name: 'Update Content', resource: 'content', action: 'update' },
-        { code: 'content.delete', name: 'Delete Content', resource: 'content', action: 'delete' }
+        {
+          code: "content.view",
+          name: "View Content",
+          resource: "content",
+          action: "view",
+        },
+        {
+          code: "content.create",
+          name: "Create Content",
+          resource: "content",
+          action: "create",
+        },
+        {
+          code: "content.update",
+          name: "Update Content",
+          resource: "content",
+          action: "update",
+        },
+        {
+          code: "content.delete",
+          name: "Delete Content",
+          resource: "content",
+          action: "delete",
+        },
       ];
 
       for (const permData of defaultPermissions) {
         const existing = await prisma.permission.findUnique({
-          where: { code: permData.code }
+          where: { code: permData.code },
         });
 
         if (!existing) {
@@ -466,24 +550,26 @@ export class RoleService {
 
       // Assign all permissions to admin role
       const adminRole = await prisma.role.findUnique({
-        where: { code: 'admin' }
+        where: { code: "admin" },
       });
 
       if (adminRole) {
         const allPermissions = await prisma.permission.findMany({
-          where: { isActive: true }
+          where: { isActive: true },
         });
 
         for (const permission of allPermissions) {
-          await this.assignPermissionToRole(adminRole.id, permission.id).catch(() => {
-            // Permission might already be assigned
-          });
+          await this.assignPermissionToRole(adminRole.id, permission.id).catch(
+            () => {
+              // Permission might already be assigned
+            },
+          );
         }
       }
 
       return { success: true };
     } catch (error) {
-      console.error('Initialize default roles error:', error);
+      console.error("Initialize default roles error:", error);
       throw error;
     }
   }

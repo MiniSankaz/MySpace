@@ -309,3 +309,6 @@ export function ConfirmModal({
     </Modal>
   );
 }
+
+// Named export for compatibility
+export { Modal };

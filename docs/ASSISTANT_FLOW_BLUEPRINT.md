@@ -1,17 +1,20 @@
 # AI Assistant Flow Blueprint
 
 ## Overview
+
 This document describes the complete flow of the AI Assistant system, including interactions between Services, Functions, and Database tables. This blueprint serves as a reference for future maintenance and improvements.
 
 ## Database Schema
 
 ### Primary Tables
+
 - **AssistantChatSession**: Main session records
 - **AssistantChatMessage**: Individual messages in sessions
 - **User**: User information
 - **Project**: Project association (optional)
 
 ### Deprecated Tables (No longer used)
+
 - ~~AssistantConversation~~
 - ~~AssistantMessage~~
 
@@ -40,6 +43,7 @@ This document describes the complete flow of the AI Assistant system, including 
 ### 1. User Sends Message
 
 #### 1.1 Frontend → API
+
 ```
 UI Component sends POST request to /api/assistant/chat
 ├── Headers: Authentication, Content-Type
@@ -48,6 +52,7 @@ UI Component sends POST request to /api/assistant/chat
 ```
 
 #### 1.2 API Route Processing (`/api/assistant/chat/route.ts`)
+
 ```javascript
 POST /api/assistant/chat
 ├── 1. Authentication Check
@@ -91,6 +96,7 @@ POST /api/assistant/chat
 ### 2. Message Processing in AssistantService
 
 #### 2.1 Direct Mode (`sendDirectToClaude`)
+
 ```javascript
 AssistantService.sendDirectToClaude(userId, sessionId, message)
 ├── 1. Load Context
@@ -139,6 +145,7 @@ ClaudeAIService.sendMessageWithSession(message, sessionId, context, userId)
 ### 3. Database Operations
 
 #### 3.1 AssistantLogger Service
+
 ```javascript
 AssistantLoggingService
 ├── createSession(data)
@@ -158,6 +165,7 @@ AssistantLoggingService
 ```
 
 #### 3.2 ConversationStorage Service (Legacy Support)
+
 ```javascript
 ConversationStorage
 ├── saveConversation(userId, sessionId, messages)
@@ -174,11 +182,12 @@ ConversationStorage
 ### 4. Claude Session Management
 
 #### 4.1 Session Lifecycle
+
 ```javascript
 ClaudeSessionManager
 ├── getOrCreateSession(sessionId, userId)
 │   ├── Check existing: sessions.get(sessionId)
-│   └── Create new: 
+│   └── Create new:
 │       ├── ClaudeBackgroundService.start()
 │       ├── Setup event handlers
 │       └── Store in sessions Map
@@ -194,6 +203,7 @@ ClaudeSessionManager
 ```
 
 #### 4.2 Claude Background Service
+
 ```javascript
 ClaudeBackgroundService
 ├── start()
@@ -213,21 +223,22 @@ ClaudeBackgroundService
 
 ## Service Interactions Matrix
 
-| Service | Dependencies | Database Tables | External APIs |
-|---------|-------------|----------------|---------------|
-| **API Route** | AssistantLogger, AssistantService | - | - |
-| **AssistantService** | ContextManager, ClaudeAIService, AssistantLogger | - | - |
-| **AssistantLogger** | Prisma | AssistantChatSession, AssistantChatMessage | - |
-| **ClaudeAIService** | ClaudeDirectService | - | - |
-| **ClaudeDirectService** | ClaudeSessionManager | - | - |
-| **ClaudeSessionManager** | ClaudeBackgroundService | - | - |
-| **ClaudeBackgroundService** | - | - | Claude CLI |
-| **ContextManager** | ConversationStorage | - | - |
-| **ConversationStorage** | Prisma | AssistantChatSession, AssistantChatMessage | - |
+| Service                     | Dependencies                                     | Database Tables                            | External APIs |
+| --------------------------- | ------------------------------------------------ | ------------------------------------------ | ------------- |
+| **API Route**               | AssistantLogger, AssistantService                | -                                          | -             |
+| **AssistantService**        | ContextManager, ClaudeAIService, AssistantLogger | -                                          | -             |
+| **AssistantLogger**         | Prisma                                           | AssistantChatSession, AssistantChatMessage | -             |
+| **ClaudeAIService**         | ClaudeDirectService                              | -                                          | -             |
+| **ClaudeDirectService**     | ClaudeSessionManager                             | -                                          | -             |
+| **ClaudeSessionManager**    | ClaudeBackgroundService                          | -                                          | -             |
+| **ClaudeBackgroundService** | -                                                | -                                          | Claude CLI    |
+| **ContextManager**          | ConversationStorage                              | -                                          | -             |
+| **ConversationStorage**     | Prisma                                           | AssistantChatSession, AssistantChatMessage | -             |
 
 ## Function Call Flow
 
 ### Complete Request Flow
+
 ```
 1. UI.sendMessage(message)
    ↓
@@ -269,32 +280,38 @@ ClaudeBackgroundService
 ## Error Handling Strategy
 
 ### Database Errors
+
 - AssistantLogger: Continue without logging, log error
 - ConversationStorage: Fallback to file storage
 - Session creation: Continue with default session
 
 ### Claude Service Errors
+
 - Background service fails: Fallback to direct execution
 - API key errors: Return error message to user
 - Timeout: Return timeout message
 
 ### Authentication Errors
+
 - No auth: Return 401 Unauthorized
 - Invalid session: Create new session
 
 ## Performance Considerations
 
 ### Session Management
+
 - **Memory Usage**: Sessions stored in Map (cleared after 30min)
 - **Concurrency**: Multiple sessions can run simultaneously
 - **Cleanup**: Automatic cleanup every 5 minutes
 
 ### Database Operations
+
 - **Batch Inserts**: Use createMany for multiple messages
 - **Indexing**: sessionId, userId, timestamp indexes
 - **Deduplication**: Check existing message IDs
 
 ### Claude CLI Integration
+
 - **Process Reuse**: Background processes stay alive
 - **Timeout**: 30-second timeout for responses
 - **Error Recovery**: Automatic process restart on failure
@@ -302,6 +319,7 @@ ClaudeBackgroundService
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 # Database
 DATABASE_URL=postgresql://...
@@ -316,7 +334,9 @@ CLEANUP_INTERVAL=300000  # 5 minutes
 ```
 
 ### Database Schema Updates
+
 If schema changes are needed:
+
 1. Update `prisma/schema.prisma`
 2. Run `npx prisma migrate dev`
 3. Update TypeScript interfaces
@@ -325,6 +345,7 @@ If schema changes are needed:
 ## Monitoring & Debugging
 
 ### Log Points
+
 1. **API Entry**: Request received with sessionId
 2. **Authentication**: User verification result
 3. **Session Creation**: New session created
@@ -333,18 +354,19 @@ If schema changes are needed:
 6. **Error Points**: All catch blocks log errors
 
 ### Debug Queries
+
 ```sql
 -- Check recent sessions
-SELECT * FROM "AssistantChatSession" 
+SELECT * FROM "AssistantChatSession"
 ORDER BY "createdAt" DESC LIMIT 10;
 
 -- Check messages for session
-SELECT * FROM "AssistantChatMessage" 
+SELECT * FROM "AssistantChatMessage"
 WHERE "sessionId" = 'your-session-id'
 ORDER BY "timestamp" ASC;
 
 -- Session message counts
-SELECT 
+SELECT
   s."id",
   s."sessionName",
   COUNT(m."id") as message_count
@@ -357,21 +379,24 @@ ORDER BY s."createdAt" DESC;
 ## Future Improvements
 
 ### Scalability
+
 - Move session storage to Redis
 - Implement message queuing
 - Add horizontal scaling support
 
 ### Features
+
 - Message threading
 - File attachment support
 - Real-time streaming responses
 - Message encryption
 
 ### Performance
+
 - Database connection pooling
 - Response caching
 - Lazy loading for conversation history
 
 ---
 
-*This document should be updated whenever the flow changes. Last updated: August 2025*
+_This document should be updated whenever the flow changes. Last updated: August 2025_

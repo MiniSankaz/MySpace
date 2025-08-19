@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "auto_load": true,
+  "agents_directory": ".claude/agents",
+  "custom_agents": [
+    {
+      "name": "business-analyst",
+      "file": "business-analyst.md",
+      "model": "claude-3-5-sonnet-20241022",
+      "language": "en",
+      "auto_register": true
+    },
+    {
+      "name": "development-planner-enhanced",
+      "file": "development-planner-enhanced.md",
+      "model": "claude-3-5-sonnet-20241022",
+      "language": "en",
+      "auto_register": true
+    },
+    {
+      "name": "devops-maturity-auditor",
+      "file": "devops-maturity-auditor.md",
+      "model": "claude-3-5-sonnet-20241022",
+      "language": "en",
+      "auto_register": true
+    },
+    {
+      "name": "sop-enforcer",
+      "file": "sop-enforcer.md",
+      "model": "claude-3-5-sonnet-20241022",
+      "language": "th",
+      "auto_register": true
+    },
+    {
+      "name": "dev-life-consultant",
+      "file": "dev-life-consultant.md",
+      "model": "claude-3-5-sonnet-20241022",
+      "language": "en",
+      "auto_register": true
+    }
+  ],
+  "builtin_agents": [
+    "code-reviewer",
+    "technical-architect",
+    "system-analyst",
+    "general-purpose",
+    "statusline-setup",
+    "output-style-setup",
+    "sop-compliance-guardian",
+    "development-planner",
+    "code-reviewer",
+    "sop-enforcer"
+  ],
+  "init_on_start": true,
+  "init_script": ".claude/init-agents.sh"
+}

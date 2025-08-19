@@ -1,10 +1,5 @@
 {
-  "watch": [
-    "dist/**/*.js",
-    "server.js",
-    ".env",
-    ".env.local"
-  ],
+  "watch": ["dist/**/*.js", "server.js", ".env", ".env.local"],
   "ext": "js,json",
   "ignore": [
     "src/**",

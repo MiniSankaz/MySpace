@@ -2,7 +2,7 @@ export interface Message {
   id: string;
   userId: string;
   content: string;
-  type: 'user' | 'assistant' | 'system';
+  type: "user" | "assistant" | "system";
   timestamp: Date;
   metadata?: Record<string, any>;
 }
@@ -17,14 +17,14 @@ export interface Command {
 
 export interface CommandParameter {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'date';
+  type: "string" | "number" | "boolean" | "date";
   required?: boolean;
   description?: string;
 }
 
 export type CommandHandler = (
   context: AssistantContext,
-  args: Record<string, any>
+  args: Record<string, any>,
 ) => Promise<AssistantResponse>;
 
 export interface AssistantContext {
@@ -43,7 +43,7 @@ export interface AssistantResponse {
 }
 
 export interface Action {
-  type: 'navigate' | 'execute' | 'display';
+  type: "navigate" | "execute" | "display";
   payload: any;
 }
 
@@ -58,7 +58,7 @@ export interface UserData {
 export interface UserPreferences {
   language: string;
   timezone: string;
-  theme: 'light' | 'dark' | 'auto';
+  theme: "light" | "dark" | "auto";
   notifications: boolean;
 }
 
@@ -66,8 +66,8 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
+  status: "pending" | "in_progress" | "completed";
+  priority: "low" | "medium" | "high";
   dueDate?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -84,7 +84,7 @@ export interface Reminder {
 }
 
 export interface RecurrencePattern {
-  type: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  type: "daily" | "weekly" | "monthly" | "yearly";
   interval: number;
   endDate?: Date;
 }

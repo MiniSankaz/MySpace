@@ -5,6 +5,7 @@
 ระบบ AI Assistant ใหม่ที่ออกแบบใหม่ทั้งหมดเพื่อแก้ปัญหาความซับซ้อนและประสิทธิภาพ โดยยังคงใช้ UI เดิมแต่ปรับปรุง backend services ให้เรียบง่ายและเร็วขึ้น
 
 ### ✅ จุดเด่นของระบบใหม่
+
 - **Service เดียว** - ลดจาก 10+ services เหลือแค่ 3 services หลัก
 - **ตอบเร็ว** - 5-15 วินาที (จากเดิม 30-120 วินาที)
 - **ง่ายต่อการดูแล** - โค้ดน้อยลง 70%, debug ง่าย
@@ -38,9 +39,11 @@
 ## 📦 Services ใหม่
 
 ### 1. **Claude Service** (`/src/services/claude.service.ts`)
+
 Service หลักสำหรับเรียก Claude CLI โดยตรง
 
 **คุณสมบัติ:**
+
 - Singleton pattern เพื่อประสิทธิภาพ
 - เรียก Claude CLI โดยตรงด้วย `--print` flag
 - Timeout 30 วินาที
@@ -48,6 +51,7 @@ Service หลักสำหรับเรียก Claude CLI โดยตร
 - Error handling ที่ชัดเจน
 
 **Methods หลัก:**
+
 ```typescript
 sendMessage(message: string, context?: ClaudeMessage[]): Promise<ClaudeResponse>
 checkAvailability(): Promise<boolean>
@@ -55,15 +59,18 @@ getStatus(): Promise<ServiceStatus>
 ```
 
 ### 2. **Storage Service** (`/src/services/storage.service.ts`)
+
 Service สำหรับจัดการ database operations ทั้งหมด
 
 **คุณสมบัติ:**
+
 - CRUD operations สำหรับ sessions และ messages
 - Search และ statistics
 - Auto cleanup สำหรับ session เก่า
 - Optimized queries
 
 **Methods หลัก:**
+
 ```typescript
 getOrCreateSession(sessionId, input): Promise<SessionData>
 saveMessage(input): Promise<MessageData>
@@ -74,15 +81,18 @@ getStatistics(userId): Promise<Stats>
 ```
 
 ### 3. **Assistant Service** (`/src/services/assistant.service.ts`)
+
 Service หลักที่ประสานงานระหว่าง Claude และ Storage
 
 **คุณสมบัติ:**
+
 - Process orchestration
 - Session management
 - History tracking
 - Health checks
 
 **Methods หลัก:**
+
 ```typescript
 processMessage(message, config): Promise<AssistantResponse>
 getSessionHistory(sessionId): Promise<History[]>
@@ -104,7 +114,7 @@ model AssistantChatSession {
   startedAt DateTime @default(now())
   endedAt   DateTime?
   metadata  Json?
-  
+
   messages  AssistantChatMessage[]
   user      User @relation(fields: [userId], references: [id])
 }
@@ -117,7 +127,7 @@ model AssistantChatMessage {
   timestamp DateTime @default(now())
   projectId String?
   metadata  Json?
-  
+
   session   AssistantChatSession @relation(fields: [sessionId], references: [id])
 }
 ```
@@ -157,17 +167,18 @@ sequenceDiagram
 
 ## 🚀 Performance Improvements
 
-| Metric | เดิม | ใหม่ | ปรับปรุง |
-|--------|------|------|---------|
-| Response Time | 30-120s | 5-15s | **75-90% เร็วขึ้น** |
-| Memory Usage | สูง (multiple processes) | ต่ำ (single process) | **60% ลดลง** |
-| Code Lines | ~2000 lines | ~600 lines | **70% น้อยลง** |
-| Services | 10+ services | 3 services | **70% ลดลง** |
-| Success Rate | ~60% | >95% | **35% ดีขึ้น** |
+| Metric        | เดิม                     | ใหม่                 | ปรับปรุง            |
+| ------------- | ------------------------ | -------------------- | ------------------- |
+| Response Time | 30-120s                  | 5-15s                | **75-90% เร็วขึ้น** |
+| Memory Usage  | สูง (multiple processes) | ต่ำ (single process) | **60% ลดลง**        |
+| Code Lines    | ~2000 lines              | ~600 lines           | **70% น้อยลง**      |
+| Services      | 10+ services             | 3 services           | **70% ลดลง**        |
+| Success Rate  | ~60%                     | >95%                 | **35% ดีขึ้น**      |
 
 ## 🔧 Configuration
 
 ### Environment Variables
+
 ```bash
 # ไม่ต้องใช้ API Key - ใช้ logged-in Claude CLI
 # ANTHROPIC_API_KEY=xxx (ไม่ต้องการ)
@@ -183,33 +194,38 @@ MAX_CONTEXT_MESSAGES=5   # จำนวน context messages
 ## 📝 API Endpoints
 
 ### POST /api/assistant/chat
+
 ส่งข้อความไปยัง AI Assistant
 
 **Request:**
+
 ```json
 {
   "message": "สวัสดี ช่วยอธิบายเรื่อง React hooks",
-  "sessionId": "session-123",  // optional
-  "projectId": "proj-456",     // optional
-  "folderId": "folder-789"     // optional
+  "sessionId": "session-123", // optional
+  "projectId": "proj-456", // optional
+  "folderId": "folder-789" // optional
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
   "sessionId": "session-123",
   "messageId": "msg-abc",
   "response": "React hooks คือ...",
-  "duration": 5420  // milliseconds
+  "duration": 5420 // milliseconds
 }
 ```
 
 ### GET /api/assistant/chat
+
 ดึงข้อมูลต่างๆ
 
 **Actions:**
+
 - `?sessionId=xxx` - ดึงประวัติการสนทนา
 - `?action=sessions` - ดึงรายการ sessions
 - `?action=search&keyword=xxx` - ค้นหา sessions
@@ -217,9 +233,11 @@ MAX_CONTEXT_MESSAGES=5   # จำนวน context messages
 - `?action=health` - ตรวจสอบ service health
 
 ### DELETE /api/assistant/chat
+
 ลบ session
 
 **Request:**
+
 ```json
 {
   "sessionId": "session-123"
@@ -229,6 +247,7 @@ MAX_CONTEXT_MESSAGES=5   # จำนวน context messages
 ## 🧪 Testing
 
 ### Test Claude Service
+
 ```bash
 npx tsx -e "
 const { ClaudeService } = require('./src/services/claude.service');
@@ -238,6 +257,7 @@ service.sendMessage('Hello').then(console.log);
 ```
 
 ### Test Storage Service
+
 ```bash
 npx tsx -e "
 const { StorageService } = require('./src/services/storage.service');
@@ -247,8 +267,9 @@ service.getStatistics('test-user').then(console.log);
 ```
 
 ### Test Full Flow
+
 ```bash
-curl -X POST http://localhost:4000/api/assistant/chat \
+curl -X POST http://localhost:4110/api/assistant/chat \
   -H "Content-Type: application/json" \
   -H "Cookie: [auth-cookie]" \
   -d '{"message":"Hello"}'
@@ -257,21 +278,25 @@ curl -X POST http://localhost:4000/api/assistant/chat \
 ## 🔄 Migration Plan
 
 ### Phase 1: Deploy New Services (สัปดาห์ 1)
+
 - [x] สร้าง claude.service.ts
 - [x] สร้าง storage.service.ts
 - [x] สร้าง assistant.service.ts
 
 ### Phase 2: Update API (สัปดาห์ 2)
+
 - [x] สร้าง route.new.ts
 - [ ] Test with existing UI
 - [ ] Deploy to staging
 
 ### Phase 3: Migrate Data (สัปดาห์ 3)
+
 - [ ] Run database migration
 - [ ] Migrate existing sessions
 - [ ] Verify data integrity
 
 ### Phase 4: Cleanup (สัปดาห์ 4)
+
 - [ ] Remove old services
 - [ ] Remove unused dependencies
 - [ ] Deploy to production
@@ -299,13 +324,15 @@ curl -X POST http://localhost:4000/api/assistant/chat \
 ## 📊 Monitoring
 
 ### Health Check
+
 ```bash
-curl http://localhost:4000/api/assistant/chat?action=health
+curl http://localhost:4110/api/assistant/chat?action=health
 ```
 
 ### Statistics
+
 ```bash
-curl http://localhost:4000/api/assistant/chat?action=stats \
+curl http://localhost:4110/api/assistant/chat?action=stats \
   -H "Cookie: [auth-cookie]"
 ```
 

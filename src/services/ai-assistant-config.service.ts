@@ -1,4 +1,4 @@
-import { SettingsService } from './settings.service';
+import { SettingsService } from "./settings.service";
 
 export interface AIAssistantConfig {
   responseTimeout: number;
@@ -44,26 +44,37 @@ export class AIAssistantConfigService {
     // Check cache first
     const cacheKey = `user_${userId}`;
     const now = Date.now();
-    
-    if (this.configCache.has(cacheKey) && (now - this.lastCacheUpdate) < this.cacheTimeout) {
+
+    if (
+      this.configCache.has(cacheKey) &&
+      now - this.lastCacheUpdate < this.cacheTimeout
+    ) {
       return this.configCache.get(cacheKey)!;
     }
 
     try {
       // Load from database
-      const userSettings = await this.settingsService.getUserConfig(userId, undefined, 'ai_assistant');
-      
+      const userSettings = await this.settingsService.getUserConfig(
+        userId,
+        undefined,
+        "ai_assistant",
+      );
+
       // Convert array to config object
       const configObj: Partial<AIAssistantConfig> = {};
       if (Array.isArray(userSettings)) {
-        userSettings.forEach(setting => {
+        userSettings.forEach((setting) => {
           (configObj as any)[setting.key] = setting.value;
         });
       }
 
       // Merge with defaults
-      const defaultConfig = this.settingsService.getDefaultAIAssistantSettings();
-      const finalConfig = { ...defaultConfig, ...configObj } as AIAssistantConfig;
+      const defaultConfig =
+        this.settingsService.getDefaultAIAssistantSettings();
+      const finalConfig = {
+        ...defaultConfig,
+        ...configObj,
+      } as AIAssistantConfig;
 
       // Cache the result
       this.configCache.set(cacheKey, finalConfig);
@@ -71,7 +82,11 @@ export class AIAssistantConfigService {
 
       return finalConfig;
     } catch (error) {
-      console.error('Failed to load AI Assistant config for user:', userId, error);
+      console.error(
+        "Failed to load AI Assistant config for user:",
+        userId,
+        error,
+      );
       // Return defaults on error
       return this.settingsService.getDefaultAIAssistantSettings();
     }
@@ -81,27 +96,37 @@ export class AIAssistantConfigService {
    * Get system-wide AI Assistant configuration
    */
   async getSystemConfig(): Promise<AIAssistantConfig> {
-    const cacheKey = 'system_config';
+    const cacheKey = "system_config";
     const now = Date.now();
-    
-    if (this.configCache.has(cacheKey) && (now - this.lastCacheUpdate) < this.cacheTimeout) {
+
+    if (
+      this.configCache.has(cacheKey) &&
+      now - this.lastCacheUpdate < this.cacheTimeout
+    ) {
       return this.configCache.get(cacheKey)!;
     }
 
     try {
-      const systemSettings = await this.settingsService.getSystemConfig(undefined, 'ai_assistant');
-      
+      const systemSettings = await this.settingsService.getSystemConfig(
+        undefined,
+        "ai_assistant",
+      );
+
       // Convert array to config object
       const configObj: Partial<AIAssistantConfig> = {};
       if (Array.isArray(systemSettings)) {
-        systemSettings.forEach(setting => {
+        systemSettings.forEach((setting) => {
           (configObj as any)[setting.key] = setting.value;
         });
       }
 
       // Merge with defaults
-      const defaultConfig = this.settingsService.getDefaultAIAssistantSettings();
-      const finalConfig = { ...defaultConfig, ...configObj } as AIAssistantConfig;
+      const defaultConfig =
+        this.settingsService.getDefaultAIAssistantSettings();
+      const finalConfig = {
+        ...defaultConfig,
+        ...configObj,
+      } as AIAssistantConfig;
 
       // Cache the result
       this.configCache.set(cacheKey, finalConfig);
@@ -109,7 +134,7 @@ export class AIAssistantConfigService {
 
       return finalConfig;
     } catch (error) {
-      console.error('Failed to load system AI Assistant config:', error);
+      console.error("Failed to load system AI Assistant config:", error);
       // Return defaults on error
       return this.settingsService.getDefaultAIAssistantSettings();
     }
@@ -141,7 +166,7 @@ export class AIAssistantConfigService {
         return await this.getSystemConfig();
       }
     } catch (error) {
-      console.error('Failed to get effective AI Assistant config:', error);
+      console.error("Failed to get effective AI Assistant config:", error);
       return this.settingsService.getDefaultAIAssistantSettings();
     }
   }
@@ -192,15 +217,18 @@ export class AIAssistantConfigService {
   /**
    * Update user configuration
    */
-  async updateUserConfig(userId: string, config: Partial<AIAssistantConfig>): Promise<void> {
+  async updateUserConfig(
+    userId: string,
+    config: Partial<AIAssistantConfig>,
+  ): Promise<void> {
     const configs = Object.entries(config).map(([key, value]) => ({
       key,
       value,
-      category: 'ai_assistant'
+      category: "ai_assistant",
     }));
 
     await this.settingsService.setUserConfigs(userId, configs);
-    
+
     // Clear cache for this user
     this.clearCache(userId);
   }
@@ -216,13 +244,13 @@ export class AIAssistantConfigService {
     debugMode: boolean;
   }> {
     const config = await this.getEffectiveConfig(userId);
-    
+
     return {
       timeout: config.responseTimeout * 1000, // Convert to milliseconds
       maxContextMessages: config.maxContextMessages,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
-      debugMode: config.debugMode
+      debugMode: config.debugMode,
     };
   }
 }

@@ -160,3 +160,6 @@ export function TagBadge({ tag, onRemove, className = "" }: TagBadgeProps) {
     </Badge>
   );
 }
+
+// Named export for compatibility  
+export { Badge };

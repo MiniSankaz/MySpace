@@ -1,7 +1,10 @@
-'use client';
+"use client";
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import {
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 
 interface Props {
   children: ReactNode;
@@ -21,7 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -29,16 +32,16 @@ export class ErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught error:', error, errorInfo);
-    
+    console.error("ErrorBoundary caught error:", error, errorInfo);
+
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
 
     // Call custom error handler if provided
@@ -47,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     // Log to error reporting service in production
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       // TODO: Send to error reporting service
     }
   }
@@ -56,7 +59,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     });
   };
 
@@ -73,14 +76,17 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <ExclamationTriangleIcon className="w-8 h-8 text-red-500" />
-              <h2 className="text-xl font-semibold text-white">Something went wrong</h2>
+              <h2 className="text-xl font-semibold text-white">
+                Something went wrong
+              </h2>
             </div>
-            
+
             <p className="text-gray-300 mb-4">
-              An unexpected error occurred. The application may be temporarily unavailable.
+              An unexpected error occurred. The application may be temporarily
+              unavailable.
             </p>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {process.env.NODE_ENV === "development" && this.state.error && (
               <div className="mb-4">
                 <details className="bg-gray-900 rounded p-3">
                   <summary className="cursor-pointer text-sm text-gray-400 hover:text-gray-300">
@@ -90,7 +96,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     {this.state.error.toString()}
                     {this.state.errorInfo && (
                       <>
-                        {'\n\nComponent Stack:'}
+                        {"\n\nComponent Stack:"}
                         {this.state.errorInfo.componentStack}
                       </>
                     )}
@@ -108,9 +114,9 @@ export class ErrorBoundary extends Component<Props, State> {
                 <ArrowPathIcon className="w-4 h-4" />
                 Try Again
               </button>
-              
+
               <button
-                onClick={() => window.location.href = '/'}
+                onClick={() => (window.location.href = "/")}
                 className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 
                          rounded-lg transition-colors"
               >
@@ -142,7 +148,7 @@ export function useErrorHandler() {
 // Wrapper component with common error handling
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  fallback?: ReactNode
+  fallback?: ReactNode,
 ) {
   return (props: P) => (
     <ErrorBoundary fallback={fallback}>

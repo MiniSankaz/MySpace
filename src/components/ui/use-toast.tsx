@@ -1,16 +1,22 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  ReactNode,
+} from "react";
 
 interface Toast {
   id: string;
   title: string;
   description?: string;
-  variant?: 'default' | 'destructive';
+  variant?: "default" | "destructive";
   duration?: number;
 }
 
 interface ToastContextType {
   toasts: Toast[];
-  toast: (toast: Omit<Toast, 'id'>) => void;
+  toast: (toast: Omit<Toast, "id">) => void;
   dismiss: (id: string) => void;
 }
 
@@ -19,10 +25,10 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const toast = (newToast: Omit<Toast, 'id'>) => {
+  const toast = (newToast: Omit<Toast, "id">) => {
     const id = Math.random().toString(36).substr(2, 9);
     const toastWithId = { ...newToast, id };
-    
+
     setToasts((prev) => [...prev, toastWithId]);
 
     // Auto dismiss after duration (default 5 seconds)
@@ -46,13 +52,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast() {
   const context = useContext(ToastContext);
-  
+
   // If context is not available, return a simple implementation
   if (!context) {
     return {
-      toast: (toast: Omit<Toast, 'id'>) => {
+      toast: (toast: Omit<Toast, "id">) => {
         // Simple console logging as fallback
-        if (toast.variant === 'destructive') {
+        if (toast.variant === "destructive") {
           console.error(`[Toast Error] ${toast.title}:`, toast.description);
         } else {
           console.log(`[Toast] ${toast.title}:`, toast.description);
@@ -62,11 +68,17 @@ export function useToast() {
       dismiss: () => {},
     };
   }
-  
+
   return context;
 }
 
-function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
+function ToastContainer({
+  toasts,
+  dismiss,
+}: {
+  toasts: Toast[];
+  dismiss: (id: string) => void;
+}) {
   if (toasts.length === 0) return null;
 
   return (
@@ -78,9 +90,9 @@ function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: st
             min-w-[300px] max-w-[420px] p-4 rounded-lg shadow-lg
             animate-in slide-in-from-bottom-2 duration-300
             ${
-              toast.variant === 'destructive'
-                ? 'bg-red-500/90 text-white'
-                : 'bg-gray-800/90 text-gray-100'
+              toast.variant === "destructive"
+                ? "bg-red-500/90 text-white"
+                : "bg-gray-800/90 text-gray-100"
             }
             backdrop-blur-sm border border-gray-700/50
           `}

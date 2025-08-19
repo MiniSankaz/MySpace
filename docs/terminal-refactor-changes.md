@@ -5,9 +5,11 @@
 ### 1. Core Service Files
 
 #### `/src/services/refactored/SessionManager.service.ts`
+
 **Purpose**: Single source of truth for all terminal sessions
 **Size**: ~800 lines
 **Key Responsibilities**:
+
 - Session CRUD operations
 - State management
 - Project-session mapping
@@ -17,20 +19,22 @@
 ```typescript
 // Key interfaces to implement
 interface ISessionManager {
-  createSession(projectId: string, userId: string): Promise<Session>
-  getSession(sessionId: string): Session | null
-  updateSession(sessionId: string, updates: Partial<Session>): void
-  deleteSession(sessionId: string): Promise<void>
-  getSessionsByProject(projectId: string): Session[]
-  getSessionsByUser(userId: string): Session[]
-  recoverSession(sessionId: string): Promise<Session>
+  createSession(projectId: string, userId: string): Promise<Session>;
+  getSession(sessionId: string): Session | null;
+  updateSession(sessionId: string, updates: Partial<Session>): void;
+  deleteSession(sessionId: string): Promise<void>;
+  getSessionsByProject(projectId: string): Session[];
+  getSessionsByUser(userId: string): Session[];
+  recoverSession(sessionId: string): Promise<Session>;
 }
 ```
 
 #### `/src/services/refactored/StreamManager.service.ts`
+
 **Purpose**: WebSocket and process stream management
 **Size**: ~600 lines
 **Key Responsibilities**:
+
 - WebSocket connection pooling
 - Process spawning and management
 - Stream multiplexing
@@ -40,19 +44,21 @@ interface ISessionManager {
 ```typescript
 // Key interfaces to implement
 interface IStreamManager {
-  createStream(sessionId: string, type: StreamType): Stream
-  attachWebSocket(sessionId: string, ws: WebSocket): void
-  spawnProcess(sessionId: string, command: string): ChildProcess
-  pipeStream(from: Stream, to: Stream): void
-  closeStream(streamId: string): void
-  getActiveStreams(): Stream[]
+  createStream(sessionId: string, type: StreamType): Stream;
+  attachWebSocket(sessionId: string, ws: WebSocket): void;
+  spawnProcess(sessionId: string, command: string): ChildProcess;
+  pipeStream(from: Stream, to: Stream): void;
+  closeStream(streamId: string): void;
+  getActiveStreams(): Stream[];
 }
 ```
 
 #### `/src/services/refactored/MetricsCollector.service.ts`
+
 **Purpose**: Unified metrics, monitoring, and logging
 **Size**: ~500 lines
 **Key Responsibilities**:
+
 - Performance metrics collection
 - Resource usage monitoring
 - Event logging
@@ -62,25 +68,32 @@ interface IStreamManager {
 ```typescript
 // Key interfaces to implement
 interface IMetricsCollector {
-  recordMetric(name: string, value: number, tags?: Record<string, string>): void
-  logEvent(level: LogLevel, message: string, context?: any): void
-  getMetrics(timeRange: TimeRange): Metrics
-  setAlert(name: string, condition: AlertCondition): void
-  getResourceUsage(): ResourceUsage
+  recordMetric(
+    name: string,
+    value: number,
+    tags?: Record<string, string>,
+  ): void;
+  logEvent(level: LogLevel, message: string, context?: any): void;
+  getMetrics(timeRange: TimeRange): Metrics;
+  setAlert(name: string, condition: AlertCondition): void;
+  getResourceUsage(): ResourceUsage;
 }
 ```
 
 ### 2. Supporting Files
 
 #### `/src/services/refactored/types/terminal-refactor.types.ts`
+
 **Purpose**: Shared type definitions
 **Size**: ~200 lines
 
 #### `/src/services/refactored/adapters/LegacyAdapter.base.ts`
+
 **Purpose**: Base adapter class for backward compatibility
 **Size**: ~150 lines
 
 #### `/src/services/refactored/utils/migration.utils.ts`
+
 **Purpose**: Migration helper functions
 **Size**: ~300 lines
 
@@ -89,7 +102,9 @@ interface IMetricsCollector {
 ### Phase 1: Add Adapter Hooks (Days 4-6)
 
 #### `/src/services/terminal.service.ts`
+
 **Changes Required**:
+
 - Add feature flag checks
 - Import adapter when flag enabled
 - Dual-write to both old and new services
@@ -120,7 +135,9 @@ async createTerminal(config: TerminalConfig) {
 ```
 
 #### `/src/services/terminal-memory.service.ts`
+
 **Changes Required**:
+
 - Add SessionManager integration
 - Implement state migration logic
 - Add dual-write capability
@@ -143,7 +160,9 @@ private async migrateToSessionManager() {
 ### Phase 2: Core Service Migration (Days 7-10)
 
 #### `/src/services/terminal-orchestrator.service.ts`
+
 **Changes Required**:
+
 - Replace process management with StreamManager
 - Update coordination logic
 - Migrate event handlers
@@ -159,7 +178,9 @@ const process = this.streamManager.spawnProcess(sessionId, command);
 ```
 
 #### `/src/services/terminal-lifecycle.service.ts`
+
 **Changes Required**:
+
 - Redirect lifecycle methods to SessionManager
 - Maintain API compatibility
 - Add deprecation warnings
@@ -178,26 +199,31 @@ async createSession(config: SessionConfig) {
 ### Phase 3: Service Consolidation (Days 11-13)
 
 #### `/src/services/terminal-metrics.service.ts`
+
 **Status**: TO BE REMOVED
 **Migration**: All functionality moved to MetricsCollector
 **Deprecation**: Add deprecation warnings in Phase 2
 
 #### `/src/services/terminal-analytics.service.ts`
+
 **Status**: TO BE REMOVED
 **Migration**: Merged into MetricsCollector
 **Deprecation**: Add warnings, then remove
 
 #### `/src/services/terminal-logging.service.ts`
+
 **Status**: TO BE REMOVED
 **Migration**: Consolidated into MetricsCollector
 **Deprecation**: Gradual removal
 
 #### `/src/services/workspace-terminal-logging.service.ts`
+
 **Status**: TO BE REMOVED
 **Migration**: Functionality in MetricsCollector
 **Deprecation**: Remove after validation
 
 #### `/src/services/terminal-memory-pool.service.ts`
+
 **Status**: TO BE REMOVED
 **Migration**: Pool management in SessionManager
 **Deprecation**: Remove in final phase
@@ -205,13 +231,17 @@ async createSession(config: SessionConfig) {
 ### Phase 4: Frontend Updates (Days 12-13)
 
 #### `/src/app/(auth)/terminal/page.tsx`
+
 **Changes Required**:
+
 - Update service imports
 - Modify state management hooks
 - Test all terminal operations
 
 #### `/src/components/terminal/TerminalComponent.tsx`
+
 **Changes Required**:
+
 - Update WebSocket connection logic
 - Modify event handlers
 - Ensure backward compatibility
@@ -219,7 +249,9 @@ async createSession(config: SessionConfig) {
 ### Phase 5: Configuration Updates (Day 14)
 
 #### `/src/config/terminal.config.ts`
+
 **Changes Required**:
+
 - Add new service configurations
 - Update connection parameters
 - Add performance tuning options
@@ -227,7 +259,7 @@ async createSession(config: SessionConfig) {
 ```typescript
 export const terminalConfig = {
   // Existing config...
-  
+
   // New refactored service config
   refactored: {
     sessionManager: {
@@ -253,7 +285,9 @@ export const terminalConfig = {
 ```
 
 #### `/.env.example`
+
 **Changes Required**:
+
 - Add feature flag variables
 - Add new service configurations
 
@@ -283,6 +317,7 @@ After successful migration and validation:
 ## Import Updates Required
 
 ### Files Requiring Import Changes
+
 Count: ~25 files across the codebase
 
 1. **API Routes** (`/src/app/api/terminal/**`)
@@ -300,6 +335,7 @@ Count: ~25 files across the codebase
 ## Database Migration Scripts
 
 ### `/prisma/migrations/terminal_refactor.sql`
+
 ```sql
 -- Add new session tracking table
 CREATE TABLE IF NOT EXISTS terminal_sessions_v2 (
@@ -319,7 +355,7 @@ CREATE INDEX idx_sessions_activity ON terminal_sessions_v2(last_activity);
 
 -- Migration script for existing data
 INSERT INTO terminal_sessions_v2 (id, project_id, user_id, state)
-SELECT 
+SELECT
   session_id,
   project_id,
   user_id,
@@ -331,6 +367,7 @@ WHERE active = true;
 ## Testing Files to Create
 
 ### `/src/services/refactored/__tests__/`
+
 1. `SessionManager.test.ts` (~500 lines)
 2. `StreamManager.test.ts` (~400 lines)
 3. `MetricsCollector.test.ts` (~300 lines)
@@ -347,6 +384,7 @@ WHERE active = true;
 ## Scripts to Create
 
 ### `/scripts/terminal-refactor/`
+
 1. `rollback.sh` - Emergency rollback script
 2. `migrate-data.js` - Data migration utility
 3. `validate-migration.js` - Migration validation
@@ -358,17 +396,20 @@ WHERE active = true;
 ## Summary Statistics
 
 ### File Impact Analysis
+
 - **New Files**: 11 files (~3,500 lines)
 - **Modified Files**: 15 files (~2,000 lines changed)
 - **Deleted Files**: 7 files (-2,573 lines)
 - **Net Change**: -1,073 lines (23% reduction)
 
 ### Risk Assessment by File
+
 - **High Risk**: terminal.service.ts, terminal-memory.service.ts
 - **Medium Risk**: terminal-orchestrator.service.ts, frontend components
 - **Low Risk**: metrics, analytics, logging services
 
 ### Migration Order (Critical Path)
+
 1. Create new services (no risk)
 2. Add adapters (low risk)
 3. Migrate terminal.service.ts (high risk - careful testing)

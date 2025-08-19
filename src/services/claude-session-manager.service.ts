@@ -1,5 +1,5 @@
-import { ClaudeBackgroundService } from './claude-background.service';
-import { EventEmitter } from 'events';
+import { ClaudeBackgroundService } from "./claude-background.service";
+import { EventEmitter } from "events";
 
 interface ClaudeSession {
   sessionId: string;
@@ -27,13 +27,20 @@ export class ClaudeSessionManager extends EventEmitter {
     return ClaudeSessionManager.instance;
   }
 
-  async getOrCreateSession(sessionId: string, userId?: string): Promise<ClaudeBackgroundService> {
-    console.log(`[Claude Session Manager] Getting or creating session: ${sessionId}`);
-    
+  async getOrCreateSession(
+    sessionId: string,
+    userId?: string,
+  ): Promise<ClaudeBackgroundService> {
+    console.log(
+      `[Claude Session Manager] Getting or creating session: ${sessionId}`,
+    );
+
     // Check if session exists
     const existingSession = this.sessions.get(sessionId);
     if (existingSession) {
-      console.log(`[Claude Session Manager] Found existing session: ${sessionId}`);
+      console.log(
+        `[Claude Session Manager] Found existing session: ${sessionId}`,
+      );
       existingSession.lastActivity = new Date();
       return existingSession.service;
     }
@@ -41,56 +48,75 @@ export class ClaudeSessionManager extends EventEmitter {
     // Create new session
     console.log(`[Claude Session Manager] Creating new session: ${sessionId}`);
     const service = new ClaudeBackgroundService();
-    
+
     try {
       await service.start();
-      
+
       const session: ClaudeSession = {
         sessionId,
         service,
         createdAt: new Date(),
         lastActivity: new Date(),
-        userId
+        userId,
       };
-      
+
       this.sessions.set(sessionId, session);
-      console.log(`[Claude Session Manager] Session created successfully: ${sessionId}`);
-      this.emit('sessionCreated', sessionId);
-      
+      console.log(
+        `[Claude Session Manager] Session created successfully: ${sessionId}`,
+      );
+      this.emit("sessionCreated", sessionId);
+
       // Handle service events
-      service.on('error', (error) => {
-        console.error(`[Claude Session Manager] Session ${sessionId} error:`, error);
+      service.on("error", (error) => {
+        console.error(
+          `[Claude Session Manager] Session ${sessionId} error:`,
+          error,
+        );
         this.handleSessionError(sessionId, error);
       });
-      
-      service.on('exit', () => {
+
+      service.on("exit", () => {
         console.log(`[Claude Session Manager] Session ${sessionId} exited`);
         this.removeSession(sessionId);
       });
-      
+
       return service;
     } catch (error) {
-      console.error(`[Claude Session Manager] Failed to create session ${sessionId}:`, error);
+      console.error(
+        `[Claude Session Manager] Failed to create session ${sessionId}:`,
+        error,
+      );
       throw error;
     }
   }
 
-  async sendMessageToSession(sessionId: string, message: string, userId?: string): Promise<string> {
-    console.log(`[Claude Session Manager] Sending message to session: ${sessionId}`);
-    
+  async sendMessageToSession(
+    sessionId: string,
+    message: string,
+    userId?: string,
+  ): Promise<string> {
+    console.log(
+      `[Claude Session Manager] Sending message to session: ${sessionId}`,
+    );
+
     const service = await this.getOrCreateSession(sessionId, userId);
     const session = this.sessions.get(sessionId);
-    
+
     if (session) {
       session.lastActivity = new Date();
     }
-    
+
     try {
       const response = await service.sendMessage(message);
-      console.log(`[Claude Session Manager] Received response for session: ${sessionId}`);
+      console.log(
+        `[Claude Session Manager] Received response for session: ${sessionId}`,
+      );
       return response;
     } catch (error) {
-      console.error(`[Claude Session Manager] Error sending message to session ${sessionId}:`, error);
+      console.error(
+        `[Claude Session Manager] Error sending message to session ${sessionId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -102,43 +128,55 @@ export class ClaudeSessionManager extends EventEmitter {
       try {
         await session.service.stop();
       } catch (error) {
-        console.error(`[Claude Session Manager] Error stopping session ${sessionId}:`, error);
+        console.error(
+          `[Claude Session Manager] Error stopping session ${sessionId}:`,
+          error,
+        );
       }
       this.sessions.delete(sessionId);
-      this.emit('sessionRemoved', sessionId);
+      this.emit("sessionRemoved", sessionId);
     }
   }
 
   private async cleanupInactiveSessions(): Promise<void> {
     const now = Date.now();
     const sessionsToRemove: string[] = [];
-    
+
     for (const [sessionId, session] of this.sessions.entries()) {
       const inactiveTime = now - session.lastActivity.getTime();
       if (inactiveTime > this.sessionTimeout) {
         sessionsToRemove.push(sessionId);
       }
     }
-    
+
     for (const sessionId of sessionsToRemove) {
-      console.log(`[Claude Session Manager] Cleaning up inactive session: ${sessionId}`);
+      console.log(
+        `[Claude Session Manager] Cleaning up inactive session: ${sessionId}`,
+      );
       await this.removeSession(sessionId);
     }
-    
+
     if (sessionsToRemove.length > 0) {
-      console.log(`[Claude Session Manager] Cleaned up ${sessionsToRemove.length} inactive sessions`);
+      console.log(
+        `[Claude Session Manager] Cleaned up ${sessionsToRemove.length} inactive sessions`,
+      );
     }
   }
 
   private handleSessionError(sessionId: string, error: any): void {
-    console.error(`[Claude Session Manager] Session ${sessionId} encountered error:`, error);
-    
+    console.error(
+      `[Claude Session Manager] Session ${sessionId} encountered error:`,
+      error,
+    );
+
     // If API key error, don't remove session immediately
-    if (error.message && error.message.includes('API key')) {
-      console.log(`[Claude Session Manager] API key error for session ${sessionId}, keeping session`);
+    if (error.message && error.message.includes("API key")) {
+      console.log(
+        `[Claude Session Manager] API key error for session ${sessionId}, keeping session`,
+      );
       return;
     }
-    
+
     // For other errors, remove the session
     this.removeSession(sessionId);
   }

@@ -3,10 +3,16 @@
  * Provides abstraction for different storage implementations
  */
 
-export type StorageMode = 'LOCAL' | 'DATABASE' | 'HYBRID';
-export type TerminalStatus = 'active' | 'inactive' | 'error' | 'connecting' | 'closed' | 'suspended';
-export type TerminalMode = 'normal' | 'claude';
-export type TerminalType = 'terminal';
+export type StorageMode = "LOCAL" | "DATABASE" | "HYBRID";
+export type TerminalStatus =
+  | "active"
+  | "inactive"
+  | "error"
+  | "connecting"
+  | "closed"
+  | "suspended";
+export type TerminalMode = "normal" | "claude";
+export type TerminalType = "terminal";
 
 export interface TerminalSession {
   id: string;
@@ -23,7 +29,7 @@ export interface TerminalSession {
   currentPath: string;
   wsConnected: boolean;
   metadata?: SessionMetadata;
-  
+
   // Extended fields for storage
   output?: OutputLine[];
   commands?: CommandHistory[];
@@ -43,7 +49,7 @@ export interface SessionMetadata {
 export interface OutputLine {
   id: string;
   timestamp: Date;
-  type: 'stdout' | 'stderr' | 'system';
+  type: "stdout" | "stderr" | "system";
   content: string;
 }
 
@@ -75,8 +81,8 @@ export interface SessionCreateParams {
 export interface ListOptions {
   limit?: number;
   offset?: number;
-  orderBy?: 'createdAt' | 'updatedAt' | 'tabName';
-  orderDirection?: 'asc' | 'desc';
+  orderBy?: "createdAt" | "updatedAt" | "tabName";
+  orderDirection?: "asc" | "desc";
   includeInactive?: boolean;
 }
 
@@ -130,31 +136,37 @@ export interface ITerminalStorageService {
   // Session Management
   createSession(params: SessionCreateParams): Promise<TerminalSession>;
   getSession(sessionId: string): Promise<TerminalSession | null>;
-  updateSession(sessionId: string, data: Partial<TerminalSession>): Promise<void>;
+  updateSession(
+    sessionId: string,
+    data: Partial<TerminalSession>,
+  ): Promise<void>;
   deleteSession(sessionId: string): Promise<boolean>;
-  listSessions(projectId: string, options?: ListOptions): Promise<TerminalSession[]>;
-  
+  listSessions(
+    projectId: string,
+    options?: ListOptions,
+  ): Promise<TerminalSession[]>;
+
   // Bulk Operations
   bulkUpdate(updates: SessionUpdate[]): Promise<void>;
   bulkDelete(sessionIds: string[]): Promise<number>;
-  
+
   // Focus Management
   setSessionFocus(sessionId: string, focused: boolean): Promise<void>;
   getFocusedSessions(projectId: string): Promise<string[]>;
-  
+
   // State Management
   suspendSession(sessionId: string): Promise<void>;
   resumeSession(sessionId: string): Promise<ResumeResult>;
-  
+
   // Query Operations
   findSessions(query: SessionQuery): Promise<TerminalSession[]>;
   countSessions(query?: SessionQuery): Promise<number>;
-  
+
   // Storage-Specific Operations
   sync(): Promise<void>;
   flush(): Promise<void>;
   cleanup(): Promise<void>;
-  
+
   // Health & Monitoring
   getStorageInfo(): Promise<StorageInfo>;
   healthCheck(): Promise<HealthStatus>;
@@ -187,9 +199,9 @@ export interface DatabaseStorageConfig {
 }
 
 export interface HybridStorageConfig {
-  syncStrategy?: 'immediate' | 'eventual' | 'manual';
+  syncStrategy?: "immediate" | "eventual" | "manual";
   syncInterval?: number;
-  conflictResolution?: 'local-wins' | 'database-wins' | 'latest-wins';
+  conflictResolution?: "local-wins" | "database-wins" | "latest-wins";
   maxSyncBatch?: number;
 }
 
@@ -197,12 +209,15 @@ export interface HybridStorageConfig {
  * Storage Events
  */
 export interface StorageEvents {
-  'session:created': (session: TerminalSession) => void;
-  'session:updated': (sessionId: string, changes: Partial<TerminalSession>) => void;
-  'session:deleted': (sessionId: string) => void;
-  'session:suspended': (sessionId: string) => void;
-  'session:resumed': (sessionId: string) => void;
-  'storage:mode-changed': (from: StorageMode, to: StorageMode) => void;
-  'storage:sync-complete': (synced: number, conflicts: number) => void;
-  'storage:error': (error: Error) => void;
+  "session:created": (session: TerminalSession) => void;
+  "session:updated": (
+    sessionId: string,
+    changes: Partial<TerminalSession>,
+  ) => void;
+  "session:deleted": (sessionId: string) => void;
+  "session:suspended": (sessionId: string) => void;
+  "session:resumed": (sessionId: string) => void;
+  "storage:mode-changed": (from: StorageMode, to: StorageMode) => void;
+  "storage:sync-complete": (synced: number, conflicts: number) => void;
+  "storage:error": (error: Error) => void;
 }

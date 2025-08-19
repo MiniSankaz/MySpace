@@ -3,8 +3,9 @@
 ## Development
 
 ### Start Development
+
 ```bash
-npm run dev              # Start dev server (port 4000)
+npm run dev              # Start dev server (port 4110)
 npm run build           # Build for production
 npm run start           # Start production server
 ./start-v2.sh           # Start with Terminal V2 (recommended)
@@ -13,6 +14,7 @@ npm run start           # Start production server
 ```
 
 ### Code Quality
+
 ```bash
 npm run lint            # Run ESLint
 npm run format          # Format with Prettier
@@ -23,6 +25,7 @@ npm run lint:fix        # Auto-fix linting issues
 ## Database
 
 ### Prisma Commands
+
 ```bash
 npx prisma migrate dev   # Run migrations
 npx prisma generate      # Generate Prisma client
@@ -33,6 +36,7 @@ npx prisma migrate reset # Reset database
 ```
 
 ### Database Scripts
+
 ```bash
 npm run db:reset        # Reset database
 npm run db:seed         # Seed database
@@ -42,6 +46,7 @@ tsx scripts/database/cleanup-and-setup-sankaz.ts  # Setup sankaz user
 ## Testing
 
 ### Run Tests
+
 ```bash
 npm run test            # Run all tests
 npm run test:unit       # Run unit tests only
@@ -51,6 +56,7 @@ npm run test:coverage   # Generate coverage report
 ```
 
 ### Terminal V2 Testing
+
 ```bash
 npx tsx scripts/test-terminal-integration.ts  # Terminal V2 integration tests
 npx tsx scripts/load-test-terminal.ts         # Load testing (200+ sessions)
@@ -65,6 +71,7 @@ TEST_DURATION=30000              # Test duration (30 seconds)
 ## Git Operations
 
 ### Branch Management
+
 ```bash
 git checkout dev                    # Switch to dev branch
 git checkout -b feature/name        # Create feature branch
@@ -73,6 +80,7 @@ git push origin --delete branch    # Delete remote branch
 ```
 
 ### Commit & Push
+
 ```bash
 git add .                          # Stage all changes
 git commit -m "feat: description"  # Commit with convention
@@ -81,6 +89,7 @@ git pull --rebase origin main      # Update from main
 ```
 
 ### Stash & Cherry-pick
+
 ```bash
 git stash                          # Stash changes
 git stash pop                      # Apply stashed changes
@@ -91,6 +100,7 @@ git revert <commit-hash>           # Revert commit
 ## Scripts
 
 ### Utility Scripts
+
 ```bash
 ./scripts/optimize-for-claude.sh          # Optimize for Claude
 ./scripts/enforce-claudemd-standards.sh   # Check CLAUDE.md compliance
@@ -98,6 +108,7 @@ git revert <commit-hash>           # Revert commit
 ```
 
 ### Deployment Scripts
+
 ```bash
 ./scripts/staging-setup.sh               # Setup staging
 ./scripts/automated-deployment.sh        # Auto deploy
@@ -107,6 +118,7 @@ git revert <commit-hash>           # Revert commit
 ## Terminal V2 System
 
 ### Start Terminal V2
+
 ```bash
 # Progressive Migration (Recommended for Production)
 ./start-v2.sh --progressive
@@ -122,20 +134,22 @@ git revert <commit-hash>           # Revert commit
 ```
 
 ### Terminal V2 Operations
+
 ```bash
 # Health Check
-curl http://localhost:4000/api/terminal-v2/migration-status
+curl http://localhost:4110/api/terminal-v2/migration-status
 
 # Create Session (API)
-curl -X POST http://localhost:4000/api/terminal-v2/create \
+curl -X POST http://localhost:4110/api/terminal-v2/create \
   -H "Content-Type: application/json" \
   -d '{"projectId":"test","projectPath":"/tmp","mode":"normal"}'
 
 # WebSocket Connection
-# ws://localhost:4000/ws/terminal-v2?sessionId=<id>&projectId=<project>
+# ws://localhost:4110/ws/terminal-v2?sessionId=<id>&projectId=<project>
 ```
 
 ### Migration Control
+
 ```bash
 # Environment Variables
 TERMINAL_MIGRATION_MODE=progressive  # legacy|dual|new|progressive
@@ -143,10 +157,11 @@ TERMINAL_USE_V2=true                # Enable V2 server
 USE_NEW_TERMINAL_API=true           # Use new API endpoints
 
 # Check Migration Status
-curl http://localhost:4000/api/terminal-v2/migration-status | jq
+curl http://localhost:4110/api/terminal-v2/migration-status | jq
 ```
 
 ### Terminal Commands (In Session)
+
 ```bash
 clear                   # Clear terminal
 exit                    # Exit session
@@ -162,6 +177,7 @@ echo $TERMINAL_PROJECT_ID    # Check project ID
 ## Legacy Terminal System
 
 ### WebSocket Servers (Backward Compatible)
+
 ```bash
 # Legacy Terminal (Port 4001)
 ws://localhost:4001
@@ -173,6 +189,7 @@ ws://localhost:4002
 ## Package Management
 
 ### NPM Commands
+
 ```bash
 npm install             # Install dependencies
 npm install <package>   # Install specific package
@@ -184,6 +201,7 @@ npm audit fix           # Fix vulnerabilities
 ```
 
 ### Package Info
+
 ```bash
 npm ls <package>        # Check package version
 npm info <package>      # Package information
@@ -193,6 +211,7 @@ npm run                 # List available scripts
 ## Docker (Future)
 
 ### Container Management
+
 ```bash
 docker-compose up       # Start containers
 docker-compose down     # Stop containers
@@ -203,6 +222,7 @@ docker-compose build    # Build images
 ## Environment
 
 ### Environment Files
+
 ```bash
 cp .env.example .env.local    # Create local env file
 source .env                   # Load environment variables
@@ -212,22 +232,24 @@ printenv | grep API           # Check API variables
 ## Debugging
 
 ### Process Management
+
 ```bash
-lsof -i :4000           # Check port usage (main app)
+lsof -i :4110           # Check port usage (main app)
 lsof -i :4001           # Check port usage (legacy terminal)
 lsof -i :4002           # Check port usage (claude terminal)
 kill -9 <PID>           # Kill process
 ps aux | grep node      # Find Node processes
-netstat -an | grep 4000 # Check network connections
+netstat -an | grep 4110 # Check network connections
 ```
 
 ### Terminal V2 Debugging
+
 ```bash
 # Check V2 System Health
-curl http://localhost:4000/api/terminal-v2/migration-status
+curl http://localhost:4110/api/terminal-v2/migration-status
 
 # Monitor WebSocket Connections
-ws ws://localhost:4000/ws/terminal-v2?sessionId=test&projectId=test
+ws ws://localhost:4110/ws/terminal-v2?sessionId=test&projectId=test
 
 # Check Service Status
 ps aux | grep 'session-manager\|stream-manager\|metrics-collector'
@@ -237,6 +259,7 @@ node -e "console.log(process.memoryUsage())"
 ```
 
 ### Logs
+
 ```bash
 tail -f logs/server-*.log          # Follow server logs
 grep "Terminal V2" logs/*.log       # Search for V2 logs
@@ -252,9 +275,10 @@ grep "migration" logs/*.log         # Migration logs
 ## Performance Monitoring
 
 ### Metrics Collection
+
 ```bash
 # Prometheus Metrics
-curl http://localhost:4000/metrics
+curl http://localhost:4110/metrics
 
 # System Metrics
 top                     # CPU usage
@@ -263,6 +287,7 @@ iostat                  # I/O statistics
 ```
 
 ### Load Testing
+
 ```bash
 # Basic Load Test
 NUM_PROJECTS=3 SESSIONS_PER_PROJECT=5 npx tsx scripts/load-test-terminal.ts

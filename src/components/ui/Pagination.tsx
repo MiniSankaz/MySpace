@@ -471,3 +471,6 @@ export function LoadMorePagination({
     </div>
   );
 }
+
+// Named export for compatibility
+export { Pagination };

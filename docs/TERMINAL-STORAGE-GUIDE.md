@@ -36,11 +36,11 @@ npx prisma migrate dev --name add-terminal-storage
 
 ## 📊 การเลือกโหมดที่เหมาะสม
 
-| โหมด | Use Case | ข้อดี | ข้อเสีย |
-|------|----------|-------|---------|
-| **LOCAL** | Development, Single-user | - ความเร็วสูงสุด<br>- ไม่ต้องใช้ database<br>- ง่ายต่อการ setup | - ข้อมูลหายเมื่อ restart<br>- ไม่รองรับ multi-instance |
-| **DATABASE** | Production, Multi-user | - Persistent storage<br>- รองรับ multi-instance<br>- Scalable | - ช้ากว่า LOCAL<br>- ต้องมี PostgreSQL |
-| **HYBRID** | Production ที่ต้องการทั้งสองอย่าง | - ความเร็วของ LOCAL<br>- Persistence ของ DATABASE<br>- Auto-sync | - ซับซ้อนกว่า<br>- ใช้ resources มากขึ้น |
+| โหมด         | Use Case                          | ข้อดี                                                            | ข้อเสีย                                                |
+| ------------ | --------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
+| **LOCAL**    | Development, Single-user          | - ความเร็วสูงสุด<br>- ไม่ต้องใช้ database<br>- ง่ายต่อการ setup  | - ข้อมูลหายเมื่อ restart<br>- ไม่รองรับ multi-instance |
+| **DATABASE** | Production, Multi-user            | - Persistent storage<br>- รองรับ multi-instance<br>- Scalable    | - ช้ากว่า LOCAL<br>- ต้องมี PostgreSQL                 |
+| **HYBRID**   | Production ที่ต้องการทั้งสองอย่าง | - ความเร็วของ LOCAL<br>- Persistence ของ DATABASE<br>- Auto-sync | - ซับซ้อนกว่า<br>- ใช้ resources มากขึ้น               |
 
 ## 🔧 การใช้งาน
 
@@ -74,10 +74,10 @@ npm run migrate:terminal -- --mode=DATABASE --force --verbose
 
 ```javascript
 // ในโค้ด TypeScript/JavaScript
-import { terminalStorageService } from '@/services/storage/TerminalStorageService';
+import { terminalStorageService } from "@/services/storage/TerminalStorageService";
 
 // เปลี่ยนโหมด
-await terminalStorageService.switchMode('DATABASE');
+await terminalStorageService.switchMode("DATABASE");
 
 // ตรวจสอบโหมดปัจจุบัน
 const mode = terminalStorageService.getMode();
@@ -116,10 +116,10 @@ TERMINAL_SYNC_BATCH_SIZE=20         # เพิ่ม batch size
 
 ```bash
 # Health check endpoint
-curl http://localhost:4000/api/terminal/health
+curl http://localhost:4110/api/terminal/health
 
 # Storage info endpoint
-curl http://localhost:4000/api/terminal/storage-info
+curl http://localhost:4110/api/terminal/storage-info
 ```
 
 ### เปิด Debug Logging
@@ -149,6 +149,7 @@ console.log(`
 **อาการ**: Memory usage เกิน 4GB
 
 **แก้ไข**:
+
 ```env
 TERMINAL_MAX_SESSIONS=30            # ลดจำนวน sessions
 TERMINAL_SESSION_TIMEOUT=15         # ลด timeout
@@ -160,6 +161,7 @@ TERMINAL_MAX_MEMORY=2048           # ลด memory limit
 **อาการ**: Cannot connect to database
 
 **แก้ไข**:
+
 1. ตรวจสอบ DATABASE_URL
 2. ตรวจสอบว่า PostgreSQL ทำงานอยู่
 3. Run migrations: `npx prisma migrate dev`
@@ -169,6 +171,7 @@ TERMINAL_MAX_MEMORY=2048           # ลด memory limit
 **อาการ**: Data inconsistency between local and database
 
 **แก้ไข**:
+
 ```env
 TERMINAL_CONFLICT_RESOLUTION=latest-wins  # หรือ local-wins, database-wins
 TERMINAL_SYNC_STRATEGY=immediate         # sync ทันที
@@ -179,6 +182,7 @@ TERMINAL_SYNC_STRATEGY=immediate         # sync ทันที
 **อาการ**: Sessions หายเมื่อ restart server
 
 **แก้ไข**:
+
 ```env
 # เปิด persistence สำหรับ LOCAL mode
 TERMINAL_PERSIST_TO_DISK=true
@@ -197,14 +201,14 @@ const session = await terminalStorageService.createSession(
   projectId,
   projectPath,
   userId,
-  mode
+  mode,
 );
 
 // ดึงข้อมูล session
 const session = await terminalStorageService.getSession(sessionId);
 
 // อัพเดท status
-await terminalStorageService.updateSessionStatus(sessionId, 'active');
+await terminalStorageService.updateSessionStatus(sessionId, "active");
 
 // ตั้ง focus
 await terminalStorageService.setSessionFocus(sessionId, true);
@@ -220,12 +224,14 @@ await terminalStorageService.resumeProjectSessions(projectId);
 ## 🔄 Migration Path
 
 ### Phase 1: Development (เริ่มต้น)
+
 ```env
 TERMINAL_STORAGE_MODE=LOCAL
 TERMINAL_COMPATIBILITY_MODE=hybrid
 ```
 
 ### Phase 2: Testing (ทดสอบ)
+
 ```env
 TERMINAL_STORAGE_MODE=HYBRID
 TERMINAL_COMPATIBILITY_MODE=hybrid
@@ -233,6 +239,7 @@ TERMINAL_SYNC_STRATEGY=eventual
 ```
 
 ### Phase 3: Production (ใช้งานจริง)
+
 ```env
 TERMINAL_STORAGE_MODE=HYBRID
 TERMINAL_COMPATIBILITY_MODE=storage  # ปิดระบบเก่า

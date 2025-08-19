@@ -1,4 +1,4 @@
-import { Command } from '../types';
+import { Command } from "../types";
 
 export class CommandRegistry {
   private commands: Map<string, Command> = new Map();
@@ -6,9 +6,9 @@ export class CommandRegistry {
 
   register(command: Command): void {
     this.commands.set(command.name.toLowerCase(), command);
-    
+
     if (command.aliases) {
-      command.aliases.forEach(alias => {
+      command.aliases.forEach((alias) => {
         this.aliases.set(alias.toLowerCase(), command.name.toLowerCase());
       });
     }
@@ -27,19 +27,23 @@ export class CommandRegistry {
   getSuggestions(input: string): string[] {
     const normalizedInput = input.toLowerCase();
     const suggestions: string[] = [];
-    
+
     this.commands.forEach((command, name) => {
-      if (name.includes(normalizedInput) || 
-          command.description.toLowerCase().includes(normalizedInput)) {
+      if (
+        name.includes(normalizedInput) ||
+        command.description.toLowerCase().includes(normalizedInput)
+      ) {
         suggestions.push(`${command.name} - ${command.description}`);
       }
     });
-    
+
     return suggestions.slice(0, 5);
   }
 
   hasCommand(name: string): boolean {
     const normalizedName = name.toLowerCase();
-    return this.commands.has(normalizedName) || this.aliases.has(normalizedName);
+    return (
+      this.commands.has(normalizedName) || this.aliases.has(normalizedName)
+    );
   }
 }

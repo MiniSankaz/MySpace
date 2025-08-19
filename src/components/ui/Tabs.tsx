@@ -21,7 +21,7 @@ interface TabsProps {
   className?: string;
 }
 
-export default function Tabs({
+export function Tabs({
   children,
   defaultValue,
   value,
@@ -307,3 +307,12 @@ export function BadgeTab({
     </TabTrigger>
   );
 }
+
+// Export aliases for common naming conventions
+export { Tabs as TabsRoot };
+export { TabList as TabsList };
+export { TabTrigger as TabsTrigger };
+export { TabContent as TabsContent };
+
+// Default export for backward compatibility
+export default Tabs;

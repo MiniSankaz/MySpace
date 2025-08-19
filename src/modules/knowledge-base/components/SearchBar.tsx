@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { Search, Filter, X } from 'lucide-react';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import Select from '@/components/ui/Select';
-import Badge from '@/components/ui/Badge';
-import { 
+import React, { useState, useCallback, useEffect } from "react";
+import { Search, Filter, X } from "lucide-react";
+import Input from "@/components/ui/Input";
+import Button from "@/components/ui/Button";
+import Select from "@/components/ui/Select";
+import Badge from "@/components/ui/Badge";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { Label } from '@/components/ui/label';
-import { useDebounce } from '@/hooks/useDebounce';
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface SearchBarProps {
   onSearch: (params: SearchParams) => void;
@@ -30,8 +30,13 @@ interface SearchParams {
   tags?: string[];
 }
 
-export function SearchBar({ onSearch, categories = [], tags = [], users = [] }: SearchBarProps) {
-  const [query, setQuery] = useState('');
+export function SearchBar({
+  onSearch,
+  categories = [],
+  tags = [],
+  users = [],
+}: SearchBarProps) {
+  const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<SearchParams>({});
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -46,7 +51,7 @@ export function SearchBar({ onSearch, categories = [], tags = [], users = [] }: 
     onSearch({
       query: debouncedQuery,
       ...filters,
-      tags: selectedTags.length > 0 ? selectedTags : undefined
+      tags: selectedTags.length > 0 ? selectedTags : undefined,
     });
   }, [debouncedQuery, filters, selectedTags, onSearch]);
 
@@ -63,7 +68,7 @@ export function SearchBar({ onSearch, categories = [], tags = [], users = [] }: 
 
   const toggleTag = (tagName: string) => {
     const newTags = selectedTags.includes(tagName)
-      ? selectedTags.filter(t => t !== tagName)
+      ? selectedTags.filter((t) => t !== tagName)
       : [...selectedTags, tagName];
     setSelectedTags(newTags);
   };
@@ -71,11 +76,12 @@ export function SearchBar({ onSearch, categories = [], tags = [], users = [] }: 
   const clearFilters = () => {
     setFilters({});
     setSelectedTags([]);
-    setQuery('');
+    setQuery("");
     onSearch({});
   };
 
-  const hasActiveFilters = Object.keys(filters).length > 0 || selectedTags.length > 0;
+  const hasActiveFilters =
+    Object.keys(filters).length > 0 || selectedTags.length > 0;
 
   return (
     <div className="space-y-4">
@@ -106,15 +112,20 @@ export function SearchBar({ onSearch, categories = [], tags = [], users = [] }: 
                 <Label>Status</Label>
                 <Select
                   options={[
-                    { value: 'all', label: 'All statuses' },
-                    { value: 'open', label: 'Open' },
-                    { value: 'in_progress', label: 'In Progress' },
-                    { value: 'resolved', label: 'Resolved' },
-                    { value: 'closed', label: 'Closed' },
-                    { value: 'reopened', label: 'Reopened' }
+                    { value: "all", label: "All statuses" },
+                    { value: "open", label: "Open" },
+                    { value: "in_progress", label: "In Progress" },
+                    { value: "resolved", label: "Resolved" },
+                    { value: "closed", label: "Closed" },
+                    { value: "reopened", label: "Reopened" },
                   ]}
-                  value={filters.status || 'all'}
-                  onChange={(value) => updateFilter('status', value === 'all' ? undefined : value as string)}
+                  value={filters.status || "all"}
+                  onChange={(value) =>
+                    updateFilter(
+                      "status",
+                      value === "all" ? undefined : (value as string),
+                    )
+                  }
                   placeholder="All statuses"
                 />
               </div>
@@ -123,15 +134,20 @@ export function SearchBar({ onSearch, categories = [], tags = [], users = [] }: 
                 <Label>Severity</Label>
                 <Select
                   options={[
-                    { value: 'all', label: 'All severities' },
-                    { value: 'critical', label: 'Critical' },
-                    { value: 'high', label: 'High' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'low', label: 'Low' },
-                    { value: 'info', label: 'Info' }
+                    { value: "all", label: "All severities" },
+                    { value: "critical", label: "Critical" },
+                    { value: "high", label: "High" },
+                    { value: "medium", label: "Medium" },
+                    { value: "low", label: "Low" },
+                    { value: "info", label: "Info" },
                   ]}
-                  value={filters.severity || 'all'}
-                  onChange={(value) => updateFilter('severity', value === 'all' ? undefined : value as string)}
+                  value={filters.severity || "all"}
+                  onChange={(value) =>
+                    updateFilter(
+                      "severity",
+                      value === "all" ? undefined : (value as string),
+                    )
+                  }
                   placeholder="All severities"
                 />
               </div>
@@ -156,18 +172,18 @@ export function SearchBar({ onSearch, categories = [], tags = [], users = [] }: 
           {filters.status && (
             <Badge variant="secondary">
               Status: {filters.status}
-              <X 
-                className="w-3 h-3 ml-1 cursor-pointer" 
-                onClick={() => updateFilter('status', undefined)}
+              <X
+                className="w-3 h-3 ml-1 cursor-pointer"
+                onClick={() => updateFilter("status", undefined)}
               />
             </Badge>
           )}
           {filters.severity && (
             <Badge variant="secondary">
               Severity: {filters.severity}
-              <X 
-                className="w-3 h-3 ml-1 cursor-pointer" 
-                onClick={() => updateFilter('severity', undefined)}
+              <X
+                className="w-3 h-3 ml-1 cursor-pointer"
+                onClick={() => updateFilter("severity", undefined)}
               />
             </Badge>
           )}

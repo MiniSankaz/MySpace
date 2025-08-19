@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { Fragment } from 'react';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { Dialog, Transition } from "@headlessui/react";
 import {
   XMarkIcon,
   HomeIcon,
@@ -14,22 +14,27 @@ import {
   ChartBarIcon,
   ChartPieIcon,
   CubeIcon,
-  KeyIcon
-} from '@heroicons/react/24/outline';
+  KeyIcon,
+} from "@heroicons/react/24/outline";
 
 function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
+  return classes.filter(Boolean).join(" ");
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, badge: null },
-  { name: 'AI Assistant', href: '/assistant', icon: ChatBubbleLeftRightIcon, badge: 'AI' },
-  { name: 'Workspace', href: '/workspace', icon: FolderOpenIcon, badge: null },
-  { name: 'Terminal', href: '/terminal', icon: CommandLineIcon, badge: null },
-  { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, badge: null },
-  { name: 'Logs Monitor', href: '/logs', icon: ChartPieIcon, badge: null },
-  { name: 'API Keys', href: '/api-keys', icon: KeyIcon, badge: null },
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, badge: null },
+  { name: "Dashboard", href: "/dashboard", icon: HomeIcon, badge: null },
+  {
+    name: "AI Assistant",
+    href: "/assistant",
+    icon: ChatBubbleLeftRightIcon,
+    badge: "AI",
+  },
+  { name: "Workspace", href: "/workspace", icon: FolderOpenIcon, badge: null },
+  { name: "Terminal", href: "/terminal", icon: CommandLineIcon, badge: null },
+  { name: "Analytics", href: "/analytics", icon: ChartBarIcon, badge: null },
+  { name: "Logs Monitor", href: "/logs", icon: ChartPieIcon, badge: null },
+  { name: "API Keys", href: "/api-keys", icon: KeyIcon, badge: null },
+  { name: "Settings", href: "/settings", icon: Cog6ToothIcon, badge: null },
 ];
 
 interface SidebarProps {
@@ -44,7 +49,11 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
     <>
       {/* Mobile sidebar */}
       <Transition.Root show={sidebarOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50 lg:hidden" onClose={setSidebarOpen}>
+        <Dialog
+          as="div"
+          className="relative z-50 lg:hidden"
+          onClose={setSidebarOpen}
+        >
           <Transition.Child
             as={Fragment}
             enter="transition-opacity ease-linear duration-300"
@@ -78,9 +87,16 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                   leaveTo="opacity-0"
                 >
                   <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                    <button type="button" className="-m-2.5 p-2.5" onClick={() => setSidebarOpen(false)}>
+                    <button
+                      type="button"
+                      className="-m-2.5 p-2.5"
+                      onClick={() => setSidebarOpen(false)}
+                    >
                       <span className="sr-only">Close sidebar</span>
-                      <XMarkIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                      <XMarkIcon
+                        className="h-6 w-6 text-white"
+                        aria-hidden="true"
+                      />
                     </button>
                   </div>
                 </Transition.Child>
@@ -118,12 +134,15 @@ function SidebarContent({ pathname }: { pathname: string }) {
                     href={item.href}
                     className={classNames(
                       pathname === item.href
-                        ? 'bg-gray-800 text-white'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800',
-                      'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
+                        ? "bg-gray-800 text-white"
+                        : "text-gray-400 hover:text-white hover:bg-gray-800",
+                      "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold",
                     )}
                   >
-                    <item.icon className="h-6 w-6 shrink-0" aria-hidden="true" />
+                    <item.icon
+                      className="h-6 w-6 shrink-0"
+                      aria-hidden="true"
+                    />
                     {item.name}
                     {item.badge && (
                       <span className="ml-auto inline-flex items-center rounded-md bg-indigo-600 px-2 py-0.5 text-xs font-medium text-white">
@@ -135,7 +154,7 @@ function SidebarContent({ pathname }: { pathname: string }) {
               ))}
             </ul>
           </li>
-          
+
           {/* Modules section removed - only working features shown in main navigation */}
         </ul>
       </nav>

@@ -3,7 +3,7 @@
 **Development Planner**: Development Planning Architect  
 **Date**: 2025-08-12  
 **Priority**: P0 CRITICAL - Major Developer Workflow Improvement  
-**References**: SA Technical Specification from 2025-08-12 01:15  
+**References**: SA Technical Specification from 2025-08-12 01:15
 
 ## Executive Summary
 
@@ -12,7 +12,7 @@ This development plan transforms the System Analyst's comprehensive technical sp
 **Core Problem**: Terminal sessions killed on project switch due to React component cleanup  
 **Solution**: Replace destructive cleanup with suspension/resumption pattern  
 **Timeline**: Phase 0 hotfix TODAY (2 hours), full implementation over 3 weeks (56 hours)  
-**Impact**: 100% session survival, 40% workflow efficiency improvement  
+**Impact**: 100% session survival, 40% workflow efficiency improvement
 
 ---
 
@@ -21,35 +21,41 @@ This development plan transforms the System Analyst's comprehensive technical sp
 ### Overall Progress: ⏳ 0% Complete
 
 #### Phase 0: Immediate Hotfix ⏳ (0%)
+
 - [ ] Remove cleanupAllSessions from useEffect cleanup
 - [ ] Test basic persistence working
 - [ ] Deploy hotfix to staging
 
 #### Phase 1: Core Infrastructure ⏳ (0%)
+
 - [ ] Fix React component lifecycle
 - [ ] Enhance InMemoryTerminalService
 - [ ] Create suspension/resumption APIs
 - [ ] Integration testing
 
 #### Phase 2: WebSocket Enhancements ⏳ (0%)
+
 - [ ] Update WebSocket server for suspension
 - [ ] Implement message protocol extensions
 - [ ] Frontend WebSocket client updates
 - [ ] Connection stability testing
 
 #### Phase 3: Database Persistence ⏳ (0%)
+
 - [ ] Create database schema
 - [ ] Run migrations
 - [ ] Implement persistent storage service
 - [ ] Long-term storage testing
 
 #### Phase 4: UI/UX Improvements ⏳ (0%)
+
 - [ ] Terminal header enhancements
 - [ ] Session status indicators
 - [ ] Project switch notifications
 - [ ] User acceptance testing
 
 #### Phase 5: Production Deployment ⏳ (0%)
+
 - [ ] Performance monitoring setup
 - [ ] Documentation updates
 - [ ] Production deployment
@@ -63,21 +69,24 @@ This development plan transforms the System Analyst's comprehensive technical sp
 
 **Goal**: Stop terminals from being killed when switching projects  
 **Timeline**: 1-2 hours MAX  
-**Risk**: MINIMAL - Simple code removal  
+**Risk**: MINIMAL - Simple code removal
 
 ### Implementation Checklist
 
 #### Step 1: Remove Cleanup Hook (30 minutes)
+
 **File**: `/src/modules/workspace/components/Terminal/TerminalContainerV3.tsx`
 
 ```typescript
 // CURRENT CODE (Lines 48-56) - REMOVE THIS:
 useEffect(() => {
   loadSessions();
-  
+
   return () => {
     // ❌ DELETE THIS ENTIRE CLEANUP BLOCK
-    console.log(`[TerminalContainer] Cleaning up sessions for project: ${project.id}`);
+    console.log(
+      `[TerminalContainer] Cleaning up sessions for project: ${project.id}`,
+    );
     cleanupAllSessions(); // THIS IS THE PROBLEM
   };
 }, [project.id]);
@@ -90,11 +99,13 @@ useEffect(() => {
 ```
 
 **Acceptance Criteria**:
+
 - [ ] useEffect cleanup function removed
 - [ ] loadSessions() still called on project change
 - [ ] No cleanupAllSessions() call on project switch
 
 #### Step 2: Add Basic Session Filtering (30 minutes)
+
 **File**: `/src/modules/workspace/components/Terminal/TerminalContainerV3.tsx`
 
 ```typescript
@@ -103,22 +114,24 @@ const loadSessions = async () => {
   try {
     setLoading(true);
     setError(null);
-    
+
     // Existing fetch logic...
     const response = await fetch(`/api/terminal/list?projectId=${project.id}`, {
-      credentials: 'include',
+      credentials: "include",
     });
-    
+
     // Process only sessions for current project
     if (data.success && Array.isArray(data.sessions)) {
       // Filter to current project sessions only
-      const projectSessions = data.sessions.filter(s => s.projectId === project.id);
+      const projectSessions = data.sessions.filter(
+        (s) => s.projectId === project.id,
+      );
       const sessionList = projectSessions.map((s: any, index: number) => ({
         ...s,
-        type: 'terminal',
-        mode: s.mode || 'normal',
+        type: "terminal",
+        mode: s.mode || "normal",
         gridPosition: index,
-        isFocused: s.isFocused || false
+        isFocused: s.isFocused || false,
       }));
       setSessions(sessionList);
     }
@@ -129,6 +142,7 @@ const loadSessions = async () => {
 ```
 
 **Acceptance Criteria**:
+
 - [ ] Sessions filtered by current projectId
 - [ ] Other project sessions remain in backend
 - [ ] UI only shows current project terminals
@@ -136,6 +150,7 @@ const loadSessions = async () => {
 #### Step 3: Test & Verify (30 minutes)
 
 **Test Procedure**:
+
 1. Start development server: `npm run dev`
 2. Open Project A, create 2 terminals
 3. Run a long process: `sleep 60` in Terminal 1
@@ -144,6 +159,7 @@ const loadSessions = async () => {
 6. Verify Terminal 1 still exists and sleep is running
 
 **Verification Checklist**:
+
 - [ ] Terminal sessions survive project switch
 - [ ] Running processes continue (sleep test)
 - [ ] No console errors on project switch
@@ -174,12 +190,14 @@ npm run start
 ```
 
 **Deployment Checklist**:
+
 - [ ] Code committed with descriptive message
 - [ ] Staging environment tested
 - [ ] No regression in terminal creation
 - [ ] Production deployment successful
 
 ### Phase 0 Success Criteria ✅
+
 - [ ] Terminals persist when switching projects
 - [ ] Running processes continue uninterrupted
 - [ ] No new errors introduced
@@ -194,6 +212,7 @@ npm run start
 ### Task 1.1: Enhanced React Component Lifecycle (4 hours)
 
 #### Pre-Development Checklist
+
 - [ ] Review current TerminalContainerV3.tsx implementation
 - [ ] Understand project switching flow
 - [ ] Identify all cleanup points
@@ -204,7 +223,7 @@ npm run start
 **File**: `/src/modules/workspace/components/Terminal/TerminalContainerV3.tsx`
 
 ```typescript
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from "react";
 
 // Helper hook to track previous value
 function usePrevious<T>(value: T): T | undefined {
@@ -217,21 +236,23 @@ function usePrevious<T>(value: T): T | undefined {
 
 const TerminalContainerV3: React.FC<Props> = ({ project }) => {
   const previousProjectId = usePrevious(project.id);
-  const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(new Set());
-  
+  const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(
+    new Set(),
+  );
+
   useEffect(() => {
     // Handle project switching
     const handleProjectSwitch = async () => {
       // Suspend previous project if switching
       if (previousProjectId && previousProjectId !== project.id) {
         await suspendProjectSessions(previousProjectId);
-        setSuspendedProjects(prev => new Set(prev).add(previousProjectId));
+        setSuspendedProjects((prev) => new Set(prev).add(previousProjectId));
       }
-      
+
       // Load or resume current project sessions
       if (suspendedProjects.has(project.id)) {
         await resumeProjectSessions(project.id);
-        setSuspendedProjects(prev => {
+        setSuspendedProjects((prev) => {
           const next = new Set(prev);
           next.delete(project.id);
           return next;
@@ -240,55 +261,60 @@ const TerminalContainerV3: React.FC<Props> = ({ project }) => {
         await loadSessions();
       }
     };
-    
+
     handleProjectSwitch();
   }, [project.id]);
-  
+
   // New suspension function
   const suspendProjectSessions = async (projectId: string) => {
     try {
-      const response = await fetch('/api/terminal/suspend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId })
+      const response = await fetch("/api/terminal/suspend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        console.log(`Suspended ${data.suspendedSessionCount} sessions for project ${projectId}`);
+        console.log(
+          `Suspended ${data.suspendedSessionCount} sessions for project ${projectId}`,
+        );
       }
     } catch (err) {
-      console.error('Failed to suspend sessions:', err);
+      console.error("Failed to suspend sessions:", err);
     }
   };
-  
+
   // New resumption function
   const resumeProjectSessions = async (projectId: string) => {
     try {
-      const response = await fetch('/api/terminal/resume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId })
+      const response = await fetch("/api/terminal/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.resumed && data.sessions.length > 0) {
           setSessions(data.sessions);
-          setCurrentLayout(data.uiState?.currentLayout || '1x1');
-          console.log(`Resumed ${data.sessions.length} sessions for project ${projectId}`);
+          setCurrentLayout(data.uiState?.currentLayout || "1x1");
+          console.log(
+            `Resumed ${data.sessions.length} sessions for project ${projectId}`,
+          );
         }
       }
     } catch (err) {
-      console.error('Failed to resume sessions:', err);
+      console.error("Failed to resume sessions:", err);
     }
   };
-  
+
   // Rest of component...
 };
 ```
 
 #### Testing Checklist
+
 - [ ] Project switch triggers suspension
 - [ ] Previous project sessions suspended
 - [ ] Current project sessions loaded/resumed
@@ -298,6 +324,7 @@ const TerminalContainerV3: React.FC<Props> = ({ project }) => {
 ### Task 1.2: InMemoryTerminalService Enhancement (6 hours)
 
 #### Pre-Development Checklist
+
 - [ ] Review current service architecture
 - [ ] Design suspension state structure
 - [ ] Plan event emission strategy
@@ -310,96 +337,106 @@ const TerminalContainerV3: React.FC<Props> = ({ project }) => {
 ```typescript
 export class InMemoryTerminalService extends EventEmitter {
   private suspendedProjects: Map<string, ProjectSuspensionState> = new Map();
-  
+
   // New suspension method
   public suspendProjectSessions(projectId: string): void {
     const sessionIds = this.projectSessions.get(projectId) || new Set();
-    
+
     if (sessionIds.size === 0) {
-      console.log(`[InMemoryTerminalService] No sessions to suspend for project ${projectId}`);
+      console.log(
+        `[InMemoryTerminalService] No sessions to suspend for project ${projectId}`,
+      );
       return;
     }
-    
+
     // Capture current UI state
     const uiState = this.captureProjectUIState(projectId);
-    
+
     // Create suspension state
     const suspensionState: ProjectSuspensionState = {
       projectId,
       sessionIds: Array.from(sessionIds),
       suspendedAt: new Date(),
-      uiState
+      uiState,
     };
-    
+
     // Store suspension state
     this.suspendedProjects.set(projectId, suspensionState);
-    
+
     // Mark sessions as suspended
-    sessionIds.forEach(sessionId => {
+    sessionIds.forEach((sessionId) => {
       const session = this.sessions.get(sessionId);
       if (session) {
         session.metadata = {
           ...session.metadata,
           suspended: true,
-          suspendedAt: new Date()
+          suspendedAt: new Date(),
         };
-        session.status = 'suspended';
+        session.status = "suspended";
         session.updatedAt = new Date();
       }
     });
-    
-    console.log(`[InMemoryTerminalService] Suspended ${sessionIds.size} sessions for project ${projectId}`);
-    this.emit('projectSuspended', { projectId, sessionCount: sessionIds.size });
+
+    console.log(
+      `[InMemoryTerminalService] Suspended ${sessionIds.size} sessions for project ${projectId}`,
+    );
+    this.emit("projectSuspended", { projectId, sessionCount: sessionIds.size });
   }
-  
+
   // New resumption method
-  public resumeProjectSessions(projectId: string): ProjectSuspensionState | null {
+  public resumeProjectSessions(
+    projectId: string,
+  ): ProjectSuspensionState | null {
     const suspensionState = this.suspendedProjects.get(projectId);
-    
+
     if (!suspensionState) {
-      console.log(`[InMemoryTerminalService] No suspended sessions for project ${projectId}`);
+      console.log(
+        `[InMemoryTerminalService] No suspended sessions for project ${projectId}`,
+      );
       return null;
     }
-    
+
     // Reactivate sessions
-    suspensionState.sessionIds.forEach(sessionId => {
+    suspensionState.sessionIds.forEach((sessionId) => {
       const session = this.sessions.get(sessionId);
       if (session) {
         session.metadata = {
           ...session.metadata,
-          suspended: false
+          suspended: false,
         };
         delete session.metadata.suspendedAt;
-        session.status = session.wsConnected ? 'active' : 'inactive';
+        session.status = session.wsConnected ? "active" : "inactive";
         session.updatedAt = new Date();
       }
     });
-    
+
     // Clean up suspension state
     this.suspendedProjects.delete(projectId);
-    
-    console.log(`[InMemoryTerminalService] Resumed ${suspensionState.sessionIds.length} sessions for project ${projectId}`);
-    this.emit('projectResumed', { 
-      projectId, 
+
+    console.log(
+      `[InMemoryTerminalService] Resumed ${suspensionState.sessionIds.length} sessions for project ${projectId}`,
+    );
+    this.emit("projectResumed", {
+      projectId,
       sessionCount: suspensionState.sessionIds.length,
-      uiState: suspensionState.uiState
+      uiState: suspensionState.uiState,
     });
-    
+
     return suspensionState;
   }
-  
+
   // UI state capture helper
   private captureProjectUIState(projectId: string): TerminalUIState {
     const sessionIds = this.projectSessions.get(projectId) || new Set();
-    const focusedSessions = Array.from(sessionIds).filter(id => {
+    const focusedSessions = Array.from(sessionIds).filter((id) => {
       const session = this.sessions.get(id);
       return session?.isFocused;
     });
-    
+
     return {
-      currentLayout: '1x1', // Will be passed from frontend
+      currentLayout: "1x1", // Will be passed from frontend
       focusedSessions,
-      sessionPositions: {} // Will be enhanced later
+      sessionPositions: {}, // Will be enhanced later
     };
   }
 }
@@ -419,6 +456,7 @@ interface TerminalUIState {
 ```
 
 #### Testing Checklist
+
 - [ ] Sessions properly marked as suspended
 - [ ] Suspension state stored correctly
 - [ ] Events emitted on suspend/resume
@@ -428,6 +466,7 @@ interface TerminalUIState {
 ### Task 1.3: Create Suspension/Resumption APIs (6 hours)
 
 #### Pre-Development Checklist
+
 - [ ] Design API contracts
 - [ ] Plan error handling
 - [ ] Consider security implications
@@ -438,44 +477,44 @@ interface TerminalUIState {
 **File**: `/src/app/api/terminal/suspend/route.ts`
 
 ```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { InMemoryTerminalService } from '@/services/terminal-memory.service';
+import { NextRequest, NextResponse } from "next/server";
+import { InMemoryTerminalService } from "@/services/terminal-memory.service";
 
 export async function POST(request: NextRequest) {
   try {
     const { projectId } = await request.json();
-    
+
     if (!projectId) {
       return NextResponse.json(
-        { success: false, error: 'Project ID required' },
-        { status: 400 }
+        { success: false, error: "Project ID required" },
+        { status: 400 },
       );
     }
-    
+
     // Get service instance
     const service = InMemoryTerminalService.getInstance();
-    
+
     // Get session count before suspension
     const sessionCount = service.getProjectSessionCount(projectId);
-    
+
     // Suspend sessions
     service.suspendProjectSessions(projectId);
-    
+
     return NextResponse.json({
       success: true,
       projectId,
       suspendedSessionCount: sessionCount,
-      message: `Suspended ${sessionCount} terminal sessions`
+      message: `Suspended ${sessionCount} terminal sessions`,
     });
-    
   } catch (error) {
-    console.error('[API] Terminal suspend error:', error);
+    console.error("[API] Terminal suspend error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to suspend sessions' 
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to suspend sessions",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -484,37 +523,37 @@ export async function POST(request: NextRequest) {
 **File**: `/src/app/api/terminal/resume/route.ts`
 
 ```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { InMemoryTerminalService } from '@/services/terminal-memory.service';
+import { NextRequest, NextResponse } from "next/server";
+import { InMemoryTerminalService } from "@/services/terminal-memory.service";
 
 export async function POST(request: NextRequest) {
   try {
     const { projectId } = await request.json();
-    
+
     if (!projectId) {
       return NextResponse.json(
-        { success: false, error: 'Project ID required' },
-        { status: 400 }
+        { success: false, error: "Project ID required" },
+        { status: 400 },
       );
     }
-    
+
     // Get service instance
     const service = InMemoryTerminalService.getInstance();
-    
+
     // Resume sessions
     const suspensionState = service.resumeProjectSessions(projectId);
-    
+
     if (suspensionState) {
       // Get current session details
       const sessions = service.listSessions(projectId);
-      
+
       return NextResponse.json({
         success: true,
         projectId,
         resumed: true,
         sessions,
         uiState: suspensionState.uiState,
-        message: `Resumed ${sessions.length} terminal sessions`
+        message: `Resumed ${sessions.length} terminal sessions`,
       });
     } else {
       return NextResponse.json({
@@ -522,24 +561,25 @@ export async function POST(request: NextRequest) {
         projectId,
         resumed: false,
         sessions: [],
-        message: 'No suspended sessions found'
+        message: "No suspended sessions found",
       });
     }
-    
   } catch (error) {
-    console.error('[API] Terminal resume error:', error);
+    console.error("[API] Terminal resume error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to resume sessions' 
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to resume sessions",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 ```
 
 #### Testing Checklist
+
 - [ ] Suspend endpoint working
 - [ ] Resume endpoint working
 - [ ] Error handling robust
@@ -549,6 +589,7 @@ export async function POST(request: NextRequest) {
 ### Phase 1 Verification Checklist
 
 #### Integration Testing
+
 - [ ] Create test project A with 3 terminals
 - [ ] Run different commands in each terminal
 - [ ] Switch to project B
@@ -559,6 +600,7 @@ export async function POST(request: NextRequest) {
 - [ ] Verify all processes still running
 
 #### Success Metrics
+
 - [ ] 100% session survival rate
 - [ ] <500ms suspension time
 - [ ] <500ms resumption time
@@ -572,6 +614,7 @@ export async function POST(request: NextRequest) {
 ### Task 2.1: WebSocket Server Suspension Support (8 hours)
 
 #### Pre-Development Checklist
+
 - [ ] Review current WebSocket server architecture
 - [ ] Design suspension message protocol
 - [ ] Plan connection state management
@@ -585,125 +628,143 @@ export async function POST(request: NextRequest) {
 class TerminalWebSocketServer {
   constructor(port = 4001) {
     // Existing initialization...
-    
+
     // New suspension tracking
     this.projectSessionMap = new Map(); // projectId -> Set<sessionId>
     this.sessionProjectMap = new Map(); // sessionId -> projectId
     this.suspendedSessions = new Map(); // sessionId -> suspensionData
     this.outputBuffers = new Map(); // sessionId -> buffered output
-    
+
     // Listen to memory service events
     if (this.memoryService) {
-      this.memoryService.on('projectSuspended', (data) => {
+      this.memoryService.on("projectSuspended", (data) => {
         this.handleProjectSuspension(data.projectId, data.sessionCount);
       });
-      
-      this.memoryService.on('projectResumed', (data) => {
+
+      this.memoryService.on("projectResumed", (data) => {
         this.handleProjectResumption(data.projectId, data.sessionCount);
       });
     }
   }
-  
+
   // Handle project suspension
   handleProjectSuspension(projectId, sessionCount) {
     const sessionIds = this.projectSessionMap.get(projectId) || new Set();
-    
-    console.log(`[Terminal WS] Suspending ${sessionIds.size} WebSocket connections for project ${projectId}`);
-    
-    sessionIds.forEach(sessionId => {
+
+    console.log(
+      `[Terminal WS] Suspending ${sessionIds.size} WebSocket connections for project ${projectId}`,
+    );
+
+    sessionIds.forEach((sessionId) => {
       const session = this.sessions.get(sessionId);
       if (session) {
         // Mark as suspended but keep WebSocket alive
         session.suspended = true;
         session.suspendedAt = new Date();
-        
+
         // Start buffering output
         if (!this.outputBuffers.has(sessionId)) {
           this.outputBuffers.set(sessionId, []);
         }
-        
+
         // Store suspension data
         this.suspendedSessions.set(sessionId, {
           projectId,
           suspendedAt: new Date(),
-          webSocketAlive: session.ws && session.ws.readyState === 1
+          webSocketAlive: session.ws && session.ws.readyState === 1,
         });
-        
+
         // Notify frontend
         if (session.ws && session.ws.readyState === 1) {
-          session.ws.send(JSON.stringify({
-            type: 'projectSuspended',
-            projectId,
-            sessionId,
-            message: 'Project suspended - terminal session preserved'
-          }));
+          session.ws.send(
+            JSON.stringify({
+              type: "projectSuspended",
+              projectId,
+              sessionId,
+              message: "Project suspended - terminal session preserved",
+            }),
+          );
         }
       }
     });
   }
-  
+
   // Handle project resumption
   handleProjectResumption(projectId, sessionCount) {
     const sessionIds = this.projectSessionMap.get(projectId) || new Set();
-    
-    console.log(`[Terminal WS] Resuming ${sessionIds.size} WebSocket connections for project ${projectId}`);
-    
-    sessionIds.forEach(sessionId => {
+
+    console.log(
+      `[Terminal WS] Resuming ${sessionIds.size} WebSocket connections for project ${projectId}`,
+    );
+
+    sessionIds.forEach((sessionId) => {
       const session = this.sessions.get(sessionId);
       const suspensionData = this.suspendedSessions.get(sessionId);
-      
+
       if (session && suspensionData) {
         // Resume session
         session.suspended = false;
         delete session.suspendedAt;
-        
+
         // Send buffered output
         const bufferedOutput = this.outputBuffers.get(sessionId) || [];
-        if (bufferedOutput.length > 0 && session.ws && session.ws.readyState === 1) {
-          bufferedOutput.forEach(output => {
-            session.ws.send(JSON.stringify({
-              type: 'output',
-              data: output.data,
-              timestamp: output.timestamp
-            }));
+        if (
+          bufferedOutput.length > 0 &&
+          session.ws &&
+          session.ws.readyState === 1
+        ) {
+          bufferedOutput.forEach((output) => {
+            session.ws.send(
+              JSON.stringify({
+                type: "output",
+                data: output.data,
+                timestamp: output.timestamp,
+              }),
+            );
           });
-          
+
           // Clear buffer
           this.outputBuffers.delete(sessionId);
         }
-        
+
         // Clean up suspension data
         this.suspendedSessions.delete(sessionId);
-        
+
         // Notify frontend
         if (session.ws && session.ws.readyState === 1) {
-          session.ws.send(JSON.stringify({
-            type: 'projectResumed',
-            projectId,
-            sessionId,
-            suspendedDuration: Date.now() - suspensionData.suspendedAt.getTime(),
-            message: 'Project resumed - terminal session restored'
-          }));
+          session.ws.send(
+            JSON.stringify({
+              type: "projectResumed",
+              projectId,
+              sessionId,
+              suspendedDuration:
+                Date.now() - suspensionData.suspendedAt.getTime(),
+              message: "Project resumed - terminal session restored",
+            }),
+          );
         }
       }
     });
   }
-  
+
   // Enhanced cleanup respecting suspension
   cleanupInactiveSessions() {
     const now = Date.now();
     const maxAge = 30 * 60 * 1000; // 30 minutes
     const suspensionMaxAge = 2 * 60 * 60 * 1000; // 2 hours for suspended
-    
+
     for (const [sessionKey, session] of this.sessions) {
       if (!session.ws || session.ws.readyState !== 1) {
         // Use longer timeout for suspended sessions
         const maxAgeToUse = session.suspended ? suspensionMaxAge : maxAge;
-        const relevantTime = session.suspendedAt || session.lastDisconnectTime || now;
+        const relevantTime =
+          session.suspendedAt || session.lastDisconnectTime || now;
         const disconnectedTime = now - relevantTime;
-        
+
         if (disconnectedTime > maxAgeToUse) {
-          console.log(`Cleaning up ${session.suspended ? 'suspended' : 'disconnected'} session: ${sessionKey}`);
+          console.log(
+            `Cleaning up ${session.suspended ? "suspended" : "disconnected"} session: ${sessionKey}`,
+          );
           this.cleanupSession(sessionKey);
         }
       }
@@ -713,6 +774,7 @@ class TerminalWebSocketServer {
 ```
 
 #### Testing Checklist
+
 - [ ] Suspension events handled correctly
 - [ ] Output buffering during suspension
 - [ ] Resumption replays buffered output
@@ -722,6 +784,7 @@ class TerminalWebSocketServer {
 ### Task 2.2: Frontend WebSocket Client Updates (4 hours)
 
 #### Pre-Development Checklist
+
 - [ ] Review current WebSocket client
 - [ ] Design message handling
 - [ ] Plan UI feedback
@@ -740,20 +803,20 @@ const [suspensionMessage, setSuspensionMessage] = useState<string | null>(null);
 const handleWebSocketMessage = (event: MessageEvent) => {
   try {
     const message = JSON.parse(event.data);
-    
+
     switch (message.type) {
       case 'output':
         if (terminalRef.current && !isSuspended) {
           terminalRef.current.write(message.data);
         }
         break;
-        
+
       case 'projectSuspended':
         setIsSuspended(true);
         setSuspensionMessage('Session suspended - switching projects');
         console.log(`Terminal ${sessionId} suspended for project switch`);
         break;
-        
+
       case 'projectResumed':
         setIsSuspended(false);
         setSuspensionMessage(null);
@@ -763,11 +826,11 @@ const handleWebSocketMessage = (event: MessageEvent) => {
           terminalRef.current.write('\r\n\x1b[32m[Session Resumed]\x1b[0m\r\n');
         }
         break;
-        
+
       case 'error':
         console.error('Terminal error:', message.data);
         break;
-        
+
       default:
         console.log('Unknown message type:', message.type);
     }
@@ -790,6 +853,7 @@ const handleWebSocketMessage = (event: MessageEvent) => {
 ```
 
 #### Testing Checklist
+
 - [ ] Suspension messages handled
 - [ ] Visual indicators working
 - [ ] Resumption messages displayed
@@ -799,6 +863,7 @@ const handleWebSocketMessage = (event: MessageEvent) => {
 ### Phase 2 Verification Checklist
 
 #### WebSocket Testing
+
 - [ ] Create terminals in project A
 - [ ] Monitor WebSocket messages in DevTools
 - [ ] Switch to project B
@@ -808,6 +873,7 @@ const handleWebSocketMessage = (event: MessageEvent) => {
 - [ ] Check buffered output delivered
 
 #### Success Metrics
+
 - [ ] 100% WebSocket connection survival
 - [ ] Zero message loss during suspension
 - [ ] <100ms message delivery time
@@ -821,6 +887,7 @@ const handleWebSocketMessage = (event: MessageEvent) => {
 ### Task 3.1: Database Schema Creation (6 hours)
 
 #### Pre-Development Checklist
+
 - [ ] Review existing Prisma schema
 - [ ] Design table relationships
 - [ ] Plan indexes for performance
@@ -841,10 +908,10 @@ model TerminalSessionMetadata {
   persistentState   Json     @default("{}") @map("persistent_state")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
-  
+
   // Relations
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+
   @@index([projectId])
   @@index([updatedAt])
   @@map("terminal_session_metadata")
@@ -857,10 +924,10 @@ model ProjectTerminalUIState {
   sessionPositions Json     @default("{}") @map("session_positions")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
-  
+
   // Relations
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+
   @@map("project_terminal_ui_state")
 }
 
@@ -874,11 +941,11 @@ model TerminalProcessRegistry {
   processStatus       String   @default("running") @map("process_status")
   startedAt           DateTime @default(now()) @map("started_at")
   lastActivity        DateTime @default(now()) @map("last_activity")
-  
+
   // Relations
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   session TerminalSessionMetadata @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
-  
+
   @@index([projectId])
   @@index([processStatus])
   @@index([lastActivity])
@@ -939,23 +1006,24 @@ CREATE INDEX "terminal_process_registry_process_status_idx" ON "terminal_process
 CREATE INDEX "terminal_process_registry_last_activity_idx" ON "terminal_process_registry"("last_activity");
 
 -- AddForeignKey
-ALTER TABLE "terminal_session_metadata" ADD CONSTRAINT "terminal_session_metadata_project_id_fkey" 
+ALTER TABLE "terminal_session_metadata" ADD CONSTRAINT "terminal_session_metadata_project_id_fkey"
   FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "project_terminal_ui_state" ADD CONSTRAINT "project_terminal_ui_state_project_id_fkey" 
+ALTER TABLE "project_terminal_ui_state" ADD CONSTRAINT "project_terminal_ui_state_project_id_fkey"
   FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "terminal_process_registry" ADD CONSTRAINT "terminal_process_registry_project_id_fkey" 
+ALTER TABLE "terminal_process_registry" ADD CONSTRAINT "terminal_process_registry_project_id_fkey"
   FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "terminal_process_registry" ADD CONSTRAINT "terminal_process_registry_session_id_fkey" 
+ALTER TABLE "terminal_process_registry" ADD CONSTRAINT "terminal_process_registry_session_id_fkey"
   FOREIGN KEY ("session_id") REFERENCES "terminal_session_metadata"("session_id") ON DELETE CASCADE ON UPDATE CASCADE;
 ```
 
 #### Testing Checklist
+
 - [ ] Migration runs successfully
 - [ ] Tables created with correct structure
 - [ ] Indexes created for performance
@@ -965,6 +1033,7 @@ ALTER TABLE "terminal_process_registry" ADD CONSTRAINT "terminal_process_registr
 ### Task 3.2: Persistent Storage Service (10 hours)
 
 #### Pre-Development Checklist
+
 - [ ] Design service interface
 - [ ] Plan error handling
 - [ ] Consider transaction boundaries
@@ -975,7 +1044,7 @@ ALTER TABLE "terminal_process_registry" ADD CONSTRAINT "terminal_process_registr
 **File**: `/src/services/terminal-persistent-storage.service.ts`
 
 ```typescript
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 export interface SessionMetadata {
   sessionId: string;
@@ -990,7 +1059,7 @@ export interface SessionPersistentState {
   environmentVariables: Record<string, string>;
   scrollPosition: number;
   commandHistory: string[];
-  processState: 'running' | 'suspended' | 'completed';
+  processState: "running" | "suspended" | "completed";
 }
 
 export interface TerminalUIState {
@@ -1001,12 +1070,15 @@ export interface TerminalUIState {
 
 export class DatabaseSessionStore {
   private prisma: PrismaClient;
-  
+
   constructor() {
     this.prisma = new PrismaClient();
   }
-  
-  async saveSessionMetadata(sessionId: string, metadata: SessionMetadata): Promise<void> {
+
+  async saveSessionMetadata(
+    sessionId: string,
+    metadata: SessionMetadata,
+  ): Promise<void> {
     await this.prisma.terminalSessionMetadata.upsert({
       where: { sessionId },
       update: {
@@ -1014,89 +1086,94 @@ export class DatabaseSessionStore {
         processId: metadata.processId,
         webSocketConnected: metadata.webSocketConnected,
         persistentState: metadata.persistentState as any,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       create: {
         sessionId,
         projectId: metadata.projectId,
         processId: metadata.processId,
         webSocketConnected: metadata.webSocketConnected,
-        persistentState: metadata.persistentState as any
-      }
+        persistentState: metadata.persistentState as any,
+      },
     });
   }
-  
-  async loadSessionMetadata(sessionId: string): Promise<SessionMetadata | null> {
+
+  async loadSessionMetadata(
+    sessionId: string,
+  ): Promise<SessionMetadata | null> {
     const record = await this.prisma.terminalSessionMetadata.findUnique({
-      where: { sessionId }
+      where: { sessionId },
     });
-    
+
     if (!record) return null;
-    
+
     return {
       sessionId: record.sessionId,
       projectId: record.projectId,
       processId: record.processId || 0,
       webSocketConnected: record.webSocketConnected,
-      persistentState: record.persistentState as SessionPersistentState
+      persistentState: record.persistentState as SessionPersistentState,
     };
   }
-  
-  async saveProjectUIState(projectId: string, uiState: TerminalUIState): Promise<void> {
+
+  async saveProjectUIState(
+    projectId: string,
+    uiState: TerminalUIState,
+  ): Promise<void> {
     await this.prisma.projectTerminalUIState.upsert({
       where: { projectId },
       update: {
         currentLayout: uiState.currentLayout,
         focusedSessions: uiState.focusedSessions,
         sessionPositions: uiState.sessionPositions as any,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       create: {
         projectId,
         currentLayout: uiState.currentLayout,
         focusedSessions: uiState.focusedSessions,
-        sessionPositions: uiState.sessionPositions as any
-      }
+        sessionPositions: uiState.sessionPositions as any,
+      },
     });
   }
-  
+
   async loadProjectUIState(projectId: string): Promise<TerminalUIState | null> {
     const record = await this.prisma.projectTerminalUIState.findUnique({
-      where: { projectId }
+      where: { projectId },
     });
-    
+
     if (!record) return null;
-    
+
     return {
       currentLayout: record.currentLayout,
       focusedSessions: record.focusedSessions as string[],
-      sessionPositions: record.sessionPositions as Record<string, number>
+      sessionPositions: record.sessionPositions as Record<string, number>,
     };
   }
-  
+
   async cleanupExpiredSessions(olderThan: Date): Promise<number> {
     const result = await this.prisma.terminalSessionMetadata.deleteMany({
       where: {
         updatedAt: { lt: olderThan },
-        webSocketConnected: false
-      }
+        webSocketConnected: false,
+      },
     });
-    
+
     return result.count;
   }
-  
+
   async getProjectSessions(projectId: string): Promise<SessionMetadata[]> {
     const records = await this.prisma.terminalSessionMetadata.findMany({
       where: { projectId },
-      orderBy: { updatedAt: 'desc' }
+      orderBy: { updatedAt: "desc" },
     });
-    
-    return records.map(record => ({
+
+    return records.map((record) => ({
       sessionId: record.sessionId,
       projectId: record.projectId,
       processId: record.processId || 0,
       webSocketConnected: record.webSocketConnected,
-      persistentState: record.persistentState as SessionPersistentState
+      persistentState: record.persistentState as SessionPersistentState,
     }));
   }
 }
@@ -1113,6 +1190,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ```
 
 #### Testing Checklist
+
 - [ ] Session metadata saves correctly
 - [ ] Session metadata loads correctly
 - [ ] UI state persistence working
@@ -1122,6 +1200,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ### Phase 3 Verification Checklist
 
 #### Database Testing
+
 - [ ] Run migration successfully
 - [ ] Create sessions and verify DB records
 - [ ] Suspend project and check persistence
@@ -1129,6 +1208,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 - [ ] Test cleanup of old sessions
 
 #### Success Metrics
+
 - [ ] 100% data persistence accuracy
 - [ ] <50ms save operation time
 - [ ] <50ms load operation time
@@ -1142,6 +1222,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ### Task 4.1: Terminal Header Enhancement (4 hours)
 
 #### Implementation Checklist
+
 - [ ] Add project name to header
 - [ ] Show session counts (active/suspended/total)
 - [ ] Add status indicators with colors
@@ -1151,6 +1232,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ### Task 4.2: Session Status Indicators (4 hours)
 
 #### Implementation Checklist
+
 - [ ] Create status badge component
 - [ ] Implement color coding (green/yellow/red)
 - [ ] Add pulse animations for active sessions
@@ -1160,6 +1242,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ### Task 4.3: Project Switch Notifications (4 hours)
 
 #### Implementation Checklist
+
 - [ ] Create notification component
 - [ ] Implement auto-dismiss timer
 - [ ] Add session count information
@@ -1173,6 +1256,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ### Task 5.1: Comprehensive Testing (4 hours)
 
 #### Testing Checklist
+
 - [ ] Unit tests for all new functions
 - [ ] Integration tests for suspend/resume flow
 - [ ] Performance tests with 50+ sessions
@@ -1182,6 +1266,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ### Task 5.2: Production Deployment (4 hours)
 
 #### Deployment Checklist
+
 - [ ] Code review completed
 - [ ] Documentation updated
 - [ ] Environment variables configured
@@ -1198,22 +1283,28 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ### High Priority Risks
 
 #### Memory Leaks (HIGH)
+
 **Risk**: Sessions accumulating unbounded memory  
 **Mitigation**:
+
 - Implement session limits (10 per project, 50 per user)
 - Auto-cleanup after 2 hours inactive
 - Memory monitoring with alerts at 200MB
 
 #### WebSocket Instability (MEDIUM)
+
 **Risk**: Connections dropping during suspension  
 **Mitigation**:
+
 - Exponential backoff reconnection
 - Output buffering during disconnection
 - Fallback to polling if WebSocket fails
 
 #### Database Performance (MEDIUM)
+
 **Risk**: Slow queries with many sessions  
 **Mitigation**:
+
 - Proper indexing on projectId and updatedAt
 - Batch updates where possible
 - Connection pooling optimization
@@ -1223,6 +1314,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ## Success Criteria
 
 ### Quantitative Metrics
+
 - ✅ 100% session survival rate across project switches
 - ✅ <500ms project switch time
 - ✅ Zero process interruption
@@ -1230,6 +1322,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 - ✅ 100% WebSocket recovery rate
 
 ### Qualitative Metrics
+
 - ✅ No manual terminal recreation needed
 - ✅ Clear visual feedback on session states
 - ✅ Intuitive project-terminal associations
@@ -1241,6 +1334,7 @@ export function getDatabaseSessionStore(): DatabaseSessionStore {
 ## Rollback Procedures
 
 ### Phase 0 Rollback (Immediate)
+
 ```bash
 # Revert the hotfix
 git revert HEAD
@@ -1249,6 +1343,7 @@ npm run build
 ```
 
 ### Full Rollback (Any Phase)
+
 ```bash
 # Revert to previous version
 git checkout main
@@ -1267,15 +1362,18 @@ pm2 restart all
 ## Implementation Timeline
 
 ### Week 1 (Current)
+
 - **Day 1**: Phase 0 Hotfix (2 hours) - TODAY
 - **Day 2-3**: Phase 1 Core Infrastructure (16 hours)
 - **Day 4-5**: Phase 2 WebSocket Enhancements (12 hours)
 
 ### Week 2
+
 - **Day 1-3**: Phase 3 Database Persistence (16 hours)
 - **Day 4-5**: Phase 4 UI/UX Improvements (12 hours)
 
 ### Week 3
+
 - **Day 1**: Phase 5 Testing (4 hours)
 - **Day 2**: Phase 5 Deployment (4 hours)
 - **Day 3-5**: Buffer for issues and refinements
@@ -1285,12 +1383,14 @@ pm2 restart all
 ## Development Ready Status
 
 ### ✅ Phase 0: Ready for IMMEDIATE Implementation
+
 - Clear code changes identified
 - Simple removal of cleanup function
 - Low risk, high impact fix
 - Can be deployed TODAY
 
 ### ✅ Phase 1-5: Ready for Systematic Implementation
+
 - All technical specifications complete
 - Code examples provided
 - File paths identified

@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
     // Redirect to dashboard immediately
-    router.replace('/dashboard');
+    router.replace("/dashboard");
   }, [router]);
 
   // Show loading state while redirecting

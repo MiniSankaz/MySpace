@@ -3,6 +3,7 @@
 ## Authentication Flow
 
 ### Login Process
+
 ```mermaid
 graph LR
     A[Login Page] --> B[Submit Credentials]
@@ -15,6 +16,7 @@ graph LR
 ```
 
 ### Token Refresh Flow
+
 1. Access token expires (15 minutes)
 2. Client sends refresh token
 3. Server validates refresh token
@@ -24,6 +26,7 @@ graph LR
 ## AI Assistant Workflow
 
 ### Conversation Lifecycle
+
 1. User opens AI Assistant (/assistant)
 2. New session ID generated (UUID format)
 3. User sends message
@@ -35,6 +38,7 @@ graph LR
 9. Cache updated for quick retrieval
 
 ### Message Processing
+
 - Input validation
 - Context window management
 - Token counting
@@ -47,6 +51,7 @@ graph LR
 ## Workspace Management Flow
 
 ### File Operations
+
 1. User accesses workspace (/workspace)
 2. File explorer loads directory structure
 3. User performs CRUD operations on files
@@ -55,6 +60,7 @@ graph LR
 6. Real-time updates via WebSocket
 
 ### Project Management
+
 - Create new project
 - Load existing project
 - Switch between projects
@@ -65,6 +71,7 @@ graph LR
 ## Terminal Workflow
 
 ### Session Creation
+
 1. User opens terminal
 2. Project path determined
 3. WebSocket connection established
@@ -73,6 +80,7 @@ graph LR
 6. Session persisted to database
 
 ### Terminal Interaction
+
 - Command input
 - Output streaming
 - Session persistence
@@ -83,6 +91,7 @@ graph LR
 ## Error Handling Patterns
 
 ### API Errors
+
 - Standardized format: `{error: string, code: string}`
 - HTTP status codes
 - User-friendly messages
@@ -90,6 +99,7 @@ graph LR
 - Retry mechanisms
 
 ### Database Failures
+
 - Cache fallback
 - In-memory storage
 - Graceful degradation
@@ -97,6 +107,7 @@ graph LR
 - User notification
 
 ### Network Errors
+
 - Retry with exponential backoff
 - Circuit breaker pattern
 - Offline mode activation

@@ -1,0 +1,212 @@
+{
+  "summary": {
+    "totalTests": 22,
+    "totalPassed": 16,
+    "totalFailed": 6,
+    "successRate": 73,
+    "totalTime": 13604,
+    "timestamp": "2025-08-17T08:23:42.994Z",
+    "testEnvironment": {
+      "baseUrl": "http://localhost:4000",
+      "services": 6,
+      "nodeVersion": "v22.17.0"
+    }
+  },
+  "categories": {
+    "services": {
+      "passed": 6,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Gateway Direct Health",
+          "passed": true,
+          "details": "Service: gateway",
+          "responseTime": 9,
+          "timestamp": "2025-08-17T08:23:29.399Z"
+        },
+        {
+          "name": "User Management Direct Health",
+          "passed": true,
+          "details": "Service: user-management",
+          "responseTime": 80,
+          "timestamp": "2025-08-17T08:23:29.479Z"
+        },
+        {
+          "name": "AI Assistant Direct Health",
+          "passed": false,
+          "details": "HTTP 503",
+          "responseTime": 74,
+          "timestamp": "2025-08-17T08:23:29.554Z"
+        },
+        {
+          "name": "Terminal Direct Health",
+          "passed": true,
+          "details": "Service: terminal",
+          "responseTime": 2,
+          "timestamp": "2025-08-17T08:23:29.556Z"
+        },
+        {
+          "name": "Workspace Direct Health",
+          "passed": true,
+          "details": "Service: workspace",
+          "responseTime": 2,
+          "timestamp": "2025-08-17T08:23:29.557Z"
+        },
+        {
+          "name": "Portfolio Direct Health",
+          "passed": true,
+          "details": "Service: portfolio",
+          "responseTime": 2,
+          "timestamp": "2025-08-17T08:23:29.559Z"
+        },
+        {
+          "name": "Gateway Health Aggregation",
+          "passed": true,
+          "details": "4/5 services healthy",
+          "responseTime": 48,
+          "timestamp": "2025-08-17T08:23:29.607Z"
+        }
+      ]
+    },
+    "database": {
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "User Service DB Health",
+          "passed": true,
+          "details": "Database connected via User service",
+          "responseTime": 41,
+          "timestamp": "2025-08-17T08:23:29.648Z"
+        },
+        {
+          "name": "Portfolio Service DB Health",
+          "passed": true,
+          "details": "Database connected via Portfolio service",
+          "responseTime": 2,
+          "timestamp": "2025-08-17T08:23:29.651Z"
+        }
+      ]
+    },
+    "authentication": {
+      "passed": 4,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "admin Login",
+          "passed": true,
+          "details": "User: admin@personalai.com",
+          "responseTime": 428,
+          "timestamp": "2025-08-17T08:23:30.079Z"
+        },
+        {
+          "name": "admin Token Validation",
+          "passed": true,
+          "details": "Profile: admin@personalai.com",
+          "responseTime": 316,
+          "timestamp": "2025-08-17T08:23:30.395Z"
+        },
+        {
+          "name": "sankaz Login",
+          "passed": true,
+          "details": "User: sankaz@example.com",
+          "responseTime": 449,
+          "timestamp": "2025-08-17T08:23:30.844Z"
+        },
+        {
+          "name": "sankaz Token Validation",
+          "passed": true,
+          "details": "Profile: sankaz@example.com",
+          "responseTime": 165,
+          "timestamp": "2025-08-17T08:23:31.010Z"
+        }
+      ]
+    },
+    "userManagement": {
+      "passed": 1,
+      "failed": 2,
+      "tests": [
+        {
+          "name": "Get User Count",
+          "passed": false,
+          "details": "HTTP 404",
+          "responseTime": 89,
+          "timestamp": "2025-08-17T08:23:31.099Z"
+        },
+        {
+          "name": "User Registration",
+          "passed": true,
+          "details": "Created: test-1755419009389@example.com",
+          "responseTime": 718,
+          "timestamp": "2025-08-17T08:23:31.817Z"
+        },
+        {
+          "name": "Get User by Email",
+          "passed": false,
+          "details": "HTTP 404",
+          "responseTime": 2,
+          "timestamp": "2025-08-17T08:23:31.819Z"
+        }
+      ]
+    },
+    "integration": {
+      "passed": 0,
+      "failed": 3,
+      "tests": [
+        {
+          "name": "Portfolio API",
+          "passed": false,
+          "details": "HTTP 500",
+          "responseTime": 289,
+          "timestamp": "2025-08-17T08:23:32.108Z"
+        },
+        {
+          "name": "AI Assistant Info",
+          "passed": false,
+          "details": "HTTP 503",
+          "responseTime": 10558,
+          "timestamp": "2025-08-17T08:23:42.667Z"
+        },
+        {
+          "name": "Terminal Health",
+          "passed": false,
+          "details": "HTTP 404",
+          "responseTime": 5,
+          "timestamp": "2025-08-17T08:23:42.672Z"
+        }
+      ]
+    },
+    "performance": {
+      "passed": 3,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "Gateway Health Response",
+          "passed": true,
+          "details": "3ms (threshold: 100ms)",
+          "responseTime": 3,
+          "timestamp": "2025-08-17T08:23:42.675Z"
+        },
+        {
+          "name": "All Services Health",
+          "passed": true,
+          "details": "315ms (threshold: 1000ms)",
+          "responseTime": 315,
+          "timestamp": "2025-08-17T08:23:42.990Z"
+        },
+        {
+          "name": "Concurrent Health Checks",
+          "passed": true,
+          "details": "3/3 successful, avg: 1ms",
+          "responseTime": 3,
+          "timestamp": "2025-08-17T08:23:42.994Z"
+        }
+      ]
+    }
+  },
+  "recommendations": [
+    "🔴 Service failures detected - check microservice logs and restart failed services",
+    "🟡 User management issues - verify admin permissions and database schema",
+    "🟡 Integration issues - check API routing and service communication"
+  ]
+}

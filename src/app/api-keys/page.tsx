@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { 
-  KeyIcon, 
-  PlusIcon, 
+import { useState, useEffect } from "react";
+import {
+  KeyIcon,
+  PlusIcon,
   TrashIcon,
   ClipboardDocumentIcon,
   EyeIcon,
@@ -11,10 +11,10 @@ import {
   ChartBarIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  XCircleIcon
-} from '@heroicons/react/24/outline';
-import AppLayout from '@/components/layout/AppLayout';
-import { authClient } from '@/core/auth/auth-client';
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import AppLayout from "@/components/layout/AppLayout";
+import { authClient } from "@/core/auth/auth-client";
 
 interface ApiToken {
   id: string;
@@ -31,15 +31,47 @@ interface ApiToken {
 }
 
 const AVAILABLE_SCOPES = [
-  { value: 'assistant:read', label: 'Assistant Read', description: 'Read assistant conversations' },
-  { value: 'assistant:write', label: 'Assistant Write', description: 'Send messages to assistant' },
-  { value: 'assistant:delete', label: 'Assistant Delete', description: 'Delete assistant sessions' },
-  { value: 'projects:read', label: 'Projects Read', description: 'View projects' },
-  { value: 'projects:write', label: 'Projects Write', description: 'Create and modify projects' },
-  { value: 'terminal:read', label: 'Terminal Read', description: 'View terminal logs' },
-  { value: 'terminal:execute', label: 'Terminal Execute', description: 'Execute terminal commands' },
-  { value: 'analytics:read', label: 'Analytics Read', description: 'View usage analytics' },
-  { value: '*', label: 'Full Access', description: 'Complete API access' }
+  {
+    value: "assistant:read",
+    label: "Assistant Read",
+    description: "Read assistant conversations",
+  },
+  {
+    value: "assistant:write",
+    label: "Assistant Write",
+    description: "Send messages to assistant",
+  },
+  {
+    value: "assistant:delete",
+    label: "Assistant Delete",
+    description: "Delete assistant sessions",
+  },
+  {
+    value: "projects:read",
+    label: "Projects Read",
+    description: "View projects",
+  },
+  {
+    value: "projects:write",
+    label: "Projects Write",
+    description: "Create and modify projects",
+  },
+  {
+    value: "terminal:read",
+    label: "Terminal Read",
+    description: "View terminal logs",
+  },
+  {
+    value: "terminal:execute",
+    label: "Terminal Execute",
+    description: "Execute terminal commands",
+  },
+  {
+    value: "analytics:read",
+    label: "Analytics Read",
+    description: "View usage analytics",
+  },
+  { value: "*", label: "Full Access", description: "Complete API access" },
 ];
 
 export default function ApiKeysPage() {
@@ -53,10 +85,10 @@ export default function ApiKeysPage() {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
+    name: "",
     scopes: [] as string[],
-    expiresAt: '',
-    rateLimit: 1000
+    expiresAt: "",
+    rateLimit: 1000,
   });
 
   useEffect(() => {
@@ -65,15 +97,15 @@ export default function ApiKeysPage() {
 
   const loadTokens = async () => {
     try {
-      const response = await authClient.fetch('/api/tokens');
+      const response = await authClient.fetch("/api/tokens");
       const data = await response.json();
-      
+
       if (data.success) {
         setTokens(data.tokens);
       }
     } catch (error) {
-      console.error('Failed to load tokens:', error);
-      setError('Failed to load API tokens');
+      console.error("Failed to load tokens:", error);
+      setError("Failed to load API tokens");
     } finally {
       setLoading(false);
     }
@@ -82,63 +114,70 @@ export default function ApiKeysPage() {
   const createToken = async () => {
     try {
       setError(null);
-      const response = await authClient.fetch('/api/tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      const response = await authClient.fetch("/api/tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setNewToken(data.token);
         setShowToken(data.token);
-        setSuccess('API token created successfully!');
+        setSuccess("API token created successfully!");
         await loadTokens();
-        
+
         // Reset form
         setFormData({
-          name: '',
+          name: "",
           scopes: [],
-          expiresAt: '',
-          rateLimit: 1000
+          expiresAt: "",
+          rateLimit: 1000,
         });
       } else {
-        setError(data.error || 'Failed to create token');
+        setError(data.error || "Failed to create token");
       }
     } catch (error) {
-      console.error('Failed to create token:', error);
-      setError('Failed to create API token');
+      console.error("Failed to create token:", error);
+      setError("Failed to create API token");
     }
   };
 
   const revokeToken = async (tokenId: string) => {
-    if (!confirm('Are you sure you want to revoke this token? This action cannot be undone.')) {
+    if (
+      !confirm(
+        "Are you sure you want to revoke this token? This action cannot be undone.",
+      )
+    ) {
       return;
     }
 
     try {
-      const response = await authClient.fetch(`/api/tokens?tokenId=${tokenId}`, {
-        method: 'DELETE'
-      });
+      const response = await authClient.fetch(
+        `/api/tokens?tokenId=${tokenId}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const data = await response.json();
-      
+
       if (data.success) {
-        setSuccess('Token revoked successfully');
+        setSuccess("Token revoked successfully");
         await loadTokens();
       } else {
-        setError(data.error || 'Failed to revoke token');
+        setError(data.error || "Failed to revoke token");
       }
     } catch (error) {
-      console.error('Failed to revoke token:', error);
-      setError('Failed to revoke token');
+      console.error("Failed to revoke token:", error);
+      setError("Failed to revoke token");
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    setSuccess('Copied to clipboard!');
+    setSuccess("Copied to clipboard!");
     setTimeout(() => setSuccess(null), 2000);
   };
 
@@ -197,14 +236,19 @@ export default function ApiKeysPage() {
                   Save your API token
                 </h3>
                 <p className="mt-1 text-sm text-yellow-700">
-                  Make sure to copy your API token now. You won't be able to see it again!
+                  Make sure to copy your API token now. You won't be able to see
+                  it again!
                 </p>
                 <div className="mt-3 flex items-center space-x-2">
                   <code className="flex-1 p-2 bg-white border border-yellow-300 rounded text-sm font-mono">
-                    {showToken === newToken ? newToken : '•'.repeat(60)}
+                    {showToken === newToken ? newToken : "•".repeat(60)}
                   </code>
                   <button
-                    onClick={() => setShowToken(showToken === newToken ? '•'.repeat(60) : newToken)}
+                    onClick={() =>
+                      setShowToken(
+                        showToken === newToken ? "•".repeat(60) : newToken,
+                      )
+                    }
                     className="p-2 text-yellow-600 hover:text-yellow-700"
                   >
                     {showToken === newToken ? (
@@ -262,7 +306,10 @@ export default function ApiKeysPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {tokens.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-sm text-gray-500"
+                  >
                     No API tokens yet. Create your first token to get started.
                   </td>
                 </tr>
@@ -271,8 +318,12 @@ export default function ApiKeysPage() {
                   <tr key={token.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{token.name}</div>
-                        <div className="text-sm text-gray-500 font-mono">{token.tokenPrefix}...</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {token.name}
+                        </div>
+                        <div className="text-sm text-gray-500 font-mono">
+                          {token.tokenPrefix}...
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -297,7 +348,9 @@ export default function ApiKeysPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : 'Never'}
+                      {token.lastUsedAt
+                        ? new Date(token.lastUsedAt).toLocaleString()
+                        : "Never"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {token.isActive ? (
@@ -331,8 +384,10 @@ export default function ApiKeysPage() {
         {showCreateModal && (
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-lg w-full">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Create API Token</h2>
-              
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Create API Token
+              </h2>
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
@@ -341,7 +396,9 @@ export default function ApiKeysPage() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                     placeholder="My API Token"
                   />
@@ -359,16 +416,28 @@ export default function ApiKeysPage() {
                           checked={formData.scopes.includes(scope.value)}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setFormData({ ...formData, scopes: [...formData.scopes, scope.value] });
+                              setFormData({
+                                ...formData,
+                                scopes: [...formData.scopes, scope.value],
+                              });
                             } else {
-                              setFormData({ ...formData, scopes: formData.scopes.filter(s => s !== scope.value) });
+                              setFormData({
+                                ...formData,
+                                scopes: formData.scopes.filter(
+                                  (s) => s !== scope.value,
+                                ),
+                              });
                             }
                           }}
                           className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded"
                         />
                         <div className="ml-2">
-                          <div className="text-sm font-medium text-gray-900">{scope.label}</div>
-                          <div className="text-xs text-gray-500">{scope.description}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {scope.label}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {scope.description}
+                          </div>
                         </div>
                       </label>
                     ))}
@@ -382,7 +451,9 @@ export default function ApiKeysPage() {
                   <input
                     type="datetime-local"
                     value={formData.expiresAt}
-                    onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, expiresAt: e.target.value })
+                    }
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                   />
                 </div>
@@ -394,7 +465,12 @@ export default function ApiKeysPage() {
                   <input
                     type="number"
                     value={formData.rateLimit}
-                    onChange={(e) => setFormData({ ...formData, rateLimit: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        rateLimit: parseInt(e.target.value),
+                      })
+                    }
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                     min="1"
                     max="10000"
@@ -406,7 +482,12 @@ export default function ApiKeysPage() {
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
-                    setFormData({ name: '', scopes: [], expiresAt: '', rateLimit: 1000 });
+                    setFormData({
+                      name: "",
+                      scopes: [],
+                      expiresAt: "",
+                      rateLimit: 1000,
+                    });
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >

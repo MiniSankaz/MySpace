@@ -1,9 +1,11 @@
 # Knowledge Base System - Phase 1 Implementation Guide
 
 ## Overview
+
 This guide provides step-by-step instructions for implementing Phase 1 of the Knowledge Base System, focusing on foundation components: Database, CRUD operations, Basic Search, and UI.
 
 ## Prerequisites
+
 - Node.js 18+ installed
 - PostgreSQL database access
 - Existing Stock Portfolio Management System running
@@ -14,6 +16,7 @@ This guide provides step-by-step instructions for implementing Phase 1 of the Kn
 ### Day 1-2: Database Setup
 
 #### Step 1: Update Prisma Schema
+
 Add the following models to `/prisma/schema.prisma`:
 
 ```prisma
@@ -36,14 +39,14 @@ model KnowledgeBaseIssue {
   metadata        Json?
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
-  
+
   User            User                      @relation(fields: [userId], references: [id])
   Category        KnowledgeBaseCategory?    @relation(fields: [categoryId], references: [id])
   Project         Project?                  @relation(fields: [projectId], references: [id])
   Solutions       KnowledgeBaseSolution[]
   Tags            KnowledgeBaseIssueTag[]
   Attachments     KnowledgeBaseAttachment[]
-  
+
   @@index([userId])
   @@index([categoryId])
   @@index([projectId])
@@ -56,6 +59,7 @@ model KnowledgeBaseIssue {
 ```
 
 #### Step 2: Run Database Migration
+
 ```bash
 # Generate migration
 npx prisma migrate dev --name add-knowledge-base-models
@@ -70,6 +74,7 @@ npx prisma studio
 ### Day 3-4: Core Service Implementation
 
 #### Step 1: Create Module Structure
+
 ```bash
 # Create module directories
 mkdir -p src/modules/knowledge-base/{components,services,hooks,stores,types,utils,tests}
@@ -77,16 +82,17 @@ mkdir -p src/modules/knowledge-base/components/{issues,solutions,search,categori
 ```
 
 #### Step 2: Implement Issue Service
+
 Create `/src/modules/knowledge-base/services/issue.service.ts`:
 
 ```typescript
-import { prisma } from '@/core/database/prisma';
-import { CacheManager } from '@/core/database/cache-manager';
-import type { 
-  KnowledgeBaseIssue, 
-  CreateIssueDto, 
-  UpdateIssueDto 
-} from '../types/issue.types';
+import { prisma } from "@/core/database/prisma";
+import { CacheManager } from "@/core/database/cache-manager";
+import type {
+  KnowledgeBaseIssue,
+  CreateIssueDto,
+  UpdateIssueDto,
+} from "../types/issue.types";
 
 export class IssueService {
   private cache: CacheManager;
@@ -96,12 +102,12 @@ export class IssueService {
   }
 
   async createIssue(
-    data: CreateIssueDto, 
-    userId: string
+    data: CreateIssueDto,
+    userId: string,
   ): Promise<KnowledgeBaseIssue> {
     // Validation
     if (!data.title || data.title.length < 5) {
-      throw new Error('Title must be at least 5 characters');
+      throw new Error("Title must be at least 5 characters");
     }
 
     // Create issue
@@ -129,19 +135,16 @@ export class IssueService {
     });
 
     // Clear cache
-    await this.cache.delete('kb:issues:*');
+    await this.cache.delete("kb:issues:*");
 
     return issue;
   }
 
-  async findIssues(
-    filters: any = {}, 
-    pagination: any = {}
-  ): Promise<any> {
+  async findIssues(filters: any = {}, pagination: any = {}): Promise<any> {
     const {
       page = 1,
       pageSize = 20,
-      orderBy = { createdAt: 'desc' },
+      orderBy = { createdAt: "desc" },
     } = pagination;
 
     const skip = (page - 1) * pageSize;
@@ -164,7 +167,7 @@ export class IssueService {
           },
           Category: true,
           Solutions: {
-            where: { status: 'verified' },
+            where: { status: "verified" },
             take: 1,
           },
           _count: {
@@ -224,7 +227,7 @@ export class IssueService {
             },
           },
           orderBy: {
-            createdAt: 'desc',
+            createdAt: "desc",
           },
         },
         Attachments: true,
@@ -239,8 +242,8 @@ export class IssueService {
   }
 
   async updateIssue(
-    id: string, 
-    data: UpdateIssueDto
+    id: string,
+    data: UpdateIssueDto,
   ): Promise<KnowledgeBaseIssue> {
     const issue = await prisma.knowledgeBaseIssue.update({
       where: { id },
@@ -259,7 +262,7 @@ export class IssueService {
 
     // Clear cache
     await this.cache.delete(`kb:issue:${id}`);
-    await this.cache.delete('kb:issues:*');
+    await this.cache.delete("kb:issues:*");
 
     return issue;
   }
@@ -271,17 +274,14 @@ export class IssueService {
 
     // Clear cache
     await this.cache.delete(`kb:issue:${id}`);
-    await this.cache.delete('kb:issues:*');
+    await this.cache.delete("kb:issues:*");
   }
 
-  async resolveIssue(
-    id: string, 
-    solutionId?: string
-  ): Promise<void> {
+  async resolveIssue(id: string, solutionId?: string): Promise<void> {
     await prisma.knowledgeBaseIssue.update({
       where: { id },
       data: {
-        status: 'resolved',
+        status: "resolved",
         resolvedAt: new Date(),
         metadata: {
           resolvedWithSolution: solutionId,
@@ -291,7 +291,7 @@ export class IssueService {
 
     // Clear cache
     await this.cache.delete(`kb:issue:${id}`);
-    await this.cache.delete('kb:issues:*');
+    await this.cache.delete("kb:issues:*");
   }
 
   private buildWhereClause(filters: any): any {
@@ -315,8 +315,8 @@ export class IssueService {
 
     if (filters.search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
+        { title: { contains: filters.search, mode: "insensitive" } },
+        { description: { contains: filters.search, mode: "insensitive" } },
       ];
     }
 
@@ -340,13 +340,14 @@ export const issueService = new IssueService();
 ### Day 5-6: API Endpoints
 
 #### Step 1: Create API Routes
+
 Create `/src/app/api/knowledge-base/issues/route.ts`:
 
 ```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { issueService } from '@/modules/knowledge-base/services/issue.service';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { issueService } from "@/modules/knowledge-base/services/issue.service";
+import { z } from "zod";
 
 // Validation schema
 const createIssueSchema = z.object({
@@ -355,7 +356,7 @@ const createIssueSchema = z.object({
   errorMessage: z.string().optional(),
   stackTrace: z.string().optional(),
   environment: z.string(),
-  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  severity: z.enum(["low", "medium", "high", "critical"]),
   categoryId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
   tags: z.array(z.string()).optional(),
@@ -366,27 +367,24 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    
+
     const filters = {
-      status: searchParams.get('status'),
-      severity: searchParams.get('severity'),
-      categoryId: searchParams.get('categoryId'),
-      userId: searchParams.get('userId'),
-      search: searchParams.get('search'),
-      dateFrom: searchParams.get('dateFrom'),
-      dateTo: searchParams.get('dateTo'),
+      status: searchParams.get("status"),
+      severity: searchParams.get("severity"),
+      categoryId: searchParams.get("categoryId"),
+      userId: searchParams.get("userId"),
+      search: searchParams.get("search"),
+      dateFrom: searchParams.get("dateFrom"),
+      dateTo: searchParams.get("dateTo"),
     };
 
     const pagination = {
-      page: parseInt(searchParams.get('page') || '1'),
-      pageSize: parseInt(searchParams.get('pageSize') || '20'),
+      page: parseInt(searchParams.get("page") || "1"),
+      pageSize: parseInt(searchParams.get("pageSize") || "20"),
     };
 
     const result = await issueService.findIssues(filters, pagination);
@@ -396,10 +394,10 @@ export async function GET(request: NextRequest) {
       data: result,
     });
   } catch (error) {
-    console.error('Error fetching issues:', error);
+    console.error("Error fetching issues:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch issues' },
-      { status: 500 }
+      { error: "Failed to fetch issues" },
+      { status: 500 },
     );
   }
 }
@@ -409,39 +407,39 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-    
+
     // Validate input
     const validatedData = createIssueSchema.parse(body);
 
     // Create issue
     const issue = await issueService.createIssue(
       validatedData,
-      session.user.id
+      session.user.id,
     );
 
-    return NextResponse.json({
-      success: true,
-      data: issue,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: issue,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
-        { status: 400 }
+        { error: "Validation failed", details: error.errors },
+        { status: 400 },
       );
     }
 
-    console.error('Error creating issue:', error);
+    console.error("Error creating issue:", error);
     return NextResponse.json(
-      { error: 'Failed to create issue' },
-      { status: 500 }
+      { error: "Failed to create issue" },
+      { status: 500 },
     );
   }
 }
@@ -450,15 +448,16 @@ export async function POST(request: NextRequest) {
 ### Day 7-8: Testing Setup
 
 #### Step 1: Unit Tests
+
 Create `/src/modules/knowledge-base/tests/services/issue.service.test.ts`:
 
 ```typescript
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { IssueService } from '../../services/issue.service';
-import { prisma } from '@/core/database/prisma';
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { IssueService } from "../../services/issue.service";
+import { prisma } from "@/core/database/prisma";
 
 // Mock Prisma
-jest.mock('@/core/database/prisma', () => ({
+jest.mock("@/core/database/prisma", () => ({
   prisma: {
     knowledgeBaseIssue: {
       create: jest.fn(),
@@ -471,7 +470,7 @@ jest.mock('@/core/database/prisma', () => ({
   },
 }));
 
-describe('IssueService', () => {
+describe("IssueService", () => {
   let service: IssueService;
 
   beforeEach(() => {
@@ -479,28 +478,30 @@ describe('IssueService', () => {
     jest.clearAllMocks();
   });
 
-  describe('createIssue', () => {
-    it('should create issue with valid data', async () => {
+  describe("createIssue", () => {
+    it("should create issue with valid data", async () => {
       const mockIssue = {
-        id: 'test-id',
-        title: 'Test Issue',
-        description: 'Test description',
-        severity: 'medium',
-        status: 'open',
-        userId: 'user-id',
+        id: "test-id",
+        title: "Test Issue",
+        description: "Test description",
+        severity: "medium",
+        status: "open",
+        userId: "user-id",
         occurredAt: new Date(),
       };
 
-      (prisma.knowledgeBaseIssue.create as jest.Mock).mockResolvedValue(mockIssue);
+      (prisma.knowledgeBaseIssue.create as jest.Mock).mockResolvedValue(
+        mockIssue,
+      );
 
       const data = {
-        title: 'Test Issue',
-        description: 'Test description',
-        severity: 'medium',
-        environment: 'production',
+        title: "Test Issue",
+        description: "Test description",
+        severity: "medium",
+        environment: "production",
       };
 
-      const result = await service.createIssue(data, 'user-id');
+      const result = await service.createIssue(data, "user-id");
 
       expect(result).toEqual(mockIssue);
       expect(prisma.knowledgeBaseIssue.create).toHaveBeenCalledWith(
@@ -509,33 +510,36 @@ describe('IssueService', () => {
             title: data.title,
             description: data.description,
             severity: data.severity,
-            userId: 'user-id',
+            userId: "user-id",
           }),
-        })
+        }),
       );
     });
 
-    it('should throw error for invalid title', async () => {
+    it("should throw error for invalid title", async () => {
       const data = {
-        title: 'Bad',
-        description: 'Test description',
-        severity: 'medium',
-        environment: 'production',
+        title: "Bad",
+        description: "Test description",
+        severity: "medium",
+        environment: "production",
       };
 
-      await expect(service.createIssue(data, 'user-id'))
-        .rejects.toThrow('Title must be at least 5 characters');
+      await expect(service.createIssue(data, "user-id")).rejects.toThrow(
+        "Title must be at least 5 characters",
+      );
     });
   });
 
-  describe('findIssues', () => {
-    it('should return paginated issues', async () => {
+  describe("findIssues", () => {
+    it("should return paginated issues", async () => {
       const mockIssues = [
-        { id: '1', title: 'Issue 1' },
-        { id: '2', title: 'Issue 2' },
+        { id: "1", title: "Issue 1" },
+        { id: "2", title: "Issue 2" },
       ];
 
-      (prisma.knowledgeBaseIssue.findMany as jest.Mock).mockResolvedValue(mockIssues);
+      (prisma.knowledgeBaseIssue.findMany as jest.Mock).mockResolvedValue(
+        mockIssues,
+      );
       (prisma.knowledgeBaseIssue.count as jest.Mock).mockResolvedValue(10);
 
       const result = await service.findIssues({}, { page: 1, pageSize: 20 });
@@ -557,6 +561,7 @@ describe('IssueService', () => {
 ### Day 9-10: Issue Management UI
 
 #### Step 1: Create Issue List Component
+
 Create `/src/modules/knowledge-base/components/issues/IssueList.tsx`:
 
 ```typescript
@@ -645,6 +650,7 @@ export const IssueList: React.FC = () => {
 ```
 
 #### Step 2: Create Issue Card Component
+
 Create `/src/modules/knowledge-base/components/issues/IssueCard.tsx`:
 
 ```typescript
@@ -654,10 +660,10 @@ import React from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Clock, 
-  User, 
-  MessageSquare, 
+import {
+  Clock,
+  User,
+  MessageSquare,
   AlertCircle,
   CheckCircle,
   XCircle
@@ -750,16 +756,17 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue }) => {
 ### Day 11-12: Solution Management
 
 #### Step 1: Create Solution Service
+
 Create `/src/modules/knowledge-base/services/solution.service.ts`:
 
 ```typescript
-import { prisma } from '@/core/database/prisma';
-import { CacheManager } from '@/core/database/cache-manager';
-import type { 
-  KnowledgeBaseSolution, 
-  CreateSolutionDto, 
-  UpdateSolutionDto 
-} from '../types/solution.types';
+import { prisma } from "@/core/database/prisma";
+import { CacheManager } from "@/core/database/cache-manager";
+import type {
+  KnowledgeBaseSolution,
+  CreateSolutionDto,
+  UpdateSolutionDto,
+} from "../types/solution.types";
 
 export class SolutionService {
   private cache: CacheManager;
@@ -769,8 +776,8 @@ export class SolutionService {
   }
 
   async createSolution(
-    data: CreateSolutionDto, 
-    userId: string
+    data: CreateSolutionDto,
+    userId: string,
   ): Promise<KnowledgeBaseSolution> {
     const solution = await prisma.knowledgeBaseSolution.create({
       data: {
@@ -790,12 +797,14 @@ export class SolutionService {
 
     // Clear cache
     await this.cache.delete(`kb:issue:${data.issueId}`);
-    await this.cache.delete('kb:solutions:*');
+    await this.cache.delete("kb:solutions:*");
 
     return solution;
   }
 
-  async findSolutionsByIssue(issueId: string): Promise<KnowledgeBaseSolution[]> {
+  async findSolutionsByIssue(
+    issueId: string,
+  ): Promise<KnowledgeBaseSolution[]> {
     const cacheKey = `kb:solutions:issue:${issueId}`;
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;
@@ -822,7 +831,7 @@ export class SolutionService {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
@@ -834,20 +843,20 @@ export class SolutionService {
     await prisma.knowledgeBaseSolution.update({
       where: { id: solutionId },
       data: {
-        status: 'verified',
+        status: "verified",
         verifiedAt: new Date(),
       },
     });
 
     // Clear cache
-    await this.cache.delete('kb:solutions:*');
+    await this.cache.delete("kb:solutions:*");
   }
 
   async addFeedback(
     solutionId: string,
     userId: string,
     rating: number,
-    comment?: string
+    comment?: string,
   ): Promise<void> {
     await prisma.knowledgeBaseSolutionFeedback.upsert({
       where: {
@@ -881,11 +890,12 @@ export const solutionService = new SolutionService();
 ### Day 13-14: Search Implementation
 
 #### Step 1: Create Search Service
+
 Create `/src/modules/knowledge-base/services/search.service.ts`:
 
 ```typescript
-import { prisma } from '@/core/database/prisma';
-import { CacheManager } from '@/core/database/cache-manager';
+import { prisma } from "@/core/database/prisma";
+import { CacheManager } from "@/core/database/cache-manager";
 
 export class SearchService {
   private cache: CacheManager;
@@ -895,11 +905,7 @@ export class SearchService {
   }
 
   async search(query: string, options: any = {}): Promise<any> {
-    const {
-      type = 'all',
-      limit = 20,
-      offset = 0,
-    } = options;
+    const { type = "all", limit = 20, offset = 0 } = options;
 
     const cacheKey = `kb:search:${JSON.stringify({ query, type, limit, offset })}`;
     const cached = await this.cache.get(cacheKey);
@@ -912,13 +918,13 @@ export class SearchService {
     };
 
     // Search issues
-    if (type === 'all' || type === 'issues') {
+    if (type === "all" || type === "issues") {
       const issues = await prisma.knowledgeBaseIssue.findMany({
         where: {
           OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { errorMessage: { contains: query, mode: 'insensitive' } },
+            { title: { contains: query, mode: "insensitive" } },
+            { description: { contains: query, mode: "insensitive" } },
+            { errorMessage: { contains: query, mode: "insensitive" } },
           ],
         },
         include: {
@@ -937,12 +943,12 @@ export class SearchService {
     }
 
     // Search solutions
-    if (type === 'all' || type === 'solutions') {
+    if (type === "all" || type === "solutions") {
       const solutions = await prisma.knowledgeBaseSolution.findMany({
         where: {
           OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { content: { contains: query, mode: 'insensitive' } },
+            { title: { contains: query, mode: "insensitive" } },
+            { content: { contains: query, mode: "insensitive" } },
           ],
         },
         include: {
@@ -983,7 +989,7 @@ export class SearchService {
       where: {
         title: {
           contains: query,
-          mode: 'insensitive',
+          mode: "insensitive",
         },
       },
       select: {
@@ -992,8 +998,8 @@ export class SearchService {
       take: 5,
     });
 
-    const suggestions = issues.map(i => i.title);
-    
+    const suggestions = issues.map((i) => i.title);
+
     await this.cache.set(cacheKey, suggestions, 300);
     return suggestions;
   }
@@ -1001,18 +1007,20 @@ export class SearchService {
   async indexIssue(issue: any): Promise<void> {
     // This will be expanded in Phase 3 for semantic search
     // For now, we rely on PostgreSQL full-text search
-    
+
     const searchContent = [
       issue.title,
       issue.description,
       issue.errorMessage,
       issue.Category?.name,
-    ].filter(Boolean).join(' ');
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     await prisma.knowledgeBaseSearchIndex.upsert({
       where: {
         entityType_entityId: {
-          entityType: 'issue',
+          entityType: "issue",
           entityId: issue.id,
         },
       },
@@ -1025,7 +1033,7 @@ export class SearchService {
         },
       },
       create: {
-        entityType: 'issue',
+        entityType: "issue",
         entityId: issue.id,
         content: searchContent,
         vector: [], // Will be populated in Phase 3
@@ -1039,15 +1047,13 @@ export class SearchService {
   }
 
   async findSimilar(issue: any, options: any = {}): Promise<any[]> {
-    const {
-      threshold = 0.8,
-      limit = 5,
-    } = options;
+    const { threshold = 0.8, limit = 5 } = options;
 
     // Basic similarity search using title and description
     // This will be enhanced with vector similarity in Phase 3
-    
-    const keywords = issue.title.split(' ')
+
+    const keywords = issue.title
+      .split(" ")
       .filter((word: string) => word.length > 3)
       .slice(0, 5);
 
@@ -1060,8 +1066,8 @@ export class SearchService {
           {
             OR: keywords.map((keyword: string) => ({
               OR: [
-                { title: { contains: keyword, mode: 'insensitive' } },
-                { description: { contains: keyword, mode: 'insensitive' } },
+                { title: { contains: keyword, mode: "insensitive" } },
+                { description: { contains: keyword, mode: "insensitive" } },
               ],
             })),
           },
@@ -1082,9 +1088,11 @@ export const searchService = new SearchService();
 ### Day 15-16: Integration with Existing Systems
 
 #### Step 1: Add Knowledge Base to Navigation
+
 Update existing navigation to include Knowledge Base link.
 
 #### Step 2: Create Knowledge Base Layout
+
 Create `/src/app/(auth)/knowledge-base/layout.tsx`:
 
 ```typescript
@@ -1096,6 +1104,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 ```
 
 #### Step 3: Create Main Page
+
 Create `/src/app/(auth)/knowledge-base/page.tsx`:
 
 ```typescript
@@ -1109,6 +1118,7 @@ export default function KnowledgeBasePage() {
 ### Day 17-18: Performance Optimization
 
 #### Step 1: Add Database Indexes
+
 Add to Prisma schema:
 
 ```prisma
@@ -1117,11 +1127,13 @@ Add to Prisma schema:
 ```
 
 #### Step 2: Implement Request Caching
+
 Update services to use aggressive caching for read operations.
 
 ### Day 19-20: Final Testing & Documentation
 
 #### Step 1: Run All Tests
+
 ```bash
 npm run test:unit
 npm run test:integration
@@ -1129,14 +1141,16 @@ npm run test:e2e
 ```
 
 #### Step 2: Performance Testing
+
 ```bash
 # Use Apache Bench or similar
-ab -n 1000 -c 10 http://localhost:4000/api/knowledge-base/issues
+ab -n 1000 -c 10 http://localhost:4110/api/knowledge-base/issues
 ```
 
 ## Deployment Checklist
 
 ### Pre-Deployment
+
 - [ ] All tests passing
 - [ ] Code review completed
 - [ ] Documentation updated
@@ -1144,6 +1158,7 @@ ab -n 1000 -c 10 http://localhost:4000/api/knowledge-base/issues
 - [ ] Performance benchmarks met
 
 ### Deployment
+
 ```bash
 # 1. Backup database
 pg_dump $DATABASE_URL > backup.sql
@@ -1159,6 +1174,7 @@ npm run deploy
 ```
 
 ### Post-Deployment
+
 - [ ] Verify all endpoints working
 - [ ] Check performance metrics
 - [ ] Monitor error rates
@@ -1170,6 +1186,7 @@ npm run deploy
 ### Common Issues
 
 #### Database Migration Fails
+
 ```bash
 # Reset and retry
 npx prisma migrate reset
@@ -1177,6 +1194,7 @@ npx prisma migrate dev
 ```
 
 #### Cache Not Working
+
 ```bash
 # Check Redis connection
 redis-cli ping
@@ -1186,11 +1204,13 @@ redis-cli FLUSHDB
 ```
 
 #### Search Not Finding Results
+
 - Check database indexes exist
 - Verify full-text search configuration
 - Check search query format
 
 #### Performance Issues
+
 - Enable query logging
 - Check slow queries
 - Verify indexes are being used
@@ -1199,6 +1219,7 @@ redis-cli FLUSHDB
 ## Success Criteria
 
 ### Functional Requirements
+
 - [ ] Users can create, read, update, delete issues
 - [ ] Users can add solutions to issues
 - [ ] Search returns relevant results
@@ -1206,12 +1227,14 @@ redis-cli FLUSHDB
 - [ ] User authentication integrated
 
 ### Performance Requirements
+
 - [ ] API response time < 500ms
 - [ ] Page load time < 3 seconds
 - [ ] Search results < 1 second
 - [ ] Cache hit rate > 80%
 
 ### Quality Requirements
+
 - [ ] Test coverage > 80%
 - [ ] No critical security issues
 - [ ] Documentation complete
@@ -1220,12 +1243,14 @@ redis-cli FLUSHDB
 ## Next Phase Preview
 
 ### Phase 2: Claude Integration
+
 - Auto-capture issues from conversations
 - AI-powered solution suggestions
 - Pattern recognition
 - SOP generation
 
 ### Getting Ready for Phase 2
+
 1. Collect sample data for training
 2. Set up Claude API enhanced features
 3. Design pattern recognition algorithms
@@ -1233,4 +1258,4 @@ redis-cli FLUSHDB
 
 ---
 
-*End of Phase 1 Implementation Guide*
+_End of Phase 1 Implementation Guide_

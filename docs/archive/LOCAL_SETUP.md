@@ -3,8 +3,9 @@
 ## ✅ ความพร้อมสำหรับใช้งาน Local
 
 ### สิ่งที่พร้อมใช้งานได้ทันที:
+
 - ✅ **Personal Assistant** - 17 คำสั่ง (tasks, reminders, notes, AI)
-- ✅ **Web Interface** - http://127.0.0.1:4000/assistant
+- ✅ **Web Interface** - http://127.0.0.1:4110/assistant
 - ✅ **API Endpoints** - REST API + WebSocket
 - ✅ **Local Storage** - ใช้ memory storage (ไม่ต้องใช้ database)
 - ✅ **AI Fallback** - ทำงานได้แม้ไม่มี Claude API
@@ -13,6 +14,7 @@
 ## 🚀 Quick Start (ใช้งานได้เลย!)
 
 ### 1. รันแบบง่ายที่สุด:
+
 ```bash
 # Clone และติดตั้ง
 git clone <repository>
@@ -23,9 +25,10 @@ npm install
 npm run dev
 ```
 
-เข้าใช้งาน: **http://127.0.0.1:4000/assistant**
+เข้าใช้งาน: **http://127.0.0.1:4110/assistant**
 
 ### 2. รันแบบ Production Mode บน Local:
+
 ```bash
 # Build production
 npm run build
@@ -37,11 +40,13 @@ npm start
 ## 💾 ตัวเลือกการเก็บข้อมูล
 
 ### Option 1: ใช้ Memory Storage (Default) ✅
+
 - **ข้อดี**: ไม่ต้องตั้งค่าอะไร, ทำงานได้ทันที
 - **ข้อเสีย**: ข้อมูลหายเมื่อ restart
 - **เหมาะกับ**: ทดลองใช้, demo, personal use
 
 ### Option 2: ใช้ SQLite (แนะนำ) 🎯
+
 ```bash
 # แก้ไข .env.local
 DATABASE_URL="file:./dev.db"
@@ -53,11 +58,13 @@ npx prisma db push
 # รัน
 npm run dev
 ```
+
 - **ข้อดี**: ข้อมูลไม่หาย, ไม่ต้องติดตั้ง database server
 - **ข้อเสีย**: -
 - **เหมาะกับ**: ใช้งานจริงบน local
 
 ### Option 3: ใช้ PostgreSQL Local
+
 ```bash
 # ติดตั้ง PostgreSQL (Mac)
 brew install postgresql
@@ -80,11 +87,13 @@ npm run dev
 ## 🤖 การใช้งาน AI Features
 
 ### 1. ไม่มี Claude API Key (ใช้ได้!)
+
 - ใช้ Local NLP สำหรับคำสั่งพื้นฐาน
 - รองรับทุกคำสั่ง tasks, reminders, notes
 - ตอบคำถามง่ายๆ ได้
 
 ### 2. มี Claude API Key (เต็มประสิทธิภาพ)
+
 ```bash
 # เพิ่มใน .env.local
 CLAUDE_API_KEY=sk-ant-api03-xxx
@@ -107,14 +116,15 @@ port/
 ## 🔧 Custom Configuration สำหรับ Local
 
 ### 1. สร้างไฟล์ `.env.local`:
+
 ```env
 # Basic Configuration
 NODE_ENV=production
-PORT=4000
+PORT=4110
 
 # URLs
-NEXT_PUBLIC_APP_URL=http://127.0.0.1:4000
-NEXT_PUBLIC_API_URL=http://127.0.0.1:4000/api
+NEXT_PUBLIC_APP_URL=http://127.0.0.1:4110
+NEXT_PUBLIC_API_URL=http://127.0.0.1:4110/api
 
 # Database (เลือก 1 อย่าง)
 # Option 1: SQLite
@@ -137,6 +147,7 @@ MAX_UPLOAD_SIZE=10485760
 ```
 
 ### 2. สร้าง Startup Script:
+
 ```bash
 # สร้างไฟล์ start-local.sh
 #!/bin/bash
@@ -156,13 +167,14 @@ if [ ! -d ".next" ]; then
 fi
 
 # Start server
-echo "✅ Starting server on http://127.0.0.1:4000"
+echo "✅ Starting server on http://127.0.0.1:4110"
 npm start
 ```
 
 ## 🖥️ Desktop App (Optional)
 
 ### ทำเป็น Desktop App ด้วย Electron:
+
 ```bash
 # ติดตั้ง electron
 npm install --save-dev electron electron-builder
@@ -179,8 +191,8 @@ function createWindow() {
       nodeIntegration: false
     }
   });
-  
-  win.loadURL('http://127.0.0.1:4000');
+
+  win.loadURL('http://127.0.0.1:4110');
 }
 
 app.whenReady().then(createWindow);
@@ -197,23 +209,25 @@ npm start & npx electron .
 ifconfig | grep inet
 
 # แก้ไข .env.local
-NEXT_PUBLIC_APP_URL=http://192.168.1.100:4000
+NEXT_PUBLIC_APP_URL=http://192.168.1.100:4110
 
 # รันด้วย
 npm run dev -- --hostname 0.0.0.0
 ```
 
-เข้าจากมือถือ: `http://192.168.1.100:4000`
+เข้าจากมือถือ: `http://192.168.1.100:4110`
 
 ## 🔒 Security สำหรับ Local Production
 
 ### 1. Basic Security (มีอยู่แล้ว):
+
 - ✅ Rate limiting (60 req/min)
 - ✅ CORS protection
 - ✅ Input validation
 - ✅ XSS protection
 
 ### 2. เพิ่มความปลอดภัย:
+
 ```bash
 # สร้าง local SSL certificate
 openssl req -x509 -newkey rsa:4096 -nodes \
@@ -226,39 +240,44 @@ npm run dev -- --experimental-https
 ## 🎯 Use Cases สำหรับ Local Production
 
 ### 1. Personal Assistant ส่วนตัว
+
 - จดบันทึก, ตั้งเตือน, จัดการงาน
 - ใช้ AI ช่วยเขียนโค้ด
 - ไม่ต้องกังวลเรื่อง privacy
 
 ### 2. Team Tool ในออฟฟิศ
+
 - ใช้ร่วมกันในเครือข่ายเดียวกัน
 - Share tasks และ notes
 - ไม่ต้องใช้ internet
 
 ### 3. Development Assistant
+
 - ช่วยในการ coding
 - จัดการ tasks ของโปรเจค
 - Debug และ analyze code
 
 ## 📊 Performance บน Local
 
-| Metric | Value | Status |
-|--------|-------|--------|
-| Startup Time | < 5 sec | ✅ |
-| Response Time | < 100ms | ✅ |
-| Memory Usage | ~200MB | ✅ |
-| CPU Usage | < 5% idle | ✅ |
-| Storage | < 100MB | ✅ |
+| Metric        | Value     | Status |
+| ------------- | --------- | ------ |
+| Startup Time  | < 5 sec   | ✅     |
+| Response Time | < 100ms   | ✅     |
+| Memory Usage  | ~200MB    | ✅     |
+| CPU Usage     | < 5% idle | ✅     |
+| Storage       | < 100MB   | ✅     |
 
 ## 🆘 Troubleshooting
 
-### Port 4000 ถูกใช้งานแล้ว:
+### Port 4110 ถูกใช้งานแล้ว:
+
 ```bash
 # เปลี่ยน port
 PORT=5000 npm run dev
 ```
 
 ### Database connection failed:
+
 ```bash
 # ใช้ SQLite แทน
 DATABASE_URL="file:./dev.db"
@@ -266,6 +285,7 @@ npx prisma db push
 ```
 
 ### ช้าเมื่อใช้งานนาน:
+
 ```bash
 # Clear cache และ restart
 rm -rf .next
@@ -282,7 +302,7 @@ npm start
 - [ ] เลือก database (SQLite แนะนำ)
 - [ ] npm run build
 - [ ] npm start
-- [ ] เข้าใช้งาน http://127.0.0.1:4000
+- [ ] เข้าใช้งาน http://127.0.0.1:4110
 
 ---
 

@@ -1,7 +1,7 @@
-import { WebSocket } from 'ws';
-import { EventEmitter } from 'events';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { WebSocket } from "ws";
+import { EventEmitter } from "events";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
@@ -28,36 +28,38 @@ export class ClaudeWebSocketService extends EventEmitter {
 
   async sendToClaude(message: string): Promise<string> {
     try {
-      console.log('[Claude] Sending message:', message);
-      
+      console.log("[Claude] Sending message:", message);
+
       // Create a temporary file with the message
       const tempFile = `/tmp/claude_input_${Date.now()}.txt`;
-      const fs = require('fs').promises;
-      await fs.writeFile(tempFile, message, 'utf8');
-      
+      const fs = require("fs").promises;
+      await fs.writeFile(tempFile, message, "utf8");
+
       // Call Claude with the file (no flags needed)
       const command = `cat ${tempFile} | claude 2>&1`;
-      
+
       const { stdout, stderr } = await execAsync(command, {
         timeout: 1800000, // 30 minutes timeout
-        maxBuffer: 50 * 1024 * 1024 // 50MB buffer
+        maxBuffer: 50 * 1024 * 1024, // 50MB buffer
       });
-      
+
       // Clean up temp file
       await fs.unlink(tempFile).catch(() => {});
-      
-      if (stderr && !stderr.includes('warning')) {
-        console.error('[Claude] Error:', stderr);
+
+      if (stderr && !stderr.includes("warning")) {
+        console.error("[Claude] Error:", stderr);
       }
-      
+
       const response = stdout.trim();
-      console.log('[Claude] Response received:', response.substring(0, 200) + '...');
-      
+      console.log(
+        "[Claude] Response received:",
+        response.substring(0, 200) + "...",
+      );
+
       return this.formatClaudeResponse(response);
-      
     } catch (error: any) {
-      console.error('[Claude] Failed to communicate:', error);
-      
+      console.error("[Claude] Failed to communicate:", error);
+
       // Try alternative approach
       return this.tryAlternativeApproach(message);
     }
@@ -67,24 +69,23 @@ export class ClaudeWebSocketService extends EventEmitter {
     try {
       // Simple pipe approach - most reliable
       const escapedMessage = message
-        .replace(/\\/g, '\\\\')
+        .replace(/\\/g, "\\\\")
         .replace(/'/g, "'\\''")
         .replace(/"/g, '\\"')
-        .replace(/\$/g, '\\$')
-        .replace(/`/g, '\\`')
-        .replace(/\n/g, ' ');
-      
+        .replace(/\$/g, "\\$")
+        .replace(/`/g, "\\`")
+        .replace(/\n/g, " ");
+
       const command = `echo "${escapedMessage}" | claude 2>&1`;
-      
+
       const { stdout } = await execAsync(command, {
         timeout: 1800000, // 30 minutes
-        maxBuffer: 50 * 1024 * 1024 // 50MB
+        maxBuffer: 50 * 1024 * 1024, // 50MB
       });
-      
+
       return this.formatClaudeResponse(stdout);
-      
     } catch (error) {
-      console.error('[Claude] Alternative approach failed:', error);
+      console.error("[Claude] Alternative approach failed:", error);
       return this.getIntelligentFallback(message);
     }
   }
@@ -92,18 +93,18 @@ export class ClaudeWebSocketService extends EventEmitter {
   private formatClaudeResponse(response: string): string {
     // Clean up Claude's response
     let cleaned = response
-      .replace(/\x1b\[[0-9;]*m/g, '') // Remove ANSI codes
-      .replace(/^.*Claude Code.*$/gm, '') // Remove intro
-      .replace(/^.*What would you like.*$/gm, '') // Remove prompts
-      .replace(/^Human:.*$/gm, '')
-      .replace(/^Assistant:.*$/gm, '')
+      .replace(/\x1b\[[0-9;]*m/g, "") // Remove ANSI codes
+      .replace(/^.*Claude Code.*$/gm, "") // Remove intro
+      .replace(/^.*What would you like.*$/gm, "") // Remove prompts
+      .replace(/^Human:.*$/gm, "")
+      .replace(/^Assistant:.*$/gm, "")
       .trim();
-    
+
     // If response is too short or empty, provide fallback
     if (!cleaned || cleaned.length < 10) {
       return this.getIntelligentFallback(response);
     }
-    
+
     return cleaned;
   }
 
@@ -115,27 +116,27 @@ export class ClaudeWebSocketService extends EventEmitter {
   private translateMessage(message: string): string {
     // Simple Thai to English translation
     const translations: { [key: string]: string } = {
-      'วิเคราะห์': 'analyze',
-      'โปรเจค': 'project',
-      'โปรเจ็ค': 'project',
-      'Project': 'project',
-      'หน่อย': 'please',
-      'ช่วย': 'help',
-      'อธิบาย': 'explain',
-      'เขียน': 'write',
-      'โค้ด': 'code',
-      'สร้าง': 'create',
-      'ทำ': 'do',
-      'อะไร': 'what',
-      'ยังไง': 'how',
-      'ทำไม': 'why',
-      'ที่ไหน': 'where',
-      'เมื่อไร': 'when'
+      วิเคราะห์: "analyze",
+      โปรเจค: "project",
+      โปรเจ็ค: "project",
+      Project: "project",
+      หน่อย: "please",
+      ช่วย: "help",
+      อธิบาย: "explain",
+      เขียน: "write",
+      โค้ด: "code",
+      สร้าง: "create",
+      ทำ: "do",
+      อะไร: "what",
+      ยังไง: "how",
+      ทำไม: "why",
+      ที่ไหน: "where",
+      เมื่อไร: "when",
     };
 
     let translated = message;
     for (const [thai, english] of Object.entries(translations)) {
-      translated = translated.replace(new RegExp(thai, 'gi'), english);
+      translated = translated.replace(new RegExp(thai, "gi"), english);
     }
 
     return translated;
@@ -143,9 +144,12 @@ export class ClaudeWebSocketService extends EventEmitter {
 
   private getIntelligentFallback(message: string): string {
     const lowerMessage = message.toLowerCase();
-    
+
     // Project analysis request
-    if (message.includes('วิเคราะห์') && (message.includes('โปรเจ') || message.includes('project'))) {
+    if (
+      message.includes("วิเคราะห์") &&
+      (message.includes("โปรเจ") || message.includes("project"))
+    ) {
       return `📊 **การวิเคราะห์ Personal Assistant Project**
 
 🏗️ **โครงสร้างโปรเจค:**
@@ -189,9 +193,14 @@ export class ClaudeWebSocketService extends EventEmitter {
 📈 **สถานะ:** Production Ready
 🎯 **Version:** 1.0.0`;
     }
-    
+
     // Math operations
-    if (message.includes('+') || message.includes('-') || message.includes('*') || message.includes('/')) {
+    if (
+      message.includes("+") ||
+      message.includes("-") ||
+      message.includes("*") ||
+      message.includes("/")
+    ) {
       try {
         // Simple math evaluation
         const result = this.evaluateMath(message);
@@ -200,9 +209,13 @@ export class ClaudeWebSocketService extends EventEmitter {
         }
       } catch (e) {}
     }
-    
+
     // Programming questions
-    if (lowerMessage.includes('python') || lowerMessage.includes('javascript') || lowerMessage.includes('code')) {
+    if (
+      lowerMessage.includes("python") ||
+      lowerMessage.includes("javascript") ||
+      lowerMessage.includes("code")
+    ) {
       return `สำหรับการเขียนโค้ด ผมแนะนำ:
 
 \`\`\`python
@@ -215,13 +228,13 @@ hello_world()
 
 ต้องการตัวอย่างโค้ดแบบไหนเพิ่มเติมครับ?`;
     }
-    
+
     // Thai responses
-    if (message.includes('สวัสดี')) {
-      return 'สวัสดีครับ! ผมคือ AI Assistant พร้อมช่วยเหลือคุณแล้วครับ 😊';
+    if (message.includes("สวัสดี")) {
+      return "สวัสดีครับ! ผมคือ AI Assistant พร้อมช่วยเหลือคุณแล้วครับ 😊";
     }
-    
-    if (message.includes('ทำอะไรได้')) {
+
+    if (message.includes("ทำอะไรได้")) {
       return `ผมสามารถช่วยคุณได้หลายอย่างครับ:
 
 📝 **งานเอกสาร**
@@ -243,7 +256,7 @@ hello_world()
 
 ลองถามอะไรมาได้เลยครับ!`;
     }
-    
+
     return `ได้รับข้อความของคุณแล้วครับ: "${message}"
 
 ผมกำลังประมวลผล... หากต้องการความช่วยเหลือ ลองพิมพ์:
@@ -257,20 +270,20 @@ hello_world()
       // Extract math expression
       const mathMatch = expression.match(/[\d\s\+\-\*\/\(\)\.]+/);
       if (!mathMatch) return null;
-      
+
       const expr = mathMatch[0].trim();
-      
+
       // Validate expression (only allow numbers and operators)
       if (!/^[\d\s\+\-\*\/\(\)\.]+$/.test(expr)) return null;
-      
+
       // Safe evaluation using Function constructor
-      const result = Function('"use strict"; return (' + expr + ')')();
-      
-      if (typeof result === 'number' && !isNaN(result)) {
+      const result = Function('"use strict"; return (' + expr + ")")();
+
+      if (typeof result === "number" && !isNaN(result)) {
         return result;
       }
     } catch (e) {}
-    
+
     return null;
   }
 }

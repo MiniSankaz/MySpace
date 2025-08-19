@@ -1,9 +1,11 @@
 # WebSocket Terminal Reconnection Loop Fix - Comprehensive Development Plan
 
 ## Executive Summary
+
 This document provides a comprehensive development plan to address the critical WebSocket terminal reconnection loop issue and establish robust development processes to prevent similar issues in the future. The plan includes immediate technical fixes, process improvements, and agent configuration updates.
 
 ## Table of Contents
+
 1. [Problem Analysis Summary](#problem-analysis-summary)
 2. [Part 1: Technical Issues Fix](#part-1-technical-issues-fix)
 3. [Part 2: Development Process Improvements](#part-2-development-process-improvements)
@@ -17,17 +19,20 @@ This document provides a comprehensive development plan to address the critical 
 ## Problem Analysis Summary
 
 ### Critical Technical Issues
+
 1. **Session ID Format Mismatch**: Frontend sends composite IDs (`${sessionId}_${projectId}`) while backend expects simple `sessionId`
 2. **Double Reconnection Logic**: Both TerminalWebSocketMultiplexer and backend servers implement reconnection, causing conflicts
 3. **Service Layer Overlap**: Multiple services (SessionManager, Multiplexer, IntegrationService) with unclear boundaries
 4. **Database Lookup Failures**: P2025 errors due to ID format mismatches
 
 ### Root Causes
+
 - **Architectural Debt**: System evolved from single to multi-terminal without proper refactoring
 - **Quick Fix Culture**: Band-aid solutions accumulating technical debt
 - **Lack of Architecture Governance**: No design review process or technical debt prioritization
 
 ### Impact Assessment
+
 - **User Productivity**: 60-80% reduction in terminal efficiency
 - **System Performance**: 200%+ CPU overhead from infinite loops
 - **Business Operations**: Core development workflow disruption
@@ -38,21 +43,23 @@ This document provides a comprehensive development plan to address the critical 
 ### 1.1 Session ID Standardization
 
 #### Current State
+
 ```typescript
 // Frontend (TerminalWebSocketMultiplexer.ts)
 const wsUrl = `${protocol}//${wsHost}/?sessionId=${sessionId}&projectId=${projectId}`;
 
 // Backend (terminal-ws-standalone.js)
-const sessionId = url.searchParams.get('sessionId') || `session_${Date.now()}`;
+const sessionId = url.searchParams.get("sessionId") || `session_${Date.now()}`;
 ```
 
 #### Target State
+
 ```typescript
 // Unified Session ID Contract
 interface SessionIdentifier {
-  sessionId: string;        // Format: `session_${timestamp}_${random}`
-  projectId: string;        // UUID format
-  type: 'system' | 'claude';
+  sessionId: string; // Format: `session_${timestamp}_${random}`
+  projectId: string; // UUID format
+  type: "system" | "claude";
   userId?: string;
 }
 ```
@@ -60,26 +67,27 @@ interface SessionIdentifier {
 #### Implementation Steps
 
 ##### Phase 1: Define Contract (Day 1)
+
 ```typescript
 // Create: /src/modules/workspace/types/terminal-contracts.ts
 export interface TerminalSessionContract {
   // Session Identification
-  sessionId: string;        // Format: session_{timestamp}_{random}
-  projectId: string;        // UUID v4
-  type: 'system' | 'claude';
-  
+  sessionId: string; // Format: session_{timestamp}_{random}
+  projectId: string; // UUID v4
+  type: "system" | "claude";
+
   // Session Metadata
   tabName: string;
   projectPath: string;
   userId?: string;
-  
+
   // Connection Details
-  connectionId?: string;    // WebSocket connection ID
+  connectionId?: string; // WebSocket connection ID
   lastActivity: Date;
 }
 
 export interface WebSocketMessageContract {
-  type: 'input' | 'resize' | 'command' | 'clear' | 'reconnect';
+  type: "input" | "resize" | "command" | "clear" | "reconnect";
   sessionId: string;
   data?: any;
   metadata?: {
@@ -90,6 +98,7 @@ export interface WebSocketMessageContract {
 ```
 
 ##### Phase 2: Update Session Manager (Day 1-2)
+
 ```typescript
 // Modify: /src/modules/workspace/services/terminal-session-manager.ts
 class TerminalSessionManager {
@@ -97,10 +106,10 @@ class TerminalSessionManager {
   async createSession(params: CreateSessionParams): Promise<TerminalSession> {
     // Generate standard session ID
     const sessionId = this.generateStandardSessionId();
-    
+
     // Validate project exists
     await this.ensureProjectExists(params.projectId);
-    
+
     // Create session with standard format
     const session = {
       id: sessionId,
@@ -108,13 +117,13 @@ class TerminalSessionManager {
       type: params.type,
       // ... rest of session data
     };
-    
+
     // Store in database with proper foreign key references
     await this.persistSession(session);
-    
+
     return session;
   }
-  
+
   private generateStandardSessionId(): string {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substr(2, 8);
@@ -124,17 +133,18 @@ class TerminalSessionManager {
 ```
 
 ##### Phase 3: Update WebSocket Servers (Day 2)
+
 ```javascript
 // Modify: /src/server/websocket/terminal-ws-standalone.js
 handleConnection(ws, request) {
   const { sessionId, projectId, type } = this.parseConnectionParams(request);
-  
+
   // Validate session format
   if (!this.isValidSessionId(sessionId)) {
     ws.close(1002, 'Invalid session ID format');
     return;
   }
-  
+
   // Create or restore session with standard format
   const session = this.createOrRestoreSession({
     sessionId,
@@ -153,11 +163,13 @@ isValidSessionId(sessionId) {
 ### 1.2 Reconnection Logic Consolidation
 
 #### Current State
+
 - Multiple reconnection mechanisms competing
 - No clear ownership of reconnection logic
 - Infinite loops due to conflicting retry strategies
 
 #### Target State
+
 - Single source of truth for reconnection logic
 - Circuit breaker pattern to prevent infinite loops
 - Exponential backoff with jitter
@@ -165,35 +177,36 @@ isValidSessionId(sessionId) {
 #### Implementation Steps
 
 ##### Phase 1: Implement Circuit Breaker (Day 3)
+
 ```typescript
 // Create: /src/modules/workspace/services/circuit-breaker.ts
 export class CircuitBreaker {
   private failures: Map<string, number> = new Map();
   private lastFailureTime: Map<string, number> = new Map();
-  private state: Map<string, 'closed' | 'open' | 'half-open'> = new Map();
-  
+  private state: Map<string, "closed" | "open" | "half-open"> = new Map();
+
   constructor(
     private threshold: number = 5,
     private timeout: number = 60000,
-    private resetTimeout: number = 30000
+    private resetTimeout: number = 30000,
   ) {}
-  
+
   async execute<T>(
     key: string,
     operation: () => Promise<T>,
-    fallback?: () => T
+    fallback?: () => T,
   ): Promise<T> {
     const state = this.getState(key);
-    
-    if (state === 'open') {
+
+    if (state === "open") {
       if (this.shouldAttemptReset(key)) {
-        this.setState(key, 'half-open');
+        this.setState(key, "half-open");
       } else {
         if (fallback) return fallback();
         throw new Error(`Circuit breaker is open for ${key}`);
       }
     }
-    
+
     try {
       const result = await operation();
       this.onSuccess(key);
@@ -203,24 +216,26 @@ export class CircuitBreaker {
       throw error;
     }
   }
-  
+
   private onSuccess(key: string): void {
     this.failures.delete(key);
     this.lastFailureTime.delete(key);
-    this.setState(key, 'closed');
+    this.setState(key, "closed");
   }
-  
+
   private onFailure(key: string): void {
     const failures = (this.failures.get(key) || 0) + 1;
     this.failures.set(key, failures);
     this.lastFailureTime.set(key, Date.now());
-    
+
     if (failures >= this.threshold) {
-      this.setState(key, 'open');
-      console.warn(`Circuit breaker opened for ${key} after ${failures} failures`);
+      this.setState(key, "open");
+      console.warn(
+        `Circuit breaker opened for ${key} after ${failures} failures`,
+      );
     }
   }
-  
+
   private shouldAttemptReset(key: string): boolean {
     const lastFailure = this.lastFailureTime.get(key) || 0;
     return Date.now() - lastFailure > this.resetTimeout;
@@ -229,12 +244,13 @@ export class CircuitBreaker {
 ```
 
 ##### Phase 2: Centralize Reconnection Logic (Day 3-4)
+
 ```typescript
 // Modify: /src/modules/workspace/services/terminal-websocket-multiplexer.ts
 class TerminalWebSocketMultiplexer {
   private circuitBreaker: CircuitBreaker;
   private reconnectionManager: ReconnectionManager;
-  
+
   constructor(options: ConnectionOptions) {
     super();
     this.circuitBreaker = new CircuitBreaker();
@@ -242,32 +258,31 @@ class TerminalWebSocketMultiplexer {
       maxAttempts: 5,
       baseDelay: 1000,
       maxDelay: 30000,
-      jitter: true
+      jitter: true,
     });
   }
-  
+
   private async handleReconnection(sessionId: string): Promise<void> {
     const connection = this.connections.get(sessionId);
     if (!connection) return;
-    
+
     // Use circuit breaker to prevent infinite loops
     await this.circuitBreaker.execute(
       `reconnect_${sessionId}`,
       async () => {
-        await this.reconnectionManager.attemptReconnection(
-          sessionId,
-          () => this.createWebSocketConnection(
+        await this.reconnectionManager.attemptReconnection(sessionId, () =>
+          this.createWebSocketConnection(
             sessionId,
             connection.projectId,
-            connection.type
-          )
+            connection.type,
+          ),
         );
       },
       () => {
         // Fallback: Mark session as failed
         this.markSessionFailed(sessionId);
-        this.emit('session:reconnect-failed', { sessionId });
-      }
+        this.emit("session:reconnect-failed", { sessionId });
+      },
     );
   }
 }
@@ -276,6 +291,7 @@ class TerminalWebSocketMultiplexer {
 ### 1.3 Service Architecture Simplification
 
 #### Current Architecture (Complex)
+
 ```
 Frontend Components
     ↓
@@ -287,6 +303,7 @@ WebSocket Servers (4001, 4002)
 ```
 
 #### Target Architecture (Simplified)
+
 ```
 Frontend Components
     ↓
@@ -302,33 +319,34 @@ WebSocket Servers (4001, 4002)
 #### Implementation Steps
 
 ##### Phase 1: Create Terminal Facade (Day 5)
+
 ```typescript
 // Create: /src/modules/workspace/services/terminal-facade.ts
 export class TerminalFacade {
   constructor(
     private sessionManager: TerminalSessionManager,
-    private connectionManager: WebSocketConnectionManager
+    private connectionManager: WebSocketConnectionManager,
   ) {}
-  
+
   // Single entry point for all terminal operations
   async createTerminal(params: CreateTerminalParams): Promise<TerminalHandle> {
     // 1. Create or restore session
     const session = await this.sessionManager.createOrRestoreSession(params);
-    
+
     // 2. Establish WebSocket connection
     const connection = await this.connectionManager.connect(session);
-    
+
     // 3. Return unified handle
     return new TerminalHandle(session, connection);
   }
-  
+
   async sendInput(sessionId: string, data: string): Promise<void> {
     const session = await this.sessionManager.getSession(sessionId);
     if (!session) throw new Error(`Session ${sessionId} not found`);
-    
+
     await this.connectionManager.sendData(sessionId, data);
   }
-  
+
   async closeTerminal(sessionId: string): Promise<void> {
     await this.connectionManager.disconnect(sessionId);
     await this.sessionManager.closeSession(sessionId);
@@ -337,6 +355,7 @@ export class TerminalFacade {
 ```
 
 ##### Phase 2: Deprecate Overlapping Services (Day 5-6)
+
 ```typescript
 // Mark for deprecation
 /**
@@ -355,80 +374,82 @@ export class TerminalIntegrationService {
 #### Implementation Steps
 
 ##### Phase 1: Define Error Types (Day 6)
+
 ```typescript
 // Create: /src/modules/workspace/errors/terminal-errors.ts
 export class TerminalError extends Error {
   constructor(
     message: string,
     public code: string,
-    public recoverable: boolean = false
+    public recoverable: boolean = false,
   ) {
     super(message);
-    this.name = 'TerminalError';
+    this.name = "TerminalError";
   }
 }
 
 export class SessionNotFoundError extends TerminalError {
   constructor(sessionId: string) {
-    super(`Session ${sessionId} not found`, 'SESSION_NOT_FOUND', false);
+    super(`Session ${sessionId} not found`, "SESSION_NOT_FOUND", false);
   }
 }
 
 export class ConnectionError extends TerminalError {
   constructor(message: string, recoverable = true) {
-    super(message, 'CONNECTION_ERROR', recoverable);
+    super(message, "CONNECTION_ERROR", recoverable);
   }
 }
 
 export class AuthenticationError extends TerminalError {
   constructor(message: string) {
-    super(message, 'AUTH_ERROR', false);
+    super(message, "AUTH_ERROR", false);
   }
 }
 ```
 
 ##### Phase 2: Implement Error Recovery (Day 6-7)
+
 ```typescript
 // Create: /src/modules/workspace/services/error-recovery.ts
 export class ErrorRecoveryService {
   private recoveryStrategies: Map<string, RecoveryStrategy> = new Map();
-  
+
   constructor() {
     this.registerDefaultStrategies();
   }
-  
+
   private registerDefaultStrategies(): void {
     // Connection errors - attempt reconnection
-    this.register('CONNECTION_ERROR', async (error, context) => {
+    this.register("CONNECTION_ERROR", async (error, context) => {
       if (error.recoverable) {
         await this.delay(1000);
-        return { action: 'retry', delay: 1000 };
+        return { action: "retry", delay: 1000 };
       }
-      return { action: 'fail' };
+      return { action: "fail" };
     });
-    
+
     // Session not found - recreate session
-    this.register('SESSION_NOT_FOUND', async (error, context) => {
-      return { action: 'recreate', params: context };
+    this.register("SESSION_NOT_FOUND", async (error, context) => {
+      return { action: "recreate", params: context };
     });
-    
+
     // Authentication errors - refresh token
-    this.register('AUTH_ERROR', async (error, context) => {
+    this.register("AUTH_ERROR", async (error, context) => {
       try {
         await this.refreshAuthentication();
-        return { action: 'retry', immediate: true };
+        return { action: "retry", immediate: true };
       } catch {
-        return { action: 'fail', redirect: '/login' };
+        return { action: "fail", redirect: "/login" };
       }
     });
   }
-  
+
   async recover(error: TerminalError, context: any): Promise<RecoveryResult> {
     const strategy = this.recoveryStrategies.get(error.code);
     if (!strategy) {
-      return { action: 'fail' };
+      return { action: "fail" };
     }
-    
+
     return await strategy(error, context);
   }
 }
@@ -439,11 +460,11 @@ export class ErrorRecoveryService {
 ### 2.1 Architecture Governance Process
 
 #### Design Review Checkpoints
+
 1. **Pre-Implementation Review** (Before coding)
    - Architecture Decision Record (ADR) required
    - Technical design document review
    - Impact analysis on existing systems
-   
 2. **Mid-Implementation Review** (At 50% completion)
    - Code structure validation
    - Integration points verification
@@ -455,26 +476,34 @@ export class ErrorRecoveryService {
    - Documentation updated
 
 #### ADR Template
+
 ```markdown
 # ADR-[NUMBER]: [TITLE]
 
 ## Status
+
 [Proposed | Accepted | Deprecated | Superseded]
 
 ## Context
+
 What is the issue that we're seeing that is motivating this decision?
 
 ## Decision
+
 What is the change that we're proposing?
 
 ## Consequences
+
 ### Positive
+
 - List positive outcomes
 
 ### Negative
+
 - List negative outcomes or trade-offs
 
 ## Alternatives Considered
+
 - Alternative 1: Description and why rejected
 - Alternative 2: Description and why rejected
 ```
@@ -482,15 +511,16 @@ What is the change that we're proposing?
 ### 2.2 Technical Debt Management
 
 #### Debt Tracking System
+
 ```typescript
 // Create: /src/core/technical-debt/debt-tracker.ts
 export interface TechnicalDebt {
   id: string;
   title: string;
   description: string;
-  impact: 'low' | 'medium' | 'high' | 'critical';
-  effort: 'small' | 'medium' | 'large' | 'xlarge';
-  category: 'architecture' | 'code' | 'documentation' | 'testing' | 'security';
+  impact: "low" | "medium" | "high" | "critical";
+  effort: "small" | "medium" | "large" | "xlarge";
+  category: "architecture" | "code" | "documentation" | "testing" | "security";
   createdAt: Date;
   lastReviewedAt: Date;
   owner: string;
@@ -503,31 +533,35 @@ export interface TechnicalDebt {
 
 export class TechnicalDebtRegistry {
   private debts: Map<string, TechnicalDebt> = new Map();
-  
+
   register(debt: TechnicalDebt): void {
     this.debts.set(debt.id, debt);
     this.notifyOwner(debt);
   }
-  
+
   prioritize(): TechnicalDebt[] {
-    return Array.from(this.debts.values())
-      .sort((a, b) => {
-        // Prioritize by impact and effort ratio
-        const scoreA = this.calculatePriority(a);
-        const scoreB = this.calculatePriority(b);
-        return scoreB - scoreA;
-      });
+    return Array.from(this.debts.values()).sort((a, b) => {
+      // Prioritize by impact and effort ratio
+      const scoreA = this.calculatePriority(a);
+      const scoreB = this.calculatePriority(b);
+      return scoreB - scoreA;
+    });
   }
-  
+
   private calculatePriority(debt: TechnicalDebt): number {
-    const impactScore = { low: 1, medium: 3, high: 5, critical: 10 }[debt.impact];
-    const effortScore = { small: 1, medium: 2, large: 4, xlarge: 8 }[debt.effort];
+    const impactScore = { low: 1, medium: 3, high: 5, critical: 10 }[
+      debt.impact
+    ];
+    const effortScore = { small: 1, medium: 2, large: 4, xlarge: 8 }[
+      debt.effort
+    ];
     return (impactScore * debt.estimatedCost.riskLevel) / effortScore;
   }
 }
 ```
 
 #### Debt Paydown Strategy
+
 1. **Weekly Debt Review** (Every Monday)
    - Review new debt items
    - Re-prioritize existing debt
@@ -546,19 +580,20 @@ export class TechnicalDebtRegistry {
 ### 2.3 Testing Strategy
 
 #### Integration Testing Framework
+
 ```typescript
 // Create: /tests/integration/terminal/terminal-integration.test.ts
 describe('Terminal System Integration', () => {
   let facade: TerminalFacade;
   let sessionManager: TerminalSessionManager;
   let connectionManager: WebSocketConnectionManager;
-  
+
   beforeAll(async () => {
     // Setup test environment
     await setupTestDatabase();
     await startMockWebSocketServers();
   });
-  
+
   describe('Session Lifecycle', () => {
     it('should create session with standard ID format', async () => {
       const session = await facade.createTerminal({
@@ -566,51 +601,51 @@ describe('Terminal System Integration', () => {
         type: 'system',
         tabName: 'Test Tab'
       });
-      
+
       expect(session.id).toMatch(/^session_\d+_[a-z0-9]+$/);
     });
-    
+
     it('should handle reconnection without loops', async () => {
       const session = await facade.createTerminal({...});
-      
+
       // Simulate disconnection
       await simulateDisconnection(session.id);
-      
+
       // Wait for reconnection
       await waitForReconnection(session.id);
-      
+
       // Verify no infinite loops
       const reconnectAttempts = getReconnectAttempts(session.id);
       expect(reconnectAttempts).toBeLessThanOrEqual(5);
     });
-    
+
     it('should preserve session across reconnections', async () => {
       const session = await facade.createTerminal({...});
       const initialOutput = await captureOutput(session.id);
-      
+
       await simulateDisconnection(session.id);
       await waitForReconnection(session.id);
-      
+
       const reconnectedOutput = await captureOutput(session.id);
       expect(reconnectedOutput).toContain(initialOutput);
     });
   });
-  
+
   describe('Error Recovery', () => {
     it('should recover from database failures', async () => {
       await simulateDatabaseFailure();
-      
+
       const session = await facade.createTerminal({...});
       expect(session).toBeDefined();
       expect(session.inMemoryFallback).toBe(true);
     });
-    
+
     it('should apply circuit breaker on repeated failures', async () => {
       // Simulate repeated failures
       for (let i = 0; i < 6; i++) {
         await simulateConnectionFailure();
       }
-      
+
       // Circuit should be open
       await expect(facade.createTerminal({...}))
         .rejects.toThrow('Circuit breaker is open');
@@ -620,6 +655,7 @@ describe('Terminal System Integration', () => {
 ```
 
 #### Test Coverage Requirements
+
 - **Unit Tests**: 85% minimum coverage
 - **Integration Tests**: All critical paths covered
 - **E2E Tests**: User journeys for terminal operations
@@ -629,6 +665,7 @@ describe('Terminal System Integration', () => {
 ### 2.4 Development Standards
 
 #### Service Boundaries
+
 ```yaml
 # File: /docs/service-boundaries.yaml
 services:
@@ -640,7 +677,7 @@ services:
     boundaries:
       - "No direct database access"
       - "No WebSocket protocol handling"
-      
+
   terminal-session-manager:
     responsibility: "Session lifecycle and persistence"
     dependencies:
@@ -649,7 +686,7 @@ services:
     boundaries:
       - "No WebSocket handling"
       - "No UI concerns"
-      
+
   websocket-connection-manager:
     responsibility: "WebSocket connection handling"
     dependencies:
@@ -661,34 +698,40 @@ services:
 ```
 
 #### Code Review Checklist
+
 ```markdown
 # Terminal System Code Review Checklist
 
 ## Architecture
+
 - [ ] Follows established service boundaries
 - [ ] No circular dependencies
 - [ ] Proper separation of concerns
 - [ ] ADR created for significant changes
 
 ## Code Quality
+
 - [ ] TypeScript strict mode compliance
 - [ ] No any types without justification
 - [ ] Error handling implemented
 - [ ] Logging at appropriate levels
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests for cross-service calls
 - [ ] Error scenarios tested
 - [ ] Performance impact assessed
 
 ## Documentation
+
 - [ ] API documentation updated
 - [ ] CLAUDE.md updated if needed
 - [ ] Migration guide if breaking changes
 - [ ] ADR for architectural decisions
 
 ## Security
+
 - [ ] Input validation
 - [ ] Authentication/authorization checks
 - [ ] No sensitive data in logs
@@ -705,21 +748,27 @@ services:
 ## Enhanced Capabilities for Terminal System Analysis
 
 ### Pre-Implementation Analysis
+
 Before any terminal system changes:
+
 1. Perform impact analysis on existing sessions
 2. Identify affected user workflows
 3. Document current vs. proposed architecture
 4. Calculate technical debt implications
 
 ### Root Cause Analysis Protocol
+
 When investigating terminal issues:
+
 1. Apply 5 Why methodology
 2. Create system interaction diagrams
 3. Identify architectural debt patterns
 4. Propose both tactical and strategic solutions
 
 ### Success Metrics Definition
+
 For terminal system improvements:
+
 - Session stability (< 0.1% failure rate)
 - Reconnection success rate (> 99%)
 - Performance impact (< 100ms latency)
@@ -734,18 +783,21 @@ For terminal system improvements:
 ## Terminal System Standards Enforcement
 
 ### Pre-Commit Checks
+
 1. Verify session ID format compliance
 2. Check service boundary violations
 3. Validate error handling patterns
 4. Ensure test coverage requirements
 
 ### Architecture Compliance
+
 1. Enforce single responsibility principle
 2. Prevent circular dependencies
 3. Validate WebSocket message contracts
 4. Check for proper abstraction layers
 
 ### Documentation Requirements
+
 1. ADR for architectural changes
 2. Updated service boundaries documentation
 3. Migration guides for breaking changes
@@ -760,7 +812,9 @@ For terminal system improvements:
 ## Terminal System Planning Protocol
 
 ### Feature Planning Requirements
+
 For terminal-related features:
+
 1. Create detailed technical specification
 2. Define session management strategy
 3. Plan WebSocket connection architecture
@@ -768,7 +822,9 @@ For terminal-related features:
 5. Specify integration test scenarios
 
 ### Risk Assessment
+
 Evaluate:
+
 - Session state management risks
 - WebSocket reconnection scenarios
 - Database dependency failures
@@ -776,7 +832,9 @@ Evaluate:
 - Resource exhaustion possibilities
 
 ### Phased Implementation Strategy
+
 Always plan in phases:
+
 - Phase 1: Core functionality with in-memory fallback
 - Phase 2: Database persistence and recovery
 - Phase 3: Advanced features and optimizations
@@ -785,29 +843,30 @@ Always plan in phases:
 
 ### 3.4 Code Reviewer Agent Configuration
 
-```markdown
+````markdown
 # File: /.claude/agents/code-reviewer.md
 
 ## Terminal System Code Review Focus
 
 ### Critical Review Points
+
 1. **Session Management**
    - Validate session ID generation
    - Check session cleanup logic
    - Verify reconnection handling
-   
 2. **WebSocket Handling**
    - Message contract compliance
    - Connection lifecycle management
    - Error propagation patterns
-   
 3. **Service Integration**
    - Service boundary adherence
    - Dependency injection patterns
    - Circuit breaker implementation
 
 ### Automated Checks
+
 Run before approval:
+
 ```bash
 # Session ID format validation
 grep -r "session_" --include="*.ts" | validate-session-format
@@ -818,13 +877,16 @@ npm run check:service-boundaries
 # Integration test coverage
 npm run test:integration:terminal
 ```
+````
 
 ### Performance Review
+
 - Check for memory leaks in session storage
 - Validate WebSocket message batching
 - Review database query optimization
 - Assess connection pooling efficiency
-```
+
+````
 
 ## Implementation Roadmap
 
@@ -978,41 +1040,44 @@ it('should handle normal terminal operations', async () => {
   const output = await waitForOutput(session.id);
   expect(output).toContain('test');
 });
-```
+````
 
 #### Scenario 2: Reconnection
+
 ```typescript
 // Test: Disconnect and reconnect preserves session
-it('should preserve session on reconnection', async () => {
+it("should preserve session on reconnection", async () => {
   const session = await createSession();
-  await sendCommand(session.id, 'export TEST_VAR=123');
+  await sendCommand(session.id, "export TEST_VAR=123");
   await disconnect(session.id);
   await reconnect(session.id);
-  await sendCommand(session.id, 'echo $TEST_VAR');
+  await sendCommand(session.id, "echo $TEST_VAR");
   const output = await waitForOutput(session.id);
-  expect(output).toContain('123');
+  expect(output).toContain("123");
 });
 ```
 
 #### Scenario 3: Circuit Breaker
+
 ```typescript
 // Test: Circuit breaker prevents infinite loops
-it('should open circuit breaker after failures', async () => {
+it("should open circuit breaker after failures", async () => {
   for (let i = 0; i < 5; i++) {
     await simulateConnectionFailure();
   }
-  await expect(createSession()).rejects.toThrow('Circuit breaker is open');
+  await expect(createSession()).rejects.toThrow("Circuit breaker is open");
 });
 ```
 
 #### Scenario 4: Database Failure
+
 ```typescript
 // Test: System continues with in-memory fallback
-it('should fallback to in-memory on database failure', async () => {
+it("should fallback to in-memory on database failure", async () => {
   await simulateDatabaseOutage();
   const session = await createSession();
   expect(session.inMemoryMode).toBe(true);
-  await sendCommand(session.id, 'pwd');
+  await sendCommand(session.id, "pwd");
   const output = await waitForOutput(session.id);
   expect(output).toBeDefined();
 });
@@ -1021,6 +1086,7 @@ it('should fallback to in-memory on database failure', async () => {
 ### Validation Checklist
 
 #### Pre-Deployment
+
 - [ ] All unit tests passing (> 85% coverage)
 - [ ] Integration tests successful
 - [ ] Performance benchmarks met
@@ -1028,6 +1094,7 @@ it('should fallback to in-memory on database failure', async () => {
 - [ ] Documentation complete
 
 #### Post-Deployment
+
 - [ ] Error rate < 0.1%
 - [ ] Reconnection success > 99%
 - [ ] CPU usage normal
@@ -1039,18 +1106,21 @@ it('should fallback to in-memory on database failure', async () => {
 ### Technical Metrics
 
 #### Reliability
+
 - **Session Stability**: < 0.1% failure rate
 - **Reconnection Success**: > 99% success rate
 - **Uptime**: > 99.9% availability
 - **Error Recovery**: < 5 seconds mean time to recovery
 
 #### Performance
+
 - **Connection Time**: < 500ms
 - **Command Latency**: < 100ms
 - **Reconnection Time**: < 2 seconds
 - **Resource Usage**: < 50MB per session
 
 #### Quality
+
 - **Code Coverage**: > 85%
 - **Technical Debt Score**: < 20% of codebase
 - **Bug Escape Rate**: < 5%
@@ -1059,12 +1129,14 @@ it('should fallback to in-memory on database failure', async () => {
 ### Process Metrics
 
 #### Development Efficiency
+
 - **Cycle Time**: 20% reduction
 - **Defect Rate**: 50% reduction
 - **Rework Rate**: < 10%
 - **Deployment Frequency**: 2x increase
 
 #### Team Health
+
 - **Process Satisfaction**: > 80%
 - **Knowledge Sharing**: Weekly sessions
 - **Documentation Quality**: > 90% complete
@@ -1073,8 +1145,11 @@ it('should fallback to in-memory on database failure', async () => {
 ## Rollback Plans
 
 ### Immediate Rollback (< 1 hour)
+
 If critical issues detected:
+
 1. **Revert Code Changes**
+
    ```bash
    git revert --no-commit HEAD~5..HEAD
    git commit -m "Emergency rollback: terminal system"
@@ -1082,6 +1157,7 @@ If critical issues detected:
    ```
 
 2. **Restore Database Schema**
+
    ```sql
    -- Restore previous schema
    BEGIN;
@@ -1097,22 +1173,28 @@ If critical issues detected:
    ```
 
 ### Partial Rollback (Feature Flags)
+
 For less critical issues:
+
 ```typescript
 // Disable new features via feature flags
-await updateFeatureFlag('terminal.new_session_format', false);
-await updateFeatureFlag('terminal.circuit_breaker', false);
-await updateFeatureFlag('terminal.central_reconnection', false);
+await updateFeatureFlag("terminal.new_session_format", false);
+await updateFeatureFlag("terminal.circuit_breaker", false);
+await updateFeatureFlag("terminal.central_reconnection", false);
 ```
 
 ### Data Recovery
+
 If data corruption detected:
+
 1. **Stop Write Operations**
+
    ```sql
    ALTER DATABASE terminals SET default_transaction_read_only = on;
    ```
 
 2. **Restore from Backup**
+
    ```bash
    pg_restore -d terminals /backups/terminals_latest.dump
    ```
@@ -1123,6 +1205,7 @@ If data corruption detected:
    ```
 
 ### Communication Plan
+
 1. **Immediate**: Alert on-call engineer
 2. **5 minutes**: Update status page
 3. **15 minutes**: Send user communication
@@ -1134,22 +1217,24 @@ If data corruption detected:
 ### Key Metrics to Monitor
 
 #### Real-time Alerts (PagerDuty)
+
 ```yaml
 alerts:
   - name: terminal_reconnection_loop
     condition: reconnection_attempts > 10 per minute
     severity: critical
-    
+
   - name: session_creation_failure
     condition: error_rate > 1%
     severity: high
-    
+
   - name: websocket_connection_spike
     condition: connections > 1000
     severity: medium
 ```
 
 #### Dashboard Metrics (Grafana)
+
 ```yaml
 dashboards:
   terminal_health:
@@ -1164,21 +1249,22 @@ dashboards:
 ```
 
 ### Logging Strategy
+
 ```typescript
 // Structured logging for terminal events
-logger.info('terminal.session.created', {
+logger.info("terminal.session.created", {
   sessionId,
   projectId,
   userId,
   type,
-  timestamp: Date.now()
+  timestamp: Date.now(),
 });
 
-logger.error('terminal.reconnection.failed', {
+logger.error("terminal.reconnection.failed", {
   sessionId,
   attempts: reconnectAttempts,
   lastError: error.message,
-  circuitBreakerState
+  circuitBreakerState,
 });
 ```
 

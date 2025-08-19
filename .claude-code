@@ -1,0 +1,17 @@
+#!/bin/bash
+# Claude Code Startup Hook
+# This file is executed when Claude CLI starts in this project
+
+# Auto-initialize agents if needed
+if [ -f ".claude/init-agents.sh" ]; then
+    source .claude/init-agents.sh
+fi
+
+# Export project-specific environment variables
+export CLAUDE_PROJECT_AGENTS="business-analyst,development-planner,devops-maturity-auditor,sop-enforcer,dev-life-consultant"
+export CLAUDE_AGENTS_INITIALIZED=true
+
+# Display agent status (optional)
+if [ -f ".claude-agents.json" ]; then
+    echo "✅ Project agents are loaded and ready to use"
+fi

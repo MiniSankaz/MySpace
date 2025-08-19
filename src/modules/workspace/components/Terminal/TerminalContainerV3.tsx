@@ -1,21 +1,39 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Plus, X, AlertCircle, Loader2, Grid, Columns, Rows, Square, Command } from 'lucide-react';
-import { Project } from '../../types';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Terminal,
+  Plus,
+  X,
+  AlertCircle,
+  Loader2,
+  Grid,
+  Columns,
+  Rows,
+  Square,
+  Command,
+} from "lucide-react";
+import { Project } from "../../types";
 
 // Lazy load XTermViewV2 for better performance
-const XTermViewV2 = lazy(() => import('./XTermViewV2'));
+const XTermViewV2 = lazy(() => import("./XTermViewV2"));
 
 // Layout configurations
 const LAYOUTS = {
-  '1x1': { rows: 1, cols: 1, icon: Square, label: '1x1' },
-  '1x2': { rows: 1, cols: 2, icon: Columns, label: '1x2' },
-  '1x3': { rows: 1, cols: 3, icon: Columns, label: '1x3' },
-  '2x1': { rows: 2, cols: 1, icon: Rows, label: '2x1' },
-  '2x2': { rows: 2, cols: 2, icon: Grid, label: '2x2' },
-  '2x3': { rows: 2, cols: 3, icon: Grid, label: '2x3' },
+  "1x1": { rows: 1, cols: 1, icon: Square, label: "1x1" },
+  "1x2": { rows: 1, cols: 2, icon: Columns, label: "1x2" },
+  "1x3": { rows: 1, cols: 3, icon: Columns, label: "1x3" },
+  "2x1": { rows: 2, cols: 1, icon: Rows, label: "2x1" },
+  "2x2": { rows: 2, cols: 2, icon: Grid, label: "2x2" },
+  "2x3": { rows: 2, cols: 3, icon: Grid, label: "2x3" },
 } as const;
 
 type LayoutType = keyof typeof LAYOUTS;
@@ -23,10 +41,10 @@ type LayoutType = keyof typeof LAYOUTS;
 interface TerminalSession {
   id: string;
   projectId: string;
-  type: 'terminal';
-  mode: 'normal' | 'claude';
+  type: "terminal";
+  mode: "normal" | "claude";
   tabName: string;
-  status: 'active' | 'inactive' | 'error';
+  status: "active" | "inactive" | "error";
   isFocused: boolean;
   gridPosition?: number; // Position in grid (0-5 for 2x3)
 }
@@ -35,94 +53,112 @@ interface TerminalContainerV3Props {
   project: Project;
 }
 
-const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) => {
+const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({
+  project,
+}) => {
   const [sessions, setSessions] = useState<TerminalSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [switchingProject, setSwitchingProject] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentLayout, setCurrentLayout] = useState<LayoutType>('1x1');
+  const [currentLayout, setCurrentLayout] = useState<LayoutType>("1x1");
   const previousProjectIdRef = useRef<string | null>(null);
-  const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(new Set());
-  const [resumeAttempts, setResumeAttempts] = useState<Map<string, number>>(new Map());
+  const [suspendedProjects, setSuspendedProjects] = useState<Set<string>>(
+    new Set(),
+  );
+  const [resumeAttempts, setResumeAttempts] = useState<Map<string, number>>(
+    new Map(),
+  );
   const MAX_RESUME_ATTEMPTS = 3;
-  
+
   // Debouncing and queue management
   const switchQueueRef = useRef<string[]>([]);
   const isProcessingSwitchRef = useRef(false);
   const lastSwitchTimeRef = useRef<number>(0);
   const pendingProjectSwitchRef = useRef<NodeJS.Timeout | null>(null);
   const SWITCH_DEBOUNCE_MS = 500; // Wait 500ms before processing switch
-  
+
   // Load project-specific layout preference and clean up suspended projects
   useEffect(() => {
     const loadProjectLayout = () => {
       try {
-        const savedLayouts = localStorage.getItem('terminalLayouts');
+        const savedLayouts = localStorage.getItem("terminalLayouts");
         if (savedLayouts) {
           const layouts = JSON.parse(savedLayouts);
           const projectLayout = layouts[project.id];
           if (projectLayout && LAYOUTS[projectLayout as LayoutType]) {
             setCurrentLayout(projectLayout as LayoutType);
-            console.log(`[Terminal] Restored layout ${projectLayout} for project ${project.id}`);
+            console.log(
+              `[Terminal] Restored layout ${projectLayout} for project ${project.id}`,
+            );
           }
         }
       } catch (error) {
-        console.error('[Terminal] Failed to load project layout:', error);
+        console.error("[Terminal] Failed to load project layout:", error);
       }
     };
-    
+
     // Clear any stale suspended projects on component mount
     const cleanupSuspendedProjects = () => {
       setSuspendedProjects(new Set());
-      console.log('[Terminal] Cleared suspended projects on mount');
+      console.log("[Terminal] Cleared suspended projects on mount");
     };
-    
+
     loadProjectLayout();
     cleanupSuspendedProjects();
   }, [project.id]);
-  
+
   // Calculate max terminals based on layout
-  const maxTerminals = LAYOUTS[currentLayout].rows * LAYOUTS[currentLayout].cols;
-  
+  const maxTerminals =
+    LAYOUTS[currentLayout].rows * LAYOUTS[currentLayout].cols;
+
   // Process project switch queue sequentially
   const processProjectSwitchQueue = async () => {
     if (isProcessingSwitchRef.current || switchQueueRef.current.length === 0) {
       return;
     }
-    
+
     isProcessingSwitchRef.current = true;
     setSwitchingProject(true);
-    
+
     while (switchQueueRef.current.length > 0) {
       const nextProjectId = switchQueueRef.current.shift()!;
-      
+
       // Skip if this is the same as the current project
       if (nextProjectId === previousProjectIdRef.current) {
         continue;
       }
-      
+
       console.log(`[Terminal] Processing switch to project ${nextProjectId}`);
-      
+
       try {
         // Suspend previous project if exists
-        if (previousProjectIdRef.current && previousProjectIdRef.current !== nextProjectId) {
-          console.log(`[Terminal] Suspending project ${previousProjectIdRef.current}`);
+        if (
+          previousProjectIdRef.current &&
+          previousProjectIdRef.current !== nextProjectId
+        ) {
+          console.log(
+            `[Terminal] Suspending project ${previousProjectIdRef.current}`,
+          );
           await suspendProjectSessions(previousProjectIdRef.current);
-          setSuspendedProjects(prev => new Set(prev).add(previousProjectIdRef.current!));
+          setSuspendedProjects((prev) =>
+            new Set(prev).add(previousProjectIdRef.current!),
+          );
         }
-        
+
         // Resume or load sessions for new project
         if (suspendedProjects.has(nextProjectId)) {
           const attempts = resumeAttempts.get(nextProjectId) || 0;
-          
+
           if (attempts >= MAX_RESUME_ATTEMPTS) {
-            console.error(`[Terminal] Max resume attempts reached for project ${nextProjectId}`);
-            setSuspendedProjects(prev => {
+            console.error(
+              `[Terminal] Max resume attempts reached for project ${nextProjectId}`,
+            );
+            setSuspendedProjects((prev) => {
               const next = new Set(prev);
               next.delete(nextProjectId);
               return next;
             });
-            setResumeAttempts(prev => {
+            setResumeAttempts((prev) => {
               const next = new Map(prev);
               next.delete(nextProjectId);
               return next;
@@ -130,56 +166,67 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
             await loadSessionsForProject(nextProjectId);
           } else {
             try {
-              setResumeAttempts(prev => new Map(prev).set(nextProjectId, attempts + 1));
+              setResumeAttempts((prev) =>
+                new Map(prev).set(nextProjectId, attempts + 1),
+              );
               await resumeProjectSessions(nextProjectId);
-              setSuspendedProjects(prev => {
+              setSuspendedProjects((prev) => {
                 const next = new Set(prev);
                 next.delete(nextProjectId);
                 return next;
               });
-              setResumeAttempts(prev => {
+              setResumeAttempts((prev) => {
                 const next = new Map(prev);
                 next.delete(nextProjectId);
                 return next;
               });
-              console.log(`[Terminal] Successfully resumed project ${nextProjectId}`);
+              console.log(
+                `[Terminal] Successfully resumed project ${nextProjectId}`,
+              );
             } catch (error) {
-              console.error(`[Terminal] Failed to resume project ${nextProjectId}:`, error);
+              console.error(
+                `[Terminal] Failed to resume project ${nextProjectId}:`,
+                error,
+              );
               await loadSessionsForProject(nextProjectId);
             }
           }
         } else {
           await loadSessionsForProject(nextProjectId);
         }
-        
+
         previousProjectIdRef.current = nextProjectId;
-        
+
         // Add delay between switches to prevent race conditions
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (error) {
-        console.error(`[Terminal] Error processing switch to project ${nextProjectId}:`, error);
+        console.error(
+          `[Terminal] Error processing switch to project ${nextProjectId}:`,
+          error,
+        );
       }
     }
-    
+
     isProcessingSwitchRef.current = false;
     setSwitchingProject(false);
   };
-  
+
   // Handle project switching with debouncing
   useEffect(() => {
     // Clear any pending switch
     if (pendingProjectSwitchRef.current) {
       clearTimeout(pendingProjectSwitchRef.current);
     }
-    
+
     const now = Date.now();
     const timeSinceLastSwitch = now - lastSwitchTimeRef.current;
-    
+
     // If switching too fast, debounce
     if (timeSinceLastSwitch < SWITCH_DEBOUNCE_MS) {
-      console.log(`[Terminal] Debouncing project switch to ${project.id} (${SWITCH_DEBOUNCE_MS}ms)`); 
-      
+      console.log(
+        `[Terminal] Debouncing project switch to ${project.id} (${SWITCH_DEBOUNCE_MS}ms)`,
+      );
+
       pendingProjectSwitchRef.current = setTimeout(() => {
         lastSwitchTimeRef.current = Date.now();
         switchQueueRef.current.push(project.id);
@@ -191,7 +238,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       switchQueueRef.current.push(project.id);
       processProjectSwitchQueue();
     }
-    
+
     // Cleanup on unmount
     return () => {
       if (pendingProjectSwitchRef.current) {
@@ -199,21 +246,23 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
       }
     };
   }, [project.id]);
-  
+
   // Track if component is truly unmounting (not React StrictMode)
   const isUnmountingRef = useRef(false);
-  
+
   // Cleanup only when truly leaving workspace
   useEffect(() => {
     // Mark as mounted
     isUnmountingRef.current = false;
-    
+
     return () => {
       // Mark as unmounting
       isUnmountingRef.current = true;
-      
+
       // Don't cleanup sessions - they should persist
-      console.log('[TerminalContainer] Component unmounting but keeping sessions alive');
+      console.log(
+        "[TerminalContainer] Component unmounting but keeping sessions alive",
+      );
     };
   }, []); // Empty dependency array - only runs on mount/unmount
 
@@ -222,153 +271,181 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await fetch(`/api/terminal/list?projectId=${projectId}`, {
-        credentials: 'include',
-      });
-      
+
+      const response = await fetch(
+        `/api/terminal/list?projectId=${projectId}`,
+        {
+          credentials: "include",
+        },
+      );
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success && Array.isArray(data.sessions)) {
         const sessionList = data.sessions.map((s: any, index: number) => ({
           ...s,
-          type: 'terminal',
-          mode: s.mode || 'normal',
+          type: "terminal",
+          mode: s.mode || "normal",
           gridPosition: index,
-          isFocused: s.isFocused || false
+          isFocused: s.isFocused || false,
         }));
         setSessions(sessionList);
-        
+
         // Auto-focus first terminal if no sessions are focused
-        const hasFocusedSession = sessionList.some(s => s.isFocused);
+        const hasFocusedSession = sessionList.some((s) => s.isFocused);
         if (sessionList.length > 0 && !hasFocusedSession) {
-          console.log(`[TerminalContainer] Auto-focusing first session: ${sessionList[0].id}`);
+          console.log(
+            `[TerminalContainer] Auto-focusing first session: ${sessionList[0].id}`,
+          );
           await setFocus(sessionList[0].id, true);
         }
       }
     } catch (err) {
-      console.error('Failed to load sessions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sessions');
+      console.error("Failed to load sessions:", err);
+      setError(err instanceof Error ? err.message : "Failed to load sessions");
     } finally {
       setLoading(false);
     }
   };
-  
+
   // Load sessions from backend
   const loadSessions = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await fetch(`/api/terminal/list?projectId=${project.id}`, {
-        credentials: 'include',
-      });
-      
+
+      const response = await fetch(
+        `/api/terminal/list?projectId=${project.id}`,
+        {
+          credentials: "include",
+        },
+      );
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success && Array.isArray(data.sessions)) {
         const sessionList = data.sessions.map((s: any, index: number) => ({
           ...s,
-          type: 'terminal',
-          mode: s.mode || 'normal',
+          type: "terminal",
+          mode: s.mode || "normal",
           gridPosition: index,
-          isFocused: s.isFocused || false
+          isFocused: s.isFocused || false,
         }));
         setSessions(sessionList);
-        
+
         // Auto-focus first terminal if no sessions are focused
-        const hasFocusedSession = sessionList.some(s => s.isFocused);
+        const hasFocusedSession = sessionList.some((s) => s.isFocused);
         if (sessionList.length > 0 && !hasFocusedSession) {
-          console.log(`[TerminalContainer] Auto-focusing first session: ${sessionList[0].id}`);
+          console.log(
+            `[TerminalContainer] Auto-focusing first session: ${sessionList[0].id}`,
+          );
           await setFocus(sessionList[0].id, true);
         }
       }
     } catch (err) {
-      console.error('Failed to load sessions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sessions');
+      console.error("Failed to load sessions:", err);
+      setError(err instanceof Error ? err.message : "Failed to load sessions");
     } finally {
       setLoading(false);
     }
   };
 
   // No longer need to track retry attempts since terminals connect directly
-  
+
   // Create new terminal session with retry limit
-  const createSession = async (mode: 'normal' | 'claude' = 'normal') => {
-    console.log(`[TerminalContainer] 🆕 createSession called - mode: ${mode}, current sessions: ${sessions.length}`);
-    
+  const createSession = async (mode: "normal" | "claude" = "normal") => {
+    console.log(
+      `[TerminalContainer] 🆕 createSession called - mode: ${mode}, current sessions: ${sessions.length}`,
+    );
+
     if (sessions.length >= maxTerminals) {
-      console.log(`[TerminalContainer] ❌ Max terminals (${maxTerminals}) reached for ${currentLayout} layout`);
+      console.log(
+        `[TerminalContainer] ❌ Max terminals (${maxTerminals}) reached for ${currentLayout} layout`,
+      );
       setError(`Maximum ${maxTerminals} terminals for ${currentLayout} layout`);
       return;
     }
-    
+
     // Prevent duplicate creation attempts
     if (loading) {
-      console.log('[TerminalContainer] ⏳ Already creating session, skipping duplicate request...');
+      console.log(
+        "[TerminalContainer] ⏳ Already creating session, skipping duplicate request...",
+      );
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
-      
-      console.log(`[TerminalContainer] 📮 Sending create request for project: ${project.id}`);
-      const response = await fetch('/api/terminal/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+
+      console.log(
+        `[TerminalContainer] 📮 Sending create request for project: ${project.id}`,
+      );
+      const response = await fetch("/api/terminal/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project.id,
           projectPath: project.path,
           mode,
         }),
       });
-      
+
       const data = await response.json();
-      console.log('[TerminalContainer] 📦 Create response:', data);
-      
+      console.log("[TerminalContainer] 📦 Create response:", data);
+
       if (data.success && data.session) {
         const sessionId = data.session.id;
-        
+
         // Always add session immediately - XTermViewV2 will handle WebSocket connection
-        console.log(`[TerminalContainer] ✅ Session created: ${sessionId}, adding to UI`);
-        
+        console.log(
+          `[TerminalContainer] ✅ Session created: ${sessionId}, adding to UI`,
+        );
+
         const newSession = {
           ...data.session,
-          type: 'terminal' as const,
+          type: "terminal" as const,
           mode,
           gridPosition: sessions.length,
-          status: 'active' as const
+          status: "active" as const,
         };
-        
-        setSessions(prev => {
-          console.log(`[TerminalContainer] 📝 Adding session to state, new count: ${prev.length + 1}`);
+
+        setSessions((prev) => {
+          console.log(
+            `[TerminalContainer] 📝 Adding session to state, new count: ${prev.length + 1}`,
+          );
           return [...prev, newSession];
         });
-        
+
         // Auto-focus new terminal
-        console.log(`[TerminalContainer] 🎯 Focusing new session: ${newSession.id}`);
+        console.log(
+          `[TerminalContainer] 🎯 Focusing new session: ${newSession.id}`,
+        );
         await setFocus(newSession.id, true);
-        
+
         // Show Claude hint if in claude mode
-        if (mode === 'claude') {
-          console.log('[TerminalContainer] 💡 Terminal created in Claude mode. Type "claude" to start Claude CLI.');
+        if (mode === "claude") {
+          console.log(
+            '[TerminalContainer] 💡 Terminal created in Claude mode. Type "claude" to start Claude CLI.',
+          );
         }
-        
+
         // The XTermViewV2 component will connect to WebSocket when it mounts
-        console.log(`[TerminalContainer] Terminal component will establish WebSocket connection`);
+        console.log(
+          `[TerminalContainer] Terminal component will establish WebSocket connection`,
+        );
       }
     } catch (err) {
-      console.error('Failed to create session:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create session');
+      console.error("Failed to create session:", err);
+      setError(err instanceof Error ? err.message : "Failed to create session");
     } finally {
       setLoading(false);
     }
@@ -377,36 +454,37 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   // Set terminal focus
   const setFocus = async (sessionId: string, focused: boolean) => {
     try {
-      const response = await fetch('/api/terminal/focus', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/terminal/focus", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project.id,
           sessionId,
           focused,
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         const focusedSessionIds = data.focusedSessions || [];
-        
-        setSessions(prev => {
-          const updated = prev.map(s => ({
+
+        setSessions((prev) => {
+          const updated = prev.map((s) => ({
             ...s,
-            isFocused: focusedSessionIds.includes(s.id)
+            isFocused: focusedSessionIds.includes(s.id),
           }));
-          
-          console.log(`[TerminalContainer] Updated focus states:`, 
-            updated.map(s => ({ id: s.id, focused: s.isFocused }))
+
+          console.log(
+            `[TerminalContainer] Updated focus states:`,
+            updated.map((s) => ({ id: s.id, focused: s.isFocused })),
           );
-          
+
           return updated;
         });
       }
     } catch (err) {
-      console.error('Failed to set focus:', err);
+      console.error("Failed to set focus:", err);
     }
   };
 
@@ -415,132 +493,151 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
     try {
       // Save current layout before suspending
       saveProjectLayout(currentLayout);
-      console.log(`[Terminal] Saving layout ${currentLayout} for project ${projectId} before suspension`);
-      
-      const response = await fetch('/api/terminal/suspend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+      console.log(
+        `[Terminal] Saving layout ${currentLayout} for project ${projectId} before suspension`,
+      );
+
+      const response = await fetch("/api/terminal/suspend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           projectId,
-          uiState: { currentLayout } 
-        })
+          uiState: { currentLayout },
+        }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        console.log(`[TerminalContainer] Suspended ${data.suspendedSessionCount} sessions for project ${projectId}`);
+        console.log(
+          `[TerminalContainer] Suspended ${data.suspendedSessionCount} sessions for project ${projectId}`,
+        );
       }
     } catch (err) {
-      console.error('Failed to suspend sessions:', err);
+      console.error("Failed to suspend sessions:", err);
     }
   };
-  
+
   // Resume sessions for a project
   const resumeProjectSessions = async (projectId: string) => {
     try {
-      const response = await fetch('/api/terminal/resume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId })
+      const response = await fetch("/api/terminal/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.resumed && data.sessions.length > 0) {
           // Format sessions for state
-          const formattedSessions = data.sessions.map((s: any, index: number) => ({
-            ...s,
-            type: 'terminal' as const,
-            mode: s.mode || 'normal',
-            gridPosition: index,
-            isFocused: s.isFocused || false
-          }));
-          
+          const formattedSessions = data.sessions.map(
+            (s: any, index: number) => ({
+              ...s,
+              type: "terminal" as const,
+              mode: s.mode || "normal",
+              gridPosition: index,
+              isFocused: s.isFocused || false,
+            }),
+          );
+
           setSessions(formattedSessions);
-          
+
           // Restore UI state if available
           if (data.uiState?.currentLayout) {
             setCurrentLayout(data.uiState.currentLayout);
-            console.log(`[Terminal] Restored layout ${data.uiState.currentLayout} from resume data`);
+            console.log(
+              `[Terminal] Restored layout ${data.uiState.currentLayout} from resume data`,
+            );
           } else {
             // Load saved layout from localStorage as fallback
             try {
-              const savedLayouts = localStorage.getItem('terminalLayouts');
+              const savedLayouts = localStorage.getItem("terminalLayouts");
               if (savedLayouts) {
                 const layouts = JSON.parse(savedLayouts);
                 const projectLayout = layouts[projectId];
                 if (projectLayout && LAYOUTS[projectLayout as LayoutType]) {
                   setCurrentLayout(projectLayout as LayoutType);
-                  console.log(`[Terminal] Restored layout ${projectLayout} from localStorage for project ${projectId}`);
+                  console.log(
+                    `[Terminal] Restored layout ${projectLayout} from localStorage for project ${projectId}`,
+                  );
                 }
               }
             } catch (error) {
-              console.error('[Terminal] Failed to restore layout from localStorage:', error);
+              console.error(
+                "[Terminal] Failed to restore layout from localStorage:",
+                error,
+              );
             }
           }
-          
-          console.log(`[TerminalContainer] Resumed ${data.sessions.length} sessions for project ${projectId}`);
-          
+
+          console.log(
+            `[TerminalContainer] Resumed ${data.sessions.length} sessions for project ${projectId}`,
+          );
+
           // Show buffered output if any
           data.sessions.forEach((s: any) => {
             if (s.bufferedOutput && s.bufferedOutput.length > 0) {
-              console.log(`[TerminalContainer] Session ${s.id} has ${s.bufferedOutput.length} buffered outputs`);
+              console.log(
+                `[TerminalContainer] Session ${s.id} has ${s.bufferedOutput.length} buffered outputs`,
+              );
             }
           });
         }
       }
     } catch (err) {
-      console.error('Failed to resume sessions:', err);
+      console.error("Failed to resume sessions:", err);
     }
   };
-  
+
   // Close terminal session
   const closeSession = async (sessionId: string) => {
     try {
       const response = await fetch(`/api/terminal/close/${sessionId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setSessions(prev => {
-          const newSessions = prev.filter(s => s.id !== sessionId);
+        setSessions((prev) => {
+          const newSessions = prev.filter((s) => s.id !== sessionId);
           // Reassign grid positions
           return newSessions.map((s, index) => ({
             ...s,
-            gridPosition: index
+            gridPosition: index,
           }));
         });
       }
     } catch (err) {
-      console.error('Failed to close session:', err);
+      console.error("Failed to close session:", err);
     }
   };
 
   // Cleanup all sessions on unmount
   const cleanupAllSessions = async () => {
     try {
-      await fetch('/api/terminal/cleanup', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/terminal/cleanup", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId: project.id }),
       });
     } catch (err) {
-      console.error('Failed to cleanup sessions:', err);
+      console.error("Failed to cleanup sessions:", err);
     }
   };
 
   // Save layout preference for current project
   const saveProjectLayout = (layout: LayoutType) => {
     try {
-      const savedLayouts = localStorage.getItem('terminalLayouts');
+      const savedLayouts = localStorage.getItem("terminalLayouts");
       const layouts = savedLayouts ? JSON.parse(savedLayouts) : {};
       layouts[project.id] = layout;
-      localStorage.setItem('terminalLayouts', JSON.stringify(layouts));
-      console.log(`[Terminal] Saved layout ${layout} for project ${project.id}`);
+      localStorage.setItem("terminalLayouts", JSON.stringify(layouts));
+      console.log(
+        `[Terminal] Saved layout ${layout} for project ${project.id}`,
+      );
     } catch (error) {
-      console.error('[Terminal] Failed to save project layout:', error);
+      console.error("[Terminal] Failed to save project layout:", error);
     }
   };
 
@@ -548,11 +645,11 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
   const handleLayoutChange = (newLayout: LayoutType) => {
     setCurrentLayout(newLayout);
     saveProjectLayout(newLayout);
-    
+
     // If we have more terminals than the new layout supports, unfocus extras
     const newMax = LAYOUTS[newLayout].rows * LAYOUTS[newLayout].cols;
     if (sessions.length > newMax) {
-      sessions.slice(newMax).forEach(session => {
+      sessions.slice(newMax).forEach((session) => {
         setFocus(session.id, false);
       });
     }
@@ -560,21 +657,23 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
 
   // Toggle Claude mode for a terminal
   const toggleMode = (sessionId: string) => {
-    setSessions(prev => prev.map(s => 
-      s.id === sessionId 
-        ? { ...s, mode: s.mode === 'normal' ? 'claude' : 'normal' }
-        : s
-    ));
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, mode: s.mode === "normal" ? "claude" : "normal" }
+          : s,
+      ),
+    );
   };
 
   // Render grid of terminals
   const renderGrid = () => {
     const { rows, cols } = LAYOUTS[currentLayout];
     const grid = [];
-    
+
     for (let i = 0; i < rows * cols; i++) {
-      const session = sessions.find(s => s.gridPosition === i);
-      
+      const session = sessions.find((s) => s.gridPosition === i);
+
       grid.push(
         <div
           key={`grid-${i}`}
@@ -588,47 +687,47 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                   <span className="text-xs font-medium text-gray-300">
                     {session.tabName}
                   </span>
-                  
+
                   {/* Status Indicator */}
-                  {session.status === 'suspended' ? (
+                  {session.status === "suspended" ? (
                     <span className="flex items-center px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded">
                       <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse mr-1" />
                       Suspended
                     </span>
-                  ) : session.status === 'active' ? (
+                  ) : session.status === "active" ? (
                     <span className="flex items-center px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded">
                       <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1" />
                       Active
                     </span>
-                  ) : session.status === 'inactive' ? (
+                  ) : session.status === "inactive" ? (
                     <span className="flex items-center px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[10px] rounded">
                       <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1" />
                       Idle
                     </span>
                   ) : null}
-                  
-                  {session.mode === 'claude' && (
+
+                  {session.mode === "claude" && (
                     <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] rounded">
                       Claude
                     </span>
                   )}
-                  
+
                   <button
                     onClick={() => setFocus(session.id, !session.isFocused)}
                     className={`px-2 py-0.5 rounded text-[10px] transition-all ${
                       session.isFocused
-                        ? 'bg-green-600/30 text-green-300 border border-green-500/50'
-                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                        ? "bg-green-600/30 text-green-300 border border-green-500/50"
+                        : "bg-gray-700 text-gray-400 hover:bg-gray-600"
                     }`}
                   >
-                    {session.isFocused ? 'LIVE' : 'FOCUS'}
+                    {session.isFocused ? "LIVE" : "FOCUS"}
                   </button>
                 </div>
                 <div className="flex items-center space-x-1">
                   <button
                     onClick={() => toggleMode(session.id)}
                     className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
-                    title={`Switch to ${session.mode === 'normal' ? 'Claude' : 'Normal'} mode`}
+                    title={`Switch to ${session.mode === "normal" ? "Claude" : "Normal"} mode`}
                   >
                     <Command className="w-3 h-3" />
                   </button>
@@ -640,14 +739,16 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                   </button>
                 </div>
               </div>
-              
+
               {/* Terminal Content */}
               <div className="absolute inset-0 pt-8 overflow-hidden">
-                <Suspense fallback={
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-                  </div>
-                }>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                    </div>
+                  }
+                >
                   <XTermViewV2
                     sessionId={session.id}
                     projectId={project.id}
@@ -662,7 +763,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <button
-                  onClick={() => createSession('normal')}
+                  onClick={() => createSession("normal")}
                   className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-400 hover:text-white transition-all duration-200"
                   disabled={loading}
                 >
@@ -670,7 +771,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                   New Terminal
                 </button>
                 <button
-                  onClick={() => createSession('claude')}
+                  onClick={() => createSession("claude")}
                   className="ml-2 px-4 py-2 bg-purple-900/30 hover:bg-purple-800/40 rounded-lg text-sm text-purple-400 hover:text-purple-300 transition-all duration-200"
                   disabled={loading}
                 >
@@ -680,12 +781,12 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
               </div>
             </div>
           )}
-        </div>
+        </div>,
       );
     }
-    
+
     return (
-      <div 
+      <div
         className={`h-full grid gap-1 bg-gray-900 p-1 overflow-hidden`}
         style={{
           gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
@@ -712,24 +813,28 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
             <span className="text-xs text-gray-400 font-mono ml-2 px-2 py-1 bg-black/30 rounded-md border border-gray-700/50">
               {sessions.length}/{maxTerminals} terminals
             </span>
-            
+
             {/* Suspended Projects Indicator */}
             {suspendedProjects.size > 0 && (
-              <span 
+              <span
                 className="flex items-center text-xs text-yellow-400 font-mono ml-2 px-2 py-1 bg-yellow-500/10 rounded-md border border-yellow-500/30 cursor-pointer hover:bg-yellow-500/20 transition-colors"
                 onClick={() => {
                   // Debug: Clear all suspended projects
-                  console.log('Clearing suspended projects:', Array.from(suspendedProjects));
+                  console.log(
+                    "Clearing suspended projects:",
+                    Array.from(suspendedProjects),
+                  );
                   setSuspendedProjects(new Set());
                 }}
                 title="Click to clear suspended projects (debug)"
               >
                 <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse mr-1.5" />
-                {suspendedProjects.size} suspended {suspendedProjects.size === 1 ? 'project' : 'projects'}
+                {suspendedProjects.size} suspended{" "}
+                {suspendedProjects.size === 1 ? "project" : "projects"}
               </span>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {error && (
               <div className="flex items-center space-x-1 text-red-400 text-xs">
@@ -737,7 +842,7 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                 <span>{error}</span>
               </div>
             )}
-            
+
             {/* Layout Controls */}
             <div className="flex items-center space-x-1 border-r border-gray-600 pr-2 mr-2">
               {Object.entries(LAYOUTS).map(([key, config]) => {
@@ -748,8 +853,8 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                     onClick={() => handleLayoutChange(key as LayoutType)}
                     className={`p-2 rounded-lg transition-all duration-200 ${
                       currentLayout === key
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 scale-105'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700/50 hover:shadow-md'
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 scale-105"
+                        : "text-gray-400 hover:text-white hover:bg-gray-700/50 hover:shadow-md"
                     }`}
                     title={`${config.label} layout`}
                   >
@@ -758,9 +863,9 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
                 );
               })}
             </div>
-            
+
             <button
-              onClick={() => createSession('normal')}
+              onClick={() => createSession("normal")}
               className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white transition-colors"
               title="New Terminal"
               disabled={loading || sessions.length >= maxTerminals}
@@ -778,11 +883,13 @@ const TerminalContainerV3: React.FC<TerminalContainerV3Props> = ({ project }) =>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="bg-gray-800/90 backdrop-blur rounded-lg px-6 py-4 flex items-center space-x-3 border border-gray-700">
               <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
-              <span className="text-sm text-gray-300">Switching project...</span>
+              <span className="text-sm text-gray-300">
+                Switching project...
+              </span>
             </div>
           </div>
         )}
-        
+
         {loading && sessions.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />

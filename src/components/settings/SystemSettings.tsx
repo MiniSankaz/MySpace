@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { authClient } from '@/core/auth/auth-client';
-import { 
+import { useState, useEffect } from "react";
+import { authClient } from "@/core/auth/auth-client";
+import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  ArrowPathIcon
-} from '@heroicons/react/24/outline';
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 
 interface SystemSettingsProps {
   user: any;
@@ -15,31 +15,36 @@ interface SystemSettingsProps {
   saving: boolean;
 }
 
-export default function SystemSettings({ user, tabId, onSave, saving }: SystemSettingsProps) {
+export default function SystemSettings({
+  user,
+  tabId,
+  onSave,
+  saving,
+}: SystemSettingsProps) {
   const [formData, setFormData] = useState({
     // System Configuration
     maintenanceMode: false,
-    maintenanceMessage: '',
+    maintenanceMessage: "",
     debugMode: false,
-    logLevel: 'info',
-    maxUploadSize: '10',
+    logLevel: "info",
+    maxUploadSize: "10",
     dataRetentionDays: 90,
-    
+
     // Database Settings
     connectionPoolSize: 10,
     queryTimeout: 30000,
     enableQueryLogging: false,
-    backupSchedule: 'daily',
+    backupSchedule: "daily",
     backupRetentionDays: 30,
-    
+
     // Performance Settings
     cacheEnabled: true,
     cacheTTL: 3600,
     compressionEnabled: true,
     minifyAssets: true,
     cdnEnabled: false,
-    cdnUrl: '',
-    
+    cdnUrl: "",
+
     // Security Settings
     enableCSRF: true,
     enableXSS: true,
@@ -47,25 +52,25 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
     sessionTimeout: 86400,
     maxLoginAttempts: 5,
     lockoutDuration: 1800,
-    
+
     // Email Configuration
-    emailProvider: 'smtp',
-    smtpHost: '',
+    emailProvider: "smtp",
+    smtpHost: "",
     smtpPort: 587,
-    smtpUser: '',
-    smtpPass: '',
-    emailFrom: 'noreply@example.com',
-    
+    smtpUser: "",
+    smtpPass: "",
+    emailFrom: "noreply@example.com",
+
     // Storage Configuration
-    storageProvider: 'local',
-    localStoragePath: './uploads',
-    s3Bucket: '',
-    s3Region: '',
-    s3AccessKey: '',
-    s3SecretKey: ''
+    storageProvider: "local",
+    localStoragePath: "./uploads",
+    s3Bucket: "",
+    s3Region: "",
+    s3AccessKey: "",
+    s3SecretKey: "",
   });
 
-  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [testEmailAddress, setTestEmailAddress] = useState("");
   const [testEmailSent, setTestEmailSent] = useState(false);
 
   useEffect(() => {
@@ -74,13 +79,13 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
 
   const loadSettings = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/system');
+      const response = await authClient.fetch("/api/settings/system");
       if (response.ok) {
         const data = await response.json();
-        setFormData(prev => ({ ...prev, ...data.settings }));
+        setFormData((prev) => ({ ...prev, ...data.settings }));
       }
     } catch (error) {
-      console.error('Failed to load system settings:', error);
+      console.error("Failed to load system settings:", error);
     }
   };
 
@@ -91,14 +96,14 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
 
   const testEmailConnection = async () => {
     if (!testEmailAddress) {
-      alert('Please enter a test email address');
+      alert("Please enter a test email address");
       return;
     }
-    
+
     try {
-      const response = await authClient.fetch('/api/settings/test-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await authClient.fetch("/api/settings/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: testEmailAddress,
           config: {
@@ -107,43 +112,45 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             port: formData.smtpPort,
             user: formData.smtpUser,
             pass: formData.smtpPass,
-            from: formData.emailFrom
-          }
-        })
+            from: formData.emailFrom,
+          },
+        }),
       });
-      
+
       if (response.ok) {
         setTestEmailSent(true);
         setTimeout(() => setTestEmailSent(false), process.env.PORT || 3000);
       }
     } catch (error) {
-      console.error('Failed to send test email:', error);
+      console.error("Failed to send test email:", error);
     }
   };
 
   const clearCache = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/clear-cache', {
-        method: 'POST'
+      const response = await authClient.fetch("/api/settings/clear-cache", {
+        method: "POST",
       });
-      
+
       if (response.ok) {
-        alert('Cache cleared successfully');
+        alert("Cache cleared successfully");
       }
     } catch (error) {
-      console.error('Failed to clear cache:', error);
+      console.error("Failed to clear cache:", error);
     }
   };
 
   // Render different content based on tab
-  if (tabId === 'database') {
+  if (tabId === "database") {
     return (
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex">
             <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 mr-2" />
             <div>
-              <h3 className="text-sm font-medium text-yellow-800">Database Configuration</h3>
+              <h3 className="text-sm font-medium text-yellow-800">
+                Database Configuration
+              </h3>
               <p className="text-sm text-yellow-700 mt-1">
                 Changes to database settings may require a server restart.
               </p>
@@ -159,7 +166,12 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="number"
               value={formData.connectionPoolSize}
-              onChange={(e) => setFormData({ ...formData, connectionPoolSize: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  connectionPoolSize: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1"
               max="100"
@@ -173,7 +185,12 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="number"
               value={formData.queryTimeout}
-              onChange={(e) => setFormData({ ...formData, queryTimeout: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  queryTimeout: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1000"
               max="300000"
@@ -186,7 +203,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             </label>
             <select
               value={formData.backupSchedule}
-              onChange={(e) => setFormData({ ...formData, backupSchedule: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, backupSchedule: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="hourly">Hourly</option>
@@ -203,7 +222,12 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="number"
               value={formData.backupRetentionDays}
-              onChange={(e) => setFormData({ ...formData, backupRetentionDays: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  backupRetentionDays: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1"
               max="365"
@@ -215,10 +239,17 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
               <input
                 type="checkbox"
                 checked={formData.enableQueryLogging}
-                onChange={(e) => setFormData({ ...formData, enableQueryLogging: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    enableQueryLogging: e.target.checked,
+                  })
+                }
                 className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Enable Query Logging (affects performance)</span>
+              <span className="ml-2 text-sm text-gray-700">
+                Enable Query Logging (affects performance)
+              </span>
             </label>
           </div>
         </div>
@@ -229,20 +260,23 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             disabled={saving}
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : 'Save Database Settings'}
+            {saving ? "Saving..." : "Save Database Settings"}
           </button>
         </div>
       </form>
     );
   }
 
-  if (tabId === 'logs') {
+  if (tabId === "logs") {
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">System Logs</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            System Logs
+          </h3>
           <p className="text-sm text-gray-500 mb-4">
-            View and manage system logs. Logs are automatically rotated based on retention settings.
+            View and manage system logs. Logs are automatically rotated based on
+            retention settings.
           </p>
         </div>
 
@@ -270,7 +304,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             </label>
             <select
               value={formData.logLevel}
-              onChange={(e) => setFormData({ ...formData, logLevel: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, logLevel: e.target.value })
+              }
               className="block w-32 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="debug">Debug</option>
@@ -311,17 +347,23 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Maintenance Mode */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Maintenance Mode</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Maintenance Mode
+        </h3>
         <label className="flex items-center mb-4">
           <input
             type="checkbox"
             checked={formData.maintenanceMode}
-            onChange={(e) => setFormData({ ...formData, maintenanceMode: e.target.checked })}
+            onChange={(e) =>
+              setFormData({ ...formData, maintenanceMode: e.target.checked })
+            }
             className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
           />
-          <span className="ml-2 text-sm font-medium text-gray-700">Enable Maintenance Mode</span>
+          <span className="ml-2 text-sm font-medium text-gray-700">
+            Enable Maintenance Mode
+          </span>
         </label>
-        
+
         {formData.maintenanceMode && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -330,7 +372,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <textarea
               rows={3}
               value={formData.maintenanceMessage}
-              onChange={(e) => setFormData({ ...formData, maintenanceMessage: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, maintenanceMessage: e.target.value })
+              }
               className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               placeholder="We're currently performing scheduled maintenance..."
             />
@@ -346,7 +390,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="checkbox"
               checked={formData.cacheEnabled}
-              onChange={(e) => setFormData({ ...formData, cacheEnabled: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, cacheEnabled: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Enable Caching</span>
@@ -356,17 +402,26 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="checkbox"
               checked={formData.compressionEnabled}
-              onChange={(e) => setFormData({ ...formData, compressionEnabled: e.target.checked })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  compressionEnabled: e.target.checked,
+                })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm text-gray-700">Enable Compression</span>
+            <span className="ml-2 text-sm text-gray-700">
+              Enable Compression
+            </span>
           </label>
 
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.minifyAssets}
-              onChange={(e) => setFormData({ ...formData, minifyAssets: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, minifyAssets: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Minify Assets</span>
@@ -376,7 +431,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="checkbox"
               checked={formData.debugMode}
-              onChange={(e) => setFormData({ ...formData, debugMode: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, debugMode: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Debug Mode</span>
@@ -392,7 +449,12 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
               <input
                 type="number"
                 value={formData.cacheTTL}
-                onChange={(e) => setFormData({ ...formData, cacheTTL: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    cacheTTL: parseInt(e.target.value),
+                  })
+                }
                 className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 min="60"
                 max="86400"
@@ -420,7 +482,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="number"
               value={formData.maxUploadSize}
-              onChange={(e) => setFormData({ ...formData, maxUploadSize: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, maxUploadSize: e.target.value })
+              }
               className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1"
               max="100"
@@ -434,7 +498,12 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             <input
               type="number"
               value={formData.dataRetentionDays}
-              onChange={(e) => setFormData({ ...formData, dataRetentionDays: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  dataRetentionDays: parseInt(e.target.value),
+                })
+              }
               className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1"
               max="365"
@@ -447,7 +516,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             </label>
             <select
               value={formData.storageProvider}
-              onChange={(e) => setFormData({ ...formData, storageProvider: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, storageProvider: e.target.value })
+              }
               className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="local">Local Storage</option>
@@ -457,7 +528,7 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
             </select>
           </div>
 
-          {formData.storageProvider === 'local' && (
+          {formData.storageProvider === "local" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Local Storage Path
@@ -465,13 +536,15 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
               <input
                 type="text"
                 value={formData.localStoragePath}
-                onChange={(e) => setFormData({ ...formData, localStoragePath: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, localStoragePath: e.target.value })
+                }
                 className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
             </div>
           )}
 
-          {formData.storageProvider === 's3' && (
+          {formData.storageProvider === "s3" && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -481,7 +554,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
                   <input
                     type="text"
                     value={formData.s3Bucket}
-                    onChange={(e) => setFormData({ ...formData, s3Bucket: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, s3Bucket: e.target.value })
+                    }
                     className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
@@ -492,7 +567,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
                   <input
                     type="text"
                     value={formData.s3Region}
-                    onChange={(e) => setFormData({ ...formData, s3Region: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, s3Region: e.target.value })
+                    }
                     className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
@@ -505,7 +582,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
                   <input
                     type="password"
                     value={formData.s3AccessKey}
-                    onChange={(e) => setFormData({ ...formData, s3AccessKey: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, s3AccessKey: e.target.value })
+                    }
                     className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
@@ -516,7 +595,9 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
                   <input
                     type="password"
                     value={formData.s3SecretKey}
-                    onChange={(e) => setFormData({ ...formData, s3SecretKey: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, s3SecretKey: e.target.value })
+                    }
                     className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>
@@ -533,7 +614,7 @@ export default function SystemSettings({ user, tabId, onSave, saving }: SystemSe
           disabled={saving}
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? 'Saving...' : 'Save System Settings'}
+          {saving ? "Saving..." : "Save System Settings"}
         </button>
       </div>
     </form>

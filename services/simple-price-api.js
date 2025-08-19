@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
 const express = require('express');
+const { getPortConfig, getServiceUrl, getFrontendPort, getGatewayPort } = require('../shared/config/ports.cjs');
+const portConfig = getPortConfig();
 const cors = require('cors');
 const axios = require('axios');
 
 const app = express();
-const PORT = process.env.PORT || 4600;
+const PORT = process.env.PORT || 4170;
 
 // Mock prices with some randomization to simulate real-time changes
 const mockPrices = {
@@ -53,12 +55,13 @@ function getRealtimePrice(symbol) {
 // Enable CORS
 app.use(cors({
   origin: [
-    'http://localhost:3000',
-    'http://localhost:4000',
-    'http://localhost:4500',
+    `http://localhost:${getFrontendPort()}`,
+    `http://localhost:${getGatewayPort()}`,
+    getServiceUrl("portfolio"),
     'http://127.0.0.1:3000',
     'http://127.0.0.1:4000',
-    'http://127.0.0.1:4500'
+    'http://127.0.0.1:4110',
+    'http://127.0.0.1:4160'
   ],
   credentials: true
 }));

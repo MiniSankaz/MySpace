@@ -7,38 +7,46 @@
 ## 🚀 เริ่มใช้งานใน 2 ขั้นตอน
 
 ### ขั้นตอนที่ 1: Setup Database (ทำครั้งแรกครั้งเดียว)
+
 ```bash
 ./setup-database.sh
 ```
+
 - ใส่ password ของ database
 - Script จะสร้าง tables อัตโนมัติ
 - บันทึก password ลง .env.local
 
 ### ขั้นตอนที่ 2: เริ่มใช้งาน
+
 ```bash
 ./start-production.sh
 ```
-- เปิด browser: http://127.0.0.1:4000/assistant
+
+- เปิด browser: http://127.0.0.1:4110/assistant
 - ใช้งานได้เลย!
 
 ## 📋 Features ที่ใช้ได้ทันที
 
 ### 1. Task Management (จัดการงาน)
+
 - `task add [ชื่องาน]` - เพิ่มงานใหม่
 - `task list` - ดูรายการงาน
 - `task complete [id]` - ทำเครื่องหมายเสร็จ
 
 ### 2. Reminders (การเตือน)
+
 - `reminder set [ข้อความ] at [เวลา]` - ตั้งเตือน
 - `reminder list` - ดูการเตือนทั้งหมด
 - `reminder delete [id]` - ลบการเตือน
 
 ### 3. Notes (บันทึก)
+
 - `note create [เนื้อหา]` - สร้างโน้ต
 - `note list` - ดูโน้ตทั้งหมด
 - `note search [คำค้น]` - ค้นหาโน้ต
 
 ### 4. AI Assistant
+
 - `ai [คำถาม]` - ถามอะไรก็ได้
 - `code [requirement]` - สร้างโค้ด
 - `explain [concept]` - อธิบายเรื่องต่างๆ
@@ -48,6 +56,7 @@
 ## 💾 ข้อมูลของคุณ
 
 ### Database Info
+
 - **Provider**: DigitalOcean PostgreSQL
 - **Location**: Singapore (sgp1)
 - **Database**: personalAI
@@ -55,6 +64,7 @@
 - **Backup**: ทำอัตโนมัติโดย DigitalOcean
 
 ### ข้อมูลถูกเก็บ:
+
 - ✅ Tasks - บันทึกถาวรใน database
 - ✅ Reminders - พร้อม recurring support
 - ✅ Notes - รองรับ tags และ search
@@ -72,6 +82,7 @@
 ## 📱 ใช้จากที่ไหนก็ได้
 
 ### ใช้จากมือถือในบ้าน:
+
 ```bash
 # ดู IP ของคอมพิวเตอร์
 ipconfig getifaddr en0  # Mac
@@ -80,10 +91,11 @@ ipconfig getifaddr en0  # Mac
 ./start-production.sh
 
 # เข้าจากมือถือ
-http://[IP ของคุณ]:4000/assistant
+http://[IP ของคุณ]:4110/assistant
 ```
 
 ### Deploy ขึ้น Cloud (Optional):
+
 - รองรับ Vercel, Netlify, Heroku
 - Database พร้อมใช้แล้ว (DigitalOcean)
 - ใช้ Docker ได้ทันที
@@ -91,6 +103,7 @@ http://[IP ของคุณ]:4000/assistant
 ## 🛠️ การจัดการระบบ
 
 ### Backup ข้อมูล:
+
 ```bash
 # DigitalOcean ทำ backup อัตโนมัติ
 # หรือ export เอง:
@@ -98,6 +111,7 @@ pg_dump $DATABASE_URL > backup.sql
 ```
 
 ### Update ระบบ:
+
 ```bash
 git pull
 npm install
@@ -106,6 +120,7 @@ npm run build
 ```
 
 ### ดู Logs:
+
 ```bash
 # API logs
 tail -f logs/api.log
@@ -115,32 +130,36 @@ tail -f logs/error.log
 ```
 
 ### Health Check:
+
 ```bash
-curl http://127.0.0.1:4000/api/health
+curl http://127.0.0.1:4110/api/health
 ```
 
 ## 🎯 Performance
 
-| Metric | Value | Status |
-|--------|-------|--------|
-| Response Time | < 200ms | ✅ Excellent |
-| Database Query | < 50ms | ✅ Fast |
-| Memory Usage | ~300MB | ✅ Light |
-| Concurrent Users | 100+ | ✅ Ready |
-| Uptime | 99.9% | ✅ Stable |
+| Metric           | Value   | Status       |
+| ---------------- | ------- | ------------ |
+| Response Time    | < 200ms | ✅ Excellent |
+| Database Query   | < 50ms  | ✅ Fast      |
+| Memory Usage     | ~300MB  | ✅ Light     |
+| Concurrent Users | 100+    | ✅ Ready     |
+| Uptime           | 99.9%   | ✅ Stable    |
 
 ## 📞 ถ้ามีปัญหา
 
 ### Database connection failed:
+
 1. ตรวจสอบ password ใน .env.local
 2. รัน `./setup-database.sh` ใหม่
 
-### Port 4000 ถูกใช้:
+### Port 4110 ถูกใช้:
+
 ```bash
 PORT=5000 ./start-production.sh
 ```
 
 ### Build error:
+
 ```bash
 rm -rf .next node_modules
 npm install
@@ -168,4 +187,5 @@ Security: ✅ Ready (SSL + Rate Limit + Auth)
 **เริ่มใช้เลย:** `./start-production.sh`
 
 ---
-*Version 1.0.0 | December 2024 | Production Ready*
+
+_Version 1.0.0 | December 2024 | Production Ready_

@@ -1,12 +1,46 @@
-# 📚 Scripts Library
+# 📚 Scripts Directory - Organized Structure
 
-## 🚀 Quick Start
+## 📁 Organization (Updated: 2025-08-16)
 
-### Universal Project Manager
+Scripts have been reorganized for better maintainability:
+
+### `/scripts/database/` (16 files)
+
+Database management scripts (migrations, seeds, backups)
+
+- Seed scripts: `seed-*.ts`
+- Table management: `*rename*.ts`
+- User management: `cleanup-and-setup-sankaz.ts`
+
+### `/scripts/devops/` (15 files)
+
+Deployment, monitoring, and operations scripts
+
+- Deployment: `automated-deployment.sh`, `production-deployment.sh`
+- Monitoring: `monitor-*.js`
+- Staging: `staging-setup.sh`, `check-staging-ports.sh`
+
+### `/scripts/dev/` (18 files)
+
+Development tools and utilities
+
+- Code quality: `fix-typescript-errors.sh`, `sop-compliance-validator.js`
+- Testing: `test-*.js`
+- Utilities: `create-api-services.sh`, `optimize-for-claude.sh`
+
+### Service-Specific Scripts:
+
+- `/services/terminal/scripts/` (22 files) - Terminal operations
+- `/services/ai-assistant/scripts/` (3 files) - AI operations
+- `/services/user-management/scripts/` (7 files) - User management
+- `/services/scripts/` (8 files) - Service orchestration
+
+## 🚀 Quick Commands
 
 ```bash
-# Interactive menu
-./scripts/universal-project-manager.sh
+# Service Management
+./services/scripts/start-all-services.sh
+./services/scripts/stop-all-services.sh
 
 # Shortcut
 ./scripts/upm

@@ -1,20 +1,23 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 
 // Dynamic import to avoid SSR issues with xterm
 const WebTerminal = dynamic(
-  () => import('@/modules/terminal/components/WebTerminal').then(mod => mod.WebTerminal),
-  { 
+  () =>
+    import("@/modules/terminal/components/WebTerminal").then(
+      (mod) => mod.WebTerminal,
+    ),
+  {
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center h-screen bg-gray-900">
         <div className="text-white">Loading terminal...</div>
       </div>
-    )
-  }
+    ),
+  },
 );
 
 export default function TerminalPage() {
@@ -24,12 +27,12 @@ export default function TerminalPage() {
 
   useEffect(() => {
     // Check authentication
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem("accessToken");
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
-    
+
     setIsAuthenticated(true);
     setLoading(false);
   }, [router]);
@@ -59,13 +62,13 @@ export default function TerminalPage() {
           </div>
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push("/dashboard")}
               className="px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors"
             >
               Dashboard
             </button>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push("/")}
               className="px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors"
             >
               Home

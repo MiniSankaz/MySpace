@@ -3,6 +3,7 @@
 ## Executive Summary
 
 ### Current Problem Statement
+
 The existing Terminal Management System for the Stock Portfolio Management workspace has evolved from a single-terminal system to a complex multi-terminal architecture. This evolutionary development has resulted in:
 
 - **Over-complex Logic**: 9 layers of services, multiplexers, and integrations causing confusion
@@ -12,12 +13,14 @@ The existing Terminal Management System for the Stock Portfolio Management works
 - **Poor UX**: Circuit breaker protection exists but recovery requires technical intervention
 
 ### Business Impact
+
 - **Developer Productivity Loss**: 60-80% when terminals become unresponsive
 - **Support Overhead**: Manual intervention required for stuck sessions (15-30 minutes per incident)
 - **Resource Waste**: Unnecessary streaming consumes 40-60% more CPU and bandwidth
 - **Poor User Experience**: Complex recovery procedures and non-intuitive error states
 
 ### Proposed Solution
+
 Complete architectural redesign with **Clean Architecture** principles, **Focus-based Streaming**, and **Simplified Service Layer** to deliver:
 
 - **85% Reduction** in architectural complexity (9 layers → 3 layers)
@@ -27,6 +30,7 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 - **Zero-touch Recovery** with intelligent error handling
 
 ### Investment & ROI
+
 - **Development Time**: 4-6 weeks
 - **Expected ROI**: 300%+ through restored productivity and reduced support costs
 - **Risk Level**: Medium (breaking changes, but comprehensive migration plan included)
@@ -53,10 +57,12 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 
 ### Key Problems Identified
 
-#### 1. **Over-Complex Service Layer** 
+#### 1. **Over-Complex Service Layer**
+
 **Current**: 9 interconnected services
+
 - `TerminalIntegrationService` (287 lines)
-- `TerminalSessionManager` (712 lines) 
+- `TerminalSessionManager` (712 lines)
 - `TerminalWebSocketMultiplexer` (859 lines)
 - `TerminalService` + Multiple logging services
 - Circuit breaker, validation, and protocol layers
@@ -64,16 +70,20 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problem**: Service responsibilities overlap, debugging is difficult, changes affect multiple layers
 
 #### 2. **Inefficient Streaming Model**
+
 **Current**: All terminals stream simultaneously
+
 - System terminal streams on port 4001 regardless of focus
-- Claude terminal streams on port 4002 regardless of focus  
+- Claude terminal streams on port 4002 regardless of focus
 - Background terminals consume CPU processing streamed data
 - No differentiation between focused and unfocused terminals
 
 **Problem**: 40-60% unnecessary CPU usage, poor battery life on laptops, bandwidth waste
 
 #### 3. **Connection Management Complexity**
+
 **Current**: Multiple connection attempts with complex retry logic
+
 - WebSocket multiplexer attempts connection
 - Integration service manages connection state
 - Session manager tracks connection metadata
@@ -83,7 +93,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problem**: Race conditions, state drift, difficult debugging, non-deterministic behavior
 
 #### 4. **Session State Inconsistency**
+
 **Current**: Multiple sources of truth
+
 - Frontend store: `terminal.store.ts` (UI state)
 - Session manager: In-memory sessions
 - Database: Persistent session records
@@ -93,7 +105,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problem**: Terminals appear active when disconnected, database shows wrong states, UI doesn't reflect reality
 
 #### 5. **Poor Error Recovery UX**
+
 **Current**: Circuit breaker protects but doesn't recover
+
 - Circuit breaker prevents infinite loops ✅
 - But terminals become permanently unusable ❌
 - No user-friendly recovery mechanism ❌
@@ -109,7 +123,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 ### Primary Use Cases
 
 #### UC1: User Opens Workspace
+
 **Current Flow**:
+
 1. TerminalContainer loads existing sessions from API
 2. Creates multiplexer instances for ports 4001, 4002
 3. Loads all sessions into terminal store
@@ -119,7 +135,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problems**: Slow initial load, unnecessary connections, all terminals active immediately
 
 #### UC2: User Creates New Terminal
+
 **Current Flow**:
+
 1. Frontend calls POST `/api/workspace/projects/{id}/terminals`
 2. TerminalIntegrationService.createSession()
 3. TerminalSessionManager creates session record
@@ -132,7 +150,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problems**: 8-step process, multiple failure points, immediate resource consumption
 
 #### UC3: User Switches Terminal Tabs
+
 **Current Flow**:
+
 1. Frontend updates activeTab in store
 2. TerminalContainer.useEffect triggers
 3. All system terminals update focus state via multiplexer
@@ -144,7 +164,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problems**: Complex coordination, all terminals still process streams, mode switching overhead
 
 #### UC4: User Closes Terminal
+
 **Current Flow**:
+
 1. Frontend calls multiplexer.closeSession()
 2. WebSocket close signal sent to backend
 3. API call to DELETE `/api/workspace/terminals/{id}`
@@ -156,7 +178,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problems**: 7-step cleanup, failure points can leave orphaned processes
 
 #### UC5: User Exits Workspace
+
 **Current Flow**:
+
 1. WorkspacePageContent unmount handler
 2. forceCloseAllSessions() in store
 3. Multiple cleanup operations across sessions
@@ -167,7 +191,9 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 **Problems**: Complex cascade cleanup, can leave orphaned processes if any step fails
 
 #### UC6: System Handles WebSocket Reconnection
+
 **Current Flow**:
+
 1. WebSocket disconnect detected
 2. Circuit breaker evaluates failure
 3. Exponential backoff calculated
@@ -201,24 +227,28 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 ### Core Principles
 
 #### 1. **Single Source of Truth**
+
 - **TerminalService** manages all session state
 - Database serves as persistent backup only
 - Frontend is purely presentation layer
 - WebSocket servers report to TerminalService
 
 #### 2. **Focus-Based Streaming**
+
 - Only **focused** terminal receives real-time streams
 - **Unfocused** terminals receive buffered updates only
 - Automatic switching when focus changes
 - 60% reduction in resource usage
 
 #### 3. **Simplified Connection Model**
+
 - **One WebSocket per terminal type** (system/claude)
 - **Session-based multiplexing** at server level
 - **No frontend connection management**
 - **Automatic recovery** with user feedback
 
 #### 4. **Clean State Management**
+
 - **Backend-first** state management
 - **Event-driven** updates to frontend
 - **Immutable** state transitions
@@ -236,7 +266,7 @@ Complete architectural redesign with **Clean Architecture** principles, **Focus-
 // POST /api/terminal/create - Create new terminal session
 interface CreateTerminalRequest {
   projectId: string;
-  type: 'system' | 'claude';
+  type: "system" | "claude";
   tabName?: string;
   projectPath: string;
 }
@@ -244,9 +274,9 @@ interface CreateTerminalRequest {
 interface CreateTerminalResponse {
   sessionId: string;
   projectId: string;
-  type: 'system' | 'claude';
+  type: "system" | "claude";
   tabName: string;
-  status: 'created' | 'error';
+  status: "created" | "error";
   wsUrl: string; // ws://localhost:4001 or ws://localhost:4002
 }
 
@@ -263,7 +293,7 @@ interface ListTerminalsResponse {
 interface FocusTerminalRequest {
   sessionId: string;
   projectId: string;
-  type: 'system' | 'claude';
+  type: "system" | "claude";
 }
 
 interface FocusTerminalResponse {
@@ -275,7 +305,7 @@ interface FocusTerminalResponse {
 // DELETE /api/terminal/close/{sessionId} - Close specific session
 interface CloseTerminalResponse {
   sessionId: string;
-  status: 'closed' | 'error';
+  status: "closed" | "error";
   newFocus?: string; // If closed session was focused
 }
 
@@ -288,12 +318,12 @@ interface CleanupTerminalsResponse {
 // GET /api/terminal/health - System health check
 interface TerminalHealthResponse {
   system: {
-    status: 'connected' | 'disconnected';
+    status: "connected" | "disconnected";
     activeSessions: number;
     port: 4001;
   };
   claude: {
-    status: 'connected' | 'disconnected'; 
+    status: "connected" | "disconnected";
     activeSessions: number;
     port: 4002;
   };
@@ -318,7 +348,7 @@ const claudeTerminalUrl = `ws://localhost:4002?sessionId=${sessionId}&projectId=
 
 ```typescript
 interface ClientMessage {
-  type: 'input' | 'resize' | 'focus' | 'blur';
+  type: "input" | "resize" | "focus" | "blur";
   sessionId: string;
   data?: string; // For input
   cols?: number; // For resize
@@ -336,11 +366,11 @@ interface ClientMessage {
 
 ```typescript
 interface ServerMessage {
-  type: 'output' | 'buffered' | 'status' | 'error' | 'focus_changed';
+  type: "output" | "buffered" | "status" | "error" | "focus_changed";
   sessionId: string;
   data?: string; // Terminal output
   buffered?: string[]; // Buffered output for unfocused terminals
-  status?: 'connected' | 'disconnected' | 'error';
+  status?: "connected" | "disconnected" | "error";
   error?: string;
   focusedSession?: string; // When focus changes
 }
@@ -362,16 +392,19 @@ interface ServerMessage {
 interface TerminalServiceState {
   // Project-based session organization
   sessions: Map<string, Map<string, TerminalSession>>; // projectId -> sessionId -> session
-  
+
   // Focus tracking per project
-  focusedSessions: Map<string, { system: string | null, claude: string | null }>;
-  
+  focusedSessions: Map<
+    string,
+    { system: string | null; claude: string | null }
+  >;
+
   // WebSocket connection tracking
   connections: Map<string, WebSocketConnection>;
-  
+
   // Output buffers for unfocused sessions
   buffers: Map<string, string[]>;
-  
+
   // Session metadata
   metadata: Map<string, SessionMetadata>;
 }
@@ -379,9 +412,9 @@ interface TerminalServiceState {
 interface TerminalSession {
   id: string;
   projectId: string;
-  type: 'system' | 'claude';
+  type: "system" | "claude";
   tabName: string;
-  status: 'active' | 'inactive' | 'error';
+  status: "active" | "inactive" | "error";
   focused: boolean;
   createdAt: Date;
   lastActivity: Date;
@@ -404,14 +437,14 @@ interface SessionMetadata {
 interface TerminalUIState {
   // Mirror of backend state (read-only)
   sessions: TerminalSession[];
-  focusedSessions: { system: string | null, claude: string | null };
-  
+  focusedSessions: { system: string | null; claude: string | null };
+
   // UI-specific state only
-  layout: 'single' | 'split-horizontal' | 'split-vertical' | 'grid';
+  layout: "single" | "split-horizontal" | "split-vertical" | "grid";
   preferences: TerminalPreferences;
-  
+
   // Transient UI state
-  connectionStatus: Record<string, 'connecting' | 'connected' | 'disconnected'>;
+  connectionStatus: Record<string, "connecting" | "connected" | "disconnected">;
   isLoading: boolean;
   errors: string[];
 }
@@ -425,44 +458,58 @@ interface TerminalUIState {
 
 ```typescript
 class FocusManager {
-  private focusedSessions: Map<string, { system: string | null, claude: string | null }> = new Map();
-  
+  private focusedSessions: Map<
+    string,
+    { system: string | null; claude: string | null }
+  > = new Map();
+
   /**
    * Update focused session for a project
    */
-  setFocusedSession(projectId: string, type: 'system' | 'claude', sessionId: string | null): void {
-    const current = this.focusedSessions.get(projectId) || { system: null, claude: null };
+  setFocusedSession(
+    projectId: string,
+    type: "system" | "claude",
+    sessionId: string | null,
+  ): void {
+    const current = this.focusedSessions.get(projectId) || {
+      system: null,
+      claude: null,
+    };
     const previous = current[type];
-    
+
     // Update focus
     current[type] = sessionId;
     this.focusedSessions.set(projectId, current);
-    
+
     // Notify WebSocket servers about focus change
     if (previous !== sessionId) {
       this.notifyFocusChange(projectId, type, previous, sessionId);
     }
   }
-  
-  private notifyFocusChange(projectId: string, type: 'system' | 'claude', 
-                           previousSession: string | null, newSession: string | null): void {
-    const port = type === 'system' ? 4001 : 4002;
-    
+
+  private notifyFocusChange(
+    projectId: string,
+    type: "system" | "claude",
+    previousSession: string | null,
+    newSession: string | null,
+  ): void {
+    const port = type === "system" ? 4001 : 4002;
+
     // Set previous session to background mode
     if (previousSession) {
       this.sendToWebSocketServer(port, {
-        type: 'focus_change',
+        type: "focus_change",
         sessionId: previousSession,
-        mode: 'background'
+        mode: "background",
       });
     }
-    
+
     // Set new session to active mode
     if (newSession) {
       this.sendToWebSocketServer(port, {
-        type: 'focus_change', 
+        type: "focus_change",
         sessionId: newSession,
-        mode: 'active'
+        mode: "active",
       });
     }
   }
@@ -475,45 +522,49 @@ class FocusManager {
 class StreamingManager {
   private outputBuffers: Map<string, string[]> = new Map();
   private maxBufferSize = 500; // lines
-  
+
   /**
    * Handle output from terminal process
    */
-  handleTerminalOutput(sessionId: string, data: string, isFocused: boolean): void {
+  handleTerminalOutput(
+    sessionId: string,
+    data: string,
+    isFocused: boolean,
+  ): void {
     if (isFocused) {
       // Send immediately to focused terminal
       this.sendToWebSocket(sessionId, {
-        type: 'output',
+        type: "output",
         sessionId,
-        data
+        data,
       });
     } else {
       // Buffer for unfocused terminal
       this.addToBuffer(sessionId, data);
     }
   }
-  
+
   /**
    * Switch session focus and flush buffer
    */
   switchFocus(fromSessionId: string | null, toSessionId: string): void {
     // Set previous session to background
     if (fromSessionId) {
-      this.setSessionMode(fromSessionId, 'background');
+      this.setSessionMode(fromSessionId, "background");
     }
-    
+
     // Set new session to active and flush buffer
-    this.setSessionMode(toSessionId, 'active');
+    this.setSessionMode(toSessionId, "active");
     this.flushBuffer(toSessionId);
   }
-  
+
   private flushBuffer(sessionId: string): void {
     const buffer = this.outputBuffers.get(sessionId);
     if (buffer && buffer.length > 0) {
       this.sendToWebSocket(sessionId, {
-        type: 'buffered',
+        type: "buffered",
         sessionId,
-        buffered: buffer
+        buffered: buffer,
       });
       this.outputBuffers.delete(sessionId);
     }
@@ -526,10 +577,12 @@ class StreamingManager {
 ## Implementation Phases
 
 ### Phase 1: Foundation (Week 1-2)
+
 **Objective**: Establish new architecture foundation
 
 #### Tasks:
-1. **Create Unified TerminalService** 
+
+1. **Create Unified TerminalService**
    - Single service to replace 9 existing services
    - Implement session lifecycle management
    - Add focus management capabilities
@@ -548,15 +601,18 @@ class StreamingManager {
    - Optimize output handling
 
 #### Success Criteria:
+
 - [ ] New TerminalService passes unit tests
 - [ ] All API endpoints return correct responses
 - [ ] WebSocket servers handle focus messages
 - [ ] Basic session creation/deletion works
 
 ### Phase 2: Focus-Based Streaming (Week 2-3)
+
 **Objective**: Implement efficient streaming model
 
 #### Tasks:
+
 1. **FocusManager Implementation**
    - Track focused sessions per project
    - Handle focus switching logic
@@ -576,22 +632,25 @@ class StreamingManager {
    - Update connection status display
 
 #### Success Criteria:
+
 - [ ] Only focused terminals receive real-time streams
 - [ ] Unfocused terminals buffer output correctly
 - [ ] Focus switching flushes buffers immediately
 - [ ] 50%+ reduction in CPU usage achieved
 
 ### Phase 3: Clean State Management (Week 3-4)
+
 **Objective**: Simplify and unify state management
 
 #### Tasks:
+
 1. **Backend State Consolidation**
    - Migrate session state to TerminalService
    - Remove redundant state tracking
    - Implement event-driven state updates
    - Add state persistence for crashes
 
-2. **Frontend State Simplification** 
+2. **Frontend State Simplification**
    - Remove complex session management from store
    - Implement read-only state mirroring
    - Add optimistic UI updates
@@ -604,15 +663,18 @@ class StreamingManager {
    - Remove real-time database updates
 
 #### Success Criteria:
+
 - [ ] Single source of truth established
 - [ ] No state sync issues occur
 - [ ] Sessions survive application restart
 - [ ] Frontend state is purely presentational
 
 ### Phase 4: Enhanced UX (Week 4-5)
+
 **Objective**: Improve user experience and error handling
 
 #### Tasks:
+
 1. **Intelligent Error Recovery**
    - Implement auto-recovery for common errors
    - Add user-friendly error messages
@@ -632,15 +694,18 @@ class StreamingManager {
    - Create keyboard shortcuts
 
 #### Success Criteria:
+
 - [ ] Users can self-recover from most errors
 - [ ] Sub-100ms terminal switching achieved
 - [ ] Advanced features work reliably
 - [ ] Error rate reduced by 90%
 
 ### Phase 5: Testing & Migration (Week 5-6)
+
 **Objective**: Comprehensive testing and smooth migration
 
 #### Tasks:
+
 1. **Comprehensive Testing**
    - Unit tests for all new components
    - Integration tests for full workflows
@@ -660,6 +725,7 @@ class StreamingManager {
    - Measure user experience metrics
 
 #### Success Criteria:
+
 - [ ] All tests pass with >95% coverage
 - [ ] Migration completes without data loss
 - [ ] Performance improvements validated
@@ -670,50 +736,53 @@ class StreamingManager {
 ## Testing Strategy
 
 ### Unit Testing
+
 ```typescript
 // Example test structure
-describe('TerminalService', () => {
-  describe('Session Management', () => {
-    it('should create session with valid parameters');
-    it('should handle duplicate session IDs gracefully');
-    it('should clean up sessions on close');
-    it('should persist sessions across restarts');
+describe("TerminalService", () => {
+  describe("Session Management", () => {
+    it("should create session with valid parameters");
+    it("should handle duplicate session IDs gracefully");
+    it("should clean up sessions on close");
+    it("should persist sessions across restarts");
   });
-  
-  describe('Focus Management', () => {
-    it('should track focused session per project');
-    it('should switch focus between sessions');
-    it('should flush buffers on focus switch');
-    it('should handle focus of non-existent sessions');
+
+  describe("Focus Management", () => {
+    it("should track focused session per project");
+    it("should switch focus between sessions");
+    it("should flush buffers on focus switch");
+    it("should handle focus of non-existent sessions");
   });
-  
-  describe('Streaming Optimization', () => {
-    it('should stream only to focused sessions');
-    it('should buffer output for unfocused sessions');
-    it('should respect buffer size limits');
-    it('should flush buffers in correct order');
+
+  describe("Streaming Optimization", () => {
+    it("should stream only to focused sessions");
+    it("should buffer output for unfocused sessions");
+    it("should respect buffer size limits");
+    it("should flush buffers in correct order");
   });
 });
 ```
 
 ### Integration Testing
+
 ```typescript
-describe('Terminal System Integration', () => {
-  it('should handle complete session lifecycle');
-  it('should maintain session state across reconnections');
-  it('should stream output correctly with multiple sessions');
-  it('should handle WebSocket disconnections gracefully');
-  it('should recover from server crashes');
+describe("Terminal System Integration", () => {
+  it("should handle complete session lifecycle");
+  it("should maintain session state across reconnections");
+  it("should stream output correctly with multiple sessions");
+  it("should handle WebSocket disconnections gracefully");
+  it("should recover from server crashes");
 });
 ```
 
 ### Performance Testing
+
 ```typescript
-describe('Performance Benchmarks', () => {
-  it('should handle 50+ concurrent sessions');
-  it('should switch focus in <100ms');
-  it('should use <50MB memory per session');
-  it('should maintain <5% CPU usage per session');
+describe("Performance Benchmarks", () => {
+  it("should handle 50+ concurrent sessions");
+  it("should switch focus in <100ms");
+  it("should use <50MB memory per session");
+  it("should maintain <5% CPU usage per session");
 });
 ```
 
@@ -722,6 +791,7 @@ describe('Performance Benchmarks', () => {
 ## Migration Strategy
 
 ### Pre-Migration Assessment
+
 1. **Session Inventory**
    - Catalog all existing terminal sessions
    - Identify active vs inactive sessions
@@ -737,6 +807,7 @@ describe('Performance Benchmarks', () => {
 ### Migration Steps
 
 #### Step 1: Preparation (Day 1)
+
 ```bash
 # 1. Backup current system state
 npm run backup-terminal-state
@@ -752,6 +823,7 @@ npm run setup-feature-flags
 ```
 
 #### Step 2: Gradual Rollout (Day 2-3)
+
 ```bash
 # 1. Enable new system for 10% of sessions
 npm run enable-new-system --percentage=10
@@ -767,6 +839,7 @@ npm run monitor-new-system --duration=8h
 ```
 
 #### Step 3: Complete Migration (Day 4)
+
 ```bash
 # 1. Migrate all remaining sessions
 npm run enable-new-system --percentage=100
@@ -784,12 +857,14 @@ npm run verify-migration-complete
 ### Rollback Plan
 
 #### Automatic Rollback Triggers
+
 - Error rate > 5% for 5 minutes
 - Response time > 500ms average for 10 minutes
 - WebSocket connection failure > 10% for 5 minutes
 - Any critical system component failure
 
 #### Manual Rollback Process
+
 ```bash
 # 1. Immediate rollback to old system
 npm run rollback-terminal-system --immediate
@@ -811,27 +886,33 @@ npm run verify-rollback-complete
 ### High Risk Items
 
 #### Risk 1: Session Data Loss During Migration
+
 **Probability**: Medium  
 **Impact**: High  
-**Mitigation**: 
+**Mitigation**:
+
 - Complete backup before migration
 - Gradual rollout with validation
 - Real-time data validation during migration
 - Immediate rollback capability
 
 #### Risk 2: WebSocket Connection Disruption
+
 **Probability**: Medium  
 **Impact**: Medium  
 **Mitigation**:
+
 - Maintain existing WebSocket servers during transition
 - Implement connection bridging
 - Allow 30-second grace period for reconnection
 - Provide user notification of temporary disruption
 
 #### Risk 3: Performance Regression
+
 **Probability**: Low  
 **Impact**: High  
 **Mitigation**:
+
 - Comprehensive performance benchmarking
 - Load testing before migration
 - Real-time performance monitoring
@@ -839,19 +920,23 @@ npm run verify-rollback-complete
 
 ### Medium Risk Items
 
-#### Risk 4: Frontend Compatibility Issues  
+#### Risk 4: Frontend Compatibility Issues
+
 **Probability**: Medium  
 **Impact**: Medium  
 **Mitigation**:
+
 - Maintain API compatibility layer
 - Gradual frontend component updates
 - Feature flags for new vs old components
 - Comprehensive UI testing
 
 #### Risk 5: Third-party Integration Breakage
+
 **Probability**: Low  
 **Impact**: Medium  
 **Mitigation**:
+
 - Identify all integration points before migration
 - Test integrations in staging environment
 - Communicate changes to integration maintainers
@@ -864,47 +949,52 @@ npm run verify-rollback-complete
 ### Technical Metrics
 
 #### Performance Improvements
-| Metric | Current | Target | Measurement Method |
-|--------|---------|---------|-------------------|
-| CPU Usage (per terminal) | 8-12% | <5% | Process monitoring |
-| Memory Usage (per session) | 45-60MB | <30MB | Memory profiling |
-| Terminal Switch Time | 200-500ms | <100ms | User action timing |
-| Connection Establishment | 150-300ms | <100ms | WebSocket timing |
-| Focus Switch Latency | 100-200ms | <50ms | UI responsiveness |
+
+| Metric                     | Current   | Target | Measurement Method |
+| -------------------------- | --------- | ------ | ------------------ |
+| CPU Usage (per terminal)   | 8-12%     | <5%    | Process monitoring |
+| Memory Usage (per session) | 45-60MB   | <30MB  | Memory profiling   |
+| Terminal Switch Time       | 200-500ms | <100ms | User action timing |
+| Connection Establishment   | 150-300ms | <100ms | WebSocket timing   |
+| Focus Switch Latency       | 100-200ms | <50ms  | UI responsiveness  |
 
 #### Reliability Improvements
-| Metric | Current | Target | Measurement Method |
-|--------|---------|---------|-------------------|
-| Session Survival Rate | 85-90% | >98% | Session tracking |
-| WebSocket Reconnection Success | 75-80% | >95% | Connection monitoring |
-| Error Recovery Rate | 20-30% | >90% | Error handling stats |
-| System Uptime | 95-97% | >99.5% | Service monitoring |
 
-#### Architecture Improvements  
-| Metric | Current | Target | Measurement Method |
-|--------|---------|---------|-------------------|
-| Service Layer Complexity | 9 services | 3 services | Code analysis |
-| Lines of Code | 2,500+ | <1,500 | Static analysis |
-| Test Coverage | 60-70% | >90% | Coverage reports |
-| Documentation Coverage | 40-50% | >80% | Documentation audit |
+| Metric                         | Current | Target | Measurement Method    |
+| ------------------------------ | ------- | ------ | --------------------- |
+| Session Survival Rate          | 85-90%  | >98%   | Session tracking      |
+| WebSocket Reconnection Success | 75-80%  | >95%   | Connection monitoring |
+| Error Recovery Rate            | 20-30%  | >90%   | Error handling stats  |
+| System Uptime                  | 95-97%  | >99.5% | Service monitoring    |
+
+#### Architecture Improvements
+
+| Metric                   | Current    | Target     | Measurement Method  |
+| ------------------------ | ---------- | ---------- | ------------------- |
+| Service Layer Complexity | 9 services | 3 services | Code analysis       |
+| Lines of Code            | 2,500+     | <1,500     | Static analysis     |
+| Test Coverage            | 60-70%     | >90%       | Coverage reports    |
+| Documentation Coverage   | 40-50%     | >80%       | Documentation audit |
 
 ### Business Metrics
 
 #### User Experience
-| Metric | Current | Target | Measurement Method |
-|--------|---------|---------|-------------------|
-| User Satisfaction | 6.5/10 | >8.5/10 | User surveys |
-| Error Recovery Time | 15-30 min | <2 min | Support tickets |
-| Feature Adoption Rate | 40-50% | >80% | Usage analytics |
+
+| Metric                 | Current   | Target      | Measurement Method  |
+| ---------------------- | --------- | ----------- | ------------------- |
+| User Satisfaction      | 6.5/10    | >8.5/10     | User surveys        |
+| Error Recovery Time    | 15-30 min | <2 min      | Support tickets     |
+| Feature Adoption Rate  | 40-50%    | >80%        | Usage analytics     |
 | Training Time Required | 2-3 hours | <30 minutes | Onboarding tracking |
 
 #### Operational Efficiency
-| Metric | Current | Target | Measurement Method |
-|--------|---------|---------|-------------------|
-| Support Tickets (terminal) | 15-20/week | <3/week | Ticket tracking |
-| Developer Productivity | 6-7/10 | >9/10 | Team velocity |
-| System Administration | 8-10 hrs/week | <2 hrs/week | Admin time tracking |
-| Deployment Complexity | High | Low | Deployment metrics |
+
+| Metric                     | Current       | Target      | Measurement Method  |
+| -------------------------- | ------------- | ----------- | ------------------- |
+| Support Tickets (terminal) | 15-20/week    | <3/week     | Ticket tracking     |
+| Developer Productivity     | 6-7/10        | >9/10       | Team velocity       |
+| System Administration      | 8-10 hrs/week | <2 hrs/week | Admin time tracking |
+| Deployment Complexity      | High          | Low         | Deployment metrics  |
 
 ---
 
@@ -915,11 +1005,11 @@ npm run verify-rollback-complete
 ```
 Week 1: Foundation & API Layer
 ├── Days 1-2: TerminalService implementation
-├── Days 3-4: New API endpoints  
+├── Days 3-4: New API endpoints
 ├── Days 5-6: WebSocket protocol updates
 └── Week 1 Demo: Basic session CRUD working
 
-Week 2: Focus-Based Streaming  
+Week 2: Focus-Based Streaming
 ├── Days 1-2: FocusManager implementation
 ├── Days 3-4: StreamingManager implementation
 ├── Days 5-6: Frontend focus integration
@@ -927,7 +1017,7 @@ Week 2: Focus-Based Streaming
 
 Week 3: State Management
 ├── Days 1-2: Backend state consolidation
-├── Days 3-4: Frontend state simplification  
+├── Days 3-4: Frontend state simplification
 ├── Days 5-6: Database integration
 └── Week 3 Demo: Clean state management
 
@@ -953,28 +1043,36 @@ Week 6: Migration & Launch
 ### Key Milestones
 
 #### Milestone 1: Architecture Foundation (End Week 2)
+
 ✅ **Success Criteria**:
+
 - New TerminalService handling all session operations
 - Focus-based streaming reducing CPU usage by 50%+
 - WebSocket protocol supporting focus messages
 - Basic integration testing passing
 
-#### Milestone 2: Clean State Management (End Week 3) 
+#### Milestone 2: Clean State Management (End Week 3)
+
 ✅ **Success Criteria**:
+
 - Single source of truth established
 - Frontend purely presentational
 - No state synchronization issues
 - Sessions survive application restart
 
 #### Milestone 3: Production Readiness (End Week 5)
+
 ✅ **Success Criteria**:
-- >90% test coverage achieved
+
+- > 90% test coverage achieved
 - Performance targets met or exceeded
 - Error recovery mechanisms working
 - Migration plan validated
 
 #### Milestone 4: Successful Launch (End Week 6)
+
 ✅ **Success Criteria**:
+
 - Zero data loss during migration
 - All performance improvements validated
 - User satisfaction targets achieved
@@ -989,7 +1087,7 @@ This comprehensive redesign plan transforms the Terminal Management System from 
 ### Key Benefits
 
 1. **85% Architecture Simplification**: 9 services reduced to 3 core services
-2. **60% Performance Improvement**: Focus-based streaming eliminates unnecessary processing  
+2. **60% Performance Improvement**: Focus-based streaming eliminates unnecessary processing
 3. **90% Error Reduction**: Intelligent recovery and simplified state management
 4. **Sub-100ms Responsiveness**: Optimized WebSocket handling and connection management
 5. **Zero-Touch Recovery**: Users can self-recover from common error scenarios
@@ -997,6 +1095,7 @@ This comprehensive redesign plan transforms the Terminal Management System from 
 ### Investment Justification
 
 The 4-6 week investment will deliver 300%+ ROI through:
+
 - Restored developer productivity (saving 10-15 hours/week per developer)
 - Reduced support overhead (eliminating 12-17 tickets/week)
 - Improved system reliability (reducing downtime by 80%+)
@@ -1006,7 +1105,7 @@ This redesign positions the Terminal Management System as a robust, scalable fou
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: 2025-08-11*  
-*Author: AI Business Analyst*  
-*Review Status: Ready for Stakeholder Review*
+_Document Version: 1.0_  
+_Last Updated: 2025-08-11_  
+_Author: AI Business Analyst_  
+_Review Status: Ready for Stakeholder Review_

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source port configuration
+source "$(dirname "$0")/../shared/config/ports.sh"
+
 # Quick Setup for Local Use
 echo "🚀 Quick Setup - Personal Assistant"
 echo "===================================="
@@ -46,5 +49,5 @@ echo ""
 echo "To start the application:"
 echo "  npm start"
 echo ""
-echo "Then open: http://localhost:4000/assistant"
+echo "Then open: http://localhost:$PORT_GATEWAY_MAIN/assistant"
 echo ""

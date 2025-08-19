@@ -139,6 +139,7 @@ src/config/
 ## Naming Conventions
 
 ### Files
+
 - Components: `PascalCase.tsx`
 - Services: `kebab-case.service.ts`
 - Utilities: `kebab-case.ts`
@@ -147,11 +148,13 @@ src/config/
 - Styles: `[component].module.scss`
 
 ### Directories
+
 - Features: `kebab-case/`
 - Components: `PascalCase/` or `kebab-case/`
 - Utilities: `kebab-case/`
 
 ### Variables & Functions
+
 - Variables: `camelCase`
 - Constants: `UPPER_SNAKE_CASE`
 - Functions: `camelCase`

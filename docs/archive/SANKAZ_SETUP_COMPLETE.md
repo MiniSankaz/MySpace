@@ -3,6 +3,7 @@
 ## ✅ All Tasks Completed
 
 ### 1. Database Cleanup Script Created
+
 - **File**: `/scripts/database/cleanup-and-setup-sankaz.ts`
 - **Functions**:
   - Creates sankaz user if not exists
@@ -25,10 +26,12 @@ Role: Administrator
 ### 3. Authentication Security Enhanced
 
 #### API Routes Updated:
+
 - `/api/assistant/sessions/route.ts` - Now requires authentication and filters by logged-in user
 - `/api/assistant/chat/route.ts` - Requires authentication for all chat operations
 
 #### Frontend Components Updated:
+
 - `ChatInterfaceWithHistory.tsx` - Uses authentication tokens from localStorage
 - All API calls include Bearer token authentication
 - User ID is fetched from authenticated user data, not generated randomly
@@ -56,11 +59,12 @@ npx tsx scripts/database/cleanup-and-setup-sankaz.ts
 ## Testing the System
 
 1. **Login as sankaz**:
+
    ```bash
    # Start the application
    npm run dev
-   
-   # Navigate to: http://localhost:4000/login
+
+   # Navigate to: http://localhost:4110/login
    # Login with:
    Username: sankaz
    Password: Sankaz#88B61471@2025
@@ -74,11 +78,13 @@ npx tsx scripts/database/cleanup-and-setup-sankaz.ts
 ## Files Modified
 
 ### Backend:
+
 - `/src/app/api/assistant/sessions/route.ts` - Added authentication and user filtering
 - `/src/app/api/assistant/chat/route.ts` - Required authentication for all operations
 - `/scripts/database/cleanup-and-setup-sankaz.ts` - Database cleanup and setup script
 
 ### Frontend:
+
 - `/src/modules/personal-assistant/components/ChatInterfaceWithHistory.tsx` - Added token authentication
 
 ## Security Notes
@@ -92,11 +98,11 @@ npx tsx scripts/database/cleanup-and-setup-sankaz.ts
 
 ```javascript
 // All API calls now include authentication:
-const token = localStorage.getItem('accessToken');
-const response = await fetch('/api/assistant/chat', {
+const token = localStorage.getItem("accessToken");
+const response = await fetch("/api/assistant/chat", {
   headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   },
   // ... rest of the request
 });
@@ -105,6 +111,7 @@ const response = await fetch('/api/assistant/chat', {
 ## Database Schema
 
 The system uses these tables for user and chat management:
+
 - `User` - Stores user credentials and profile
 - `AssistantConversation` - Chat sessions (filtered by userId)
 - `AssistantMessage` - Individual messages

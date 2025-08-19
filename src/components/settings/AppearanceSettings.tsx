@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { authClient } from '@/core/auth/auth-client';
-import { 
+import { useState, useEffect } from "react";
+import { authClient } from "@/core/auth/auth-client";
+import {
   SunIcon,
   MoonIcon,
   ComputerDesktopIcon,
@@ -11,8 +11,8 @@ import {
   AdjustmentsHorizontalIcon,
   SwatchIcon,
   EyeIcon,
-  EyeSlashIcon
-} from '@heroicons/react/24/outline';
+  EyeSlashIcon,
+} from "@heroicons/react/24/outline";
 
 interface AppearanceSettingsProps {
   user: any;
@@ -21,66 +21,71 @@ interface AppearanceSettingsProps {
   saving: boolean;
 }
 
-export default function AppearanceSettings({ user, tabId, onSave, saving }: AppearanceSettingsProps) {
+export default function AppearanceSettings({
+  user,
+  tabId,
+  onSave,
+  saving,
+}: AppearanceSettingsProps) {
   const [formData, setFormData] = useState({
     // Theme Settings
-    theme: 'system',
+    theme: "system",
     darkModeSchedule: false,
-    darkModeStart: '20:00',
-    darkModeEnd: '07:00',
-    
+    darkModeStart: "20:00",
+    darkModeEnd: "07:00",
+
     // Color Scheme
-    primaryColor: '#4F46E5',
-    accentColor: '#10B981',
-    backgroundColor: '#FFFFFF',
-    textColor: '#111827',
-    borderColor: '#E5E7EB',
-    
+    primaryColor: "#4F46E5",
+    accentColor: "#10B981",
+    backgroundColor: "#FFFFFF",
+    textColor: "#111827",
+    borderColor: "#E5E7EB",
+
     // Typography
-    fontSize: 'medium',
-    fontFamily: 'inter',
-    lineHeight: 'normal',
-    
+    fontSize: "medium",
+    fontFamily: "inter",
+    lineHeight: "normal",
+
     // Layout
-    density: 'comfortable',
-    sidebarPosition: 'left',
+    density: "comfortable",
+    sidebarPosition: "left",
     sidebarCollapsed: false,
-    headerStyle: 'fixed',
+    headerStyle: "fixed",
     footerVisible: true,
-    
+
     // Visual Effects
     animations: true,
     reducedMotion: false,
     transparencyEffects: true,
     blurEffects: true,
     shadows: true,
-    roundedCorners: 'medium',
-    
+    roundedCorners: "medium",
+
     // Accessibility
     highContrast: false,
-    colorBlindMode: 'none',
+    colorBlindMode: "none",
     focusIndicators: true,
     underlineLinks: false,
-    
+
     // Components
     compactCards: false,
     showAvatars: true,
     showIcons: true,
     showTooltips: true,
     showBreadcrumbs: true,
-    showProgress: true
+    showProgress: true,
   });
 
   const [previewMode, setPreviewMode] = useState(false);
   const [customThemes, setCustomThemes] = useState([]);
 
   const colorPresets = [
-    { name: 'Indigo', primary: '#4F46E5', accent: '#10B981' },
-    { name: 'Blue', primary: '#3B82F6', accent: '#F59E0B' },
-    { name: 'Purple', primary: '#9333EA', accent: '#EC4899' },
-    { name: 'Green', primary: '#10B981', accent: '#3B82F6' },
-    { name: 'Red', primary: '#EF4444', accent: '#8B5CF6' },
-    { name: 'Teal', primary: '#14B8A6', accent: '#F97316' }
+    { name: "Indigo", primary: "#4F46E5", accent: "#10B981" },
+    { name: "Blue", primary: "#3B82F6", accent: "#F59E0B" },
+    { name: "Purple", primary: "#9333EA", accent: "#EC4899" },
+    { name: "Green", primary: "#10B981", accent: "#3B82F6" },
+    { name: "Red", primary: "#EF4444", accent: "#8B5CF6" },
+    { name: "Teal", primary: "#14B8A6", accent: "#F97316" },
   ];
 
   useEffect(() => {
@@ -98,69 +103,79 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
 
   const loadSettings = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/appearance');
+      const response = await authClient.fetch("/api/settings/appearance");
       if (response.ok) {
         const data = await response.json();
-        setFormData(prev => ({ ...prev, ...data.settings }));
+        setFormData((prev) => ({ ...prev, ...data.settings }));
       }
     } catch (error) {
-      console.error('Failed to load appearance settings:', error);
+      console.error("Failed to load appearance settings:", error);
     }
   };
 
   const loadCustomThemes = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/themes');
+      const response = await authClient.fetch("/api/settings/themes");
       if (response.ok) {
         const data = await response.json();
         setCustomThemes(data.themes || []);
       }
     } catch (error) {
-      console.error('Failed to load custom themes:', error);
+      console.error("Failed to load custom themes:", error);
     }
   };
 
   const applyTheme = (theme: any) => {
     // Apply theme to document root for preview
     const root = document.documentElement;
-    root.style.setProperty('--primary-color', theme.primaryColor);
-    root.style.setProperty('--accent-color', theme.accentColor);
-    root.style.setProperty('--background-color', theme.backgroundColor);
-    root.style.setProperty('--text-color', theme.textColor);
-    root.style.setProperty('--border-color', theme.borderColor);
-    
+    root.style.setProperty("--primary-color", theme.primaryColor);
+    root.style.setProperty("--accent-color", theme.accentColor);
+    root.style.setProperty("--background-color", theme.backgroundColor);
+    root.style.setProperty("--text-color", theme.textColor);
+    root.style.setProperty("--border-color", theme.borderColor);
+
     // Apply other visual settings
-    if (theme.theme === 'dark' || (theme.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      root.classList.add('dark');
+    if (
+      theme.theme === "dark" ||
+      (theme.theme === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
+      root.classList.add("dark");
     } else {
-      root.classList.remove('dark');
+      root.classList.remove("dark");
     }
-    
+
     // Apply font size
-    root.classList.remove('text-sm', 'text-base', 'text-lg');
-    root.classList.add(theme.fontSize === 'small' ? 'text-sm' : theme.fontSize === 'large' ? 'text-lg' : 'text-base');
-    
+    root.classList.remove("text-sm", "text-base", "text-lg");
+    root.classList.add(
+      theme.fontSize === "small"
+        ? "text-sm"
+        : theme.fontSize === "large"
+          ? "text-lg"
+          : "text-base",
+    );
+
     // Apply density
-    root.setAttribute('data-density', theme.density);
-    
+    root.setAttribute("data-density", theme.density);
+
     // Apply reduced motion
     if (theme.reducedMotion) {
-      root.classList.add('reduce-motion');
+      root.classList.add("reduce-motion");
     } else {
-      root.classList.remove('reduce-motion');
+      root.classList.remove("reduce-motion");
     }
   };
 
   const resetTheme = () => {
     // Reset to default theme
     const root = document.documentElement;
-    root.style.removeProperty('--primary-color');
-    root.style.removeProperty('--accent-color');
-    root.style.removeProperty('--background-color');
-    root.style.removeProperty('--text-color');
-    root.style.removeProperty('--border-color');
-    root.classList.remove('dark', 'reduce-motion', 'text-sm', 'text-lg');
-    root.removeAttribute('data-density');
+    root.style.removeProperty("--primary-color");
+    root.style.removeProperty("--accent-color");
+    root.style.removeProperty("--background-color");
+    root.style.removeProperty("--text-color");
+    root.style.removeProperty("--border-color");
+    root.classList.remove("dark", "reduce-motion", "text-sm", "text-lg");
+    root.removeAttribute("data-density");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,41 +184,41 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
     setPreviewMode(false);
   };
 
-  const applyPreset = (preset: typeof colorPresets[0]) => {
+  const applyPreset = (preset: (typeof colorPresets)[0]) => {
     setFormData({
       ...formData,
       primaryColor: preset.primary,
-      accentColor: preset.accent
+      accentColor: preset.accent,
     });
   };
 
   const resetToDefaults = () => {
     setFormData({
-      theme: 'system',
+      theme: "system",
       darkModeSchedule: false,
-      darkModeStart: '20:00',
-      darkModeEnd: '07:00',
-      primaryColor: '#4F46E5',
-      accentColor: '#10B981',
-      backgroundColor: '#FFFFFF',
-      textColor: '#111827',
-      borderColor: '#E5E7EB',
-      fontSize: 'medium',
-      fontFamily: 'inter',
-      lineHeight: 'normal',
-      density: 'comfortable',
-      sidebarPosition: 'left',
+      darkModeStart: "20:00",
+      darkModeEnd: "07:00",
+      primaryColor: "#4F46E5",
+      accentColor: "#10B981",
+      backgroundColor: "#FFFFFF",
+      textColor: "#111827",
+      borderColor: "#E5E7EB",
+      fontSize: "medium",
+      fontFamily: "inter",
+      lineHeight: "normal",
+      density: "comfortable",
+      sidebarPosition: "left",
       sidebarCollapsed: false,
-      headerStyle: 'fixed',
+      headerStyle: "fixed",
       footerVisible: true,
       animations: true,
       reducedMotion: false,
       transparencyEffects: true,
       blurEffects: true,
       shadows: true,
-      roundedCorners: 'medium',
+      roundedCorners: "medium",
       highContrast: false,
-      colorBlindMode: 'none',
+      colorBlindMode: "none",
       focusIndicators: true,
       underlineLinks: false,
       compactCards: false,
@@ -211,7 +226,7 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
       showIcons: true,
       showTooltips: true,
       showBreadcrumbs: true,
-      showProgress: true
+      showProgress: true,
     });
   };
 
@@ -225,15 +240,19 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="radio"
               value="light"
-              checked={formData.theme === 'light'}
-              onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+              checked={formData.theme === "light"}
+              onChange={(e) =>
+                setFormData({ ...formData, theme: e.target.value })
+              }
               className="sr-only"
             />
             <div className="flex flex-1 flex-col items-center">
               <SunIcon className="h-8 w-8 text-yellow-500 mb-2" />
-              <span className="block text-sm font-medium text-gray-900">Light</span>
+              <span className="block text-sm font-medium text-gray-900">
+                Light
+              </span>
             </div>
-            {formData.theme === 'light' && (
+            {formData.theme === "light" && (
               <div className="absolute -inset-px rounded-lg border-2 border-indigo-500" />
             )}
           </label>
@@ -242,15 +261,19 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="radio"
               value="dark"
-              checked={formData.theme === 'dark'}
-              onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+              checked={formData.theme === "dark"}
+              onChange={(e) =>
+                setFormData({ ...formData, theme: e.target.value })
+              }
               className="sr-only"
             />
             <div className="flex flex-1 flex-col items-center">
               <MoonIcon className="h-8 w-8 text-gray-700 mb-2" />
-              <span className="block text-sm font-medium text-gray-900">Dark</span>
+              <span className="block text-sm font-medium text-gray-900">
+                Dark
+              </span>
             </div>
-            {formData.theme === 'dark' && (
+            {formData.theme === "dark" && (
               <div className="absolute -inset-px rounded-lg border-2 border-indigo-500" />
             )}
           </label>
@@ -259,15 +282,19 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="radio"
               value="system"
-              checked={formData.theme === 'system'}
-              onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+              checked={formData.theme === "system"}
+              onChange={(e) =>
+                setFormData({ ...formData, theme: e.target.value })
+              }
               className="sr-only"
             />
             <div className="flex flex-1 flex-col items-center">
               <ComputerDesktopIcon className="h-8 w-8 text-gray-500 mb-2" />
-              <span className="block text-sm font-medium text-gray-900">System</span>
+              <span className="block text-sm font-medium text-gray-900">
+                System
+              </span>
             </div>
-            {formData.theme === 'system' && (
+            {formData.theme === "system" && (
               <div className="absolute -inset-px rounded-lg border-2 border-indigo-500" />
             )}
           </label>
@@ -278,29 +305,41 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="checkbox"
               checked={formData.darkModeSchedule}
-              onChange={(e) => setFormData({ ...formData, darkModeSchedule: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, darkModeSchedule: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm text-gray-700">Schedule dark mode</span>
+            <span className="ml-2 text-sm text-gray-700">
+              Schedule dark mode
+            </span>
           </label>
-          
+
           {formData.darkModeSchedule && (
             <div className="mt-3 ml-6 grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Start time</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Start time
+                </label>
                 <input
                   type="time"
                   value={formData.darkModeStart}
-                  onChange={(e) => setFormData({ ...formData, darkModeStart: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, darkModeStart: e.target.value })
+                  }
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">End time</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  End time
+                </label>
                 <input
                   type="time"
                   value={formData.darkModeEnd}
-                  onChange={(e) => setFormData({ ...formData, darkModeEnd: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, darkModeEnd: e.target.value })
+                  }
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
               </div>
@@ -312,9 +351,11 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
       {/* Color Scheme */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">Color Scheme</h3>
-        
+
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Quick Presets</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Quick Presets
+          </label>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {colorPresets.map((preset) => (
               <button
@@ -324,16 +365,18 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
                 className="p-2 border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <div className="flex space-x-1">
-                  <div 
+                  <div
                     className="w-6 h-6 rounded"
                     style={{ backgroundColor: preset.primary }}
                   />
-                  <div 
+                  <div
                     className="w-6 h-6 rounded"
                     style={{ backgroundColor: preset.accent }}
                   />
                 </div>
-                <span className="text-xs text-gray-600 mt-1 block">{preset.name}</span>
+                <span className="text-xs text-gray-600 mt-1 block">
+                  {preset.name}
+                </span>
               </button>
             ))}
           </div>
@@ -341,54 +384,72 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Primary Color</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Primary Color
+            </label>
             <div className="mt-1 flex items-center">
               <input
                 type="color"
                 value={formData.primaryColor}
-                onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, primaryColor: e.target.value })
+                }
                 className="h-10 w-10 border border-gray-300 rounded cursor-pointer"
               />
               <input
                 type="text"
                 value={formData.primaryColor}
-                onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, primaryColor: e.target.value })
+                }
                 className="ml-2 flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Accent Color</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Accent Color
+            </label>
             <div className="mt-1 flex items-center">
               <input
                 type="color"
                 value={formData.accentColor}
-                onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, accentColor: e.target.value })
+                }
                 className="h-10 w-10 border border-gray-300 rounded cursor-pointer"
               />
               <input
                 type="text"
                 value={formData.accentColor}
-                onChange={(e) => setFormData({ ...formData, accentColor: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, accentColor: e.target.value })
+                }
                 className="ml-2 flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Border Color</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Border Color
+            </label>
             <div className="mt-1 flex items-center">
               <input
                 type="color"
                 value={formData.borderColor}
-                onChange={(e) => setFormData({ ...formData, borderColor: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, borderColor: e.target.value })
+                }
                 className="h-10 w-10 border border-gray-300 rounded cursor-pointer"
               />
               <input
                 type="text"
                 value={formData.borderColor}
-                onChange={(e) => setFormData({ ...formData, borderColor: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, borderColor: e.target.value })
+                }
                 className="ml-2 flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
             </div>
@@ -401,10 +462,14 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
         <h3 className="text-lg font-medium text-gray-900 mb-4">Typography</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Font Size</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Font Size
+            </label>
             <select
               value={formData.fontSize}
-              onChange={(e) => setFormData({ ...formData, fontSize: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, fontSize: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="small">Small</option>
@@ -415,10 +480,14 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Font Family</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Font Family
+            </label>
             <select
               value={formData.fontFamily}
-              onChange={(e) => setFormData({ ...formData, fontFamily: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, fontFamily: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="inter">Inter</option>
@@ -431,10 +500,14 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Line Height</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Line Height
+            </label>
             <select
               value={formData.lineHeight}
-              onChange={(e) => setFormData({ ...formData, lineHeight: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, lineHeight: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="tight">Tight</option>
@@ -451,10 +524,14 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
         <h3 className="text-lg font-medium text-gray-900 mb-4">Layout</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Display Density</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Display Density
+            </label>
             <select
               value={formData.density}
-              onChange={(e) => setFormData({ ...formData, density: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, density: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="compact">Compact</option>
@@ -464,10 +541,14 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Rounded Corners</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Rounded Corners
+            </label>
             <select
               value={formData.roundedCorners}
-              onChange={(e) => setFormData({ ...formData, roundedCorners: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, roundedCorners: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="none">None</option>
@@ -484,7 +565,9 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="checkbox"
               checked={formData.showBreadcrumbs}
-              onChange={(e) => setFormData({ ...formData, showBreadcrumbs: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, showBreadcrumbs: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Show breadcrumbs</span>
@@ -494,7 +577,9 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="checkbox"
               checked={formData.footerVisible}
-              onChange={(e) => setFormData({ ...formData, footerVisible: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, footerVisible: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Show footer</span>
@@ -504,7 +589,9 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="checkbox"
               checked={formData.compactCards}
-              onChange={(e) => setFormData({ ...formData, compactCards: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, compactCards: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Compact cards</span>
@@ -514,33 +601,48 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
 
       {/* Visual Effects */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Visual Effects</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Visual Effects
+        </h3>
         <div className="space-y-3">
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.animations}
-              onChange={(e) => setFormData({ ...formData, animations: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, animations: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm text-gray-700">Enable animations</span>
+            <span className="ml-2 text-sm text-gray-700">
+              Enable animations
+            </span>
           </label>
 
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.transparencyEffects}
-              onChange={(e) => setFormData({ ...formData, transparencyEffects: e.target.checked })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  transparencyEffects: e.target.checked,
+                })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm text-gray-700">Transparency effects</span>
+            <span className="ml-2 text-sm text-gray-700">
+              Transparency effects
+            </span>
           </label>
 
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.blurEffects}
-              onChange={(e) => setFormData({ ...formData, blurEffects: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, blurEffects: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Blur effects</span>
@@ -550,7 +652,9 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="checkbox"
               checked={formData.shadows}
-              onChange={(e) => setFormData({ ...formData, shadows: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, shadows: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Shadows</span>
@@ -560,13 +664,17 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
 
       {/* Accessibility */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Accessibility</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Accessibility
+        </h3>
         <div className="space-y-4">
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.reducedMotion}
-              onChange={(e) => setFormData({ ...formData, reducedMotion: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, reducedMotion: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Reduce motion</span>
@@ -576,37 +684,51 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
             <input
               type="checkbox"
               checked={formData.highContrast}
-              onChange={(e) => setFormData({ ...formData, highContrast: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, highContrast: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm text-gray-700">High contrast mode</span>
+            <span className="ml-2 text-sm text-gray-700">
+              High contrast mode
+            </span>
           </label>
 
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.focusIndicators}
-              onChange={(e) => setFormData({ ...formData, focusIndicators: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, focusIndicators: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm text-gray-700">Show focus indicators</span>
+            <span className="ml-2 text-sm text-gray-700">
+              Show focus indicators
+            </span>
           </label>
 
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.underlineLinks}
-              onChange={(e) => setFormData({ ...formData, underlineLinks: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, underlineLinks: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">Underline links</span>
           </label>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Color Blind Mode</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Color Blind Mode
+            </label>
             <select
               value={formData.colorBlindMode}
-              onChange={(e) => setFormData({ ...formData, colorBlindMode: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, colorBlindMode: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
               <option value="none">None</option>
@@ -654,7 +776,7 @@ export default function AppearanceSettings({ user, tabId, onSave, saving }: Appe
           disabled={saving}
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? 'Saving...' : 'Save Appearance Settings'}
+          {saving ? "Saving..." : "Save Appearance Settings"}
         </button>
       </div>
     </form>

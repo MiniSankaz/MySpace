@@ -1,0 +1,265 @@
+# Alert Configuration for Performance Monitoring System
+# Version: 1.0.0
+
+alerts:
+  # Response Time Alerts
+  - name: high_response_time_warning
+    condition: response_time.p95 > 200
+    severity: warning
+    threshold_duration: 60  # seconds
+    cooldown: 300  # seconds
+    notification:
+      - slack
+    message: "Response time P95 exceeds 200ms: {{value}}ms"
+    
+  - name: high_response_time_critical
+    condition: response_time.p95 > 500
+    severity: critical
+    threshold_duration: 30
+    cooldown: 300
+    notification:
+      - email
+      - slack
+      - pagerduty
+    message: "CRITICAL: Response time P95 exceeds 500ms: {{value}}ms"
+    
+  # Error Rate Alerts
+  - name: elevated_error_rate
+    condition: error_rate > 0.01
+    severity: warning
+    threshold_duration: 120
+    cooldown: 600
+    notification:
+      - slack
+    message: "Error rate elevated: {{value}}%"
+    
+  - name: high_error_rate
+    condition: error_rate > 0.05
+    severity: critical
+    threshold_duration: 60
+    cooldown: 300
+    notification:
+      - email
+      - slack
+      - pagerduty
+    message: "CRITICAL: High error rate detected: {{value}}%"
+    
+  # Memory Alerts
+  - name: memory_usage_warning
+    condition: memory_usage_percentage > 0.7
+    severity: warning
+    threshold_duration: 300
+    cooldown: 900
+    notification:
+      - slack
+    message: "Memory usage high: {{value}}% of available memory"
+    
+  - name: memory_usage_critical
+    condition: memory_usage_percentage > 0.85
+    severity: critical
+    threshold_duration: 120
+    cooldown: 600
+    notification:
+      - email
+      - slack
+    message: "CRITICAL: Memory usage critical: {{value}}%"
+    
+  # CPU Alerts
+  - name: cpu_usage_warning
+    condition: cpu_usage > 70
+    severity: warning
+    threshold_duration: 300
+    cooldown: 900
+    notification:
+      - slack
+    message: "CPU usage elevated: {{value}}%"
+    
+  - name: cpu_usage_critical
+    condition: cpu_usage > 90
+    severity: critical
+    threshold_duration: 120
+    cooldown: 600
+    notification:
+      - email
+      - slack
+      - pagerduty
+    message: "CRITICAL: CPU usage critical: {{value}}%"
+    
+  # AI Task Queue Alerts
+  - name: task_queue_backup_warning
+    condition: task_queue_length > 50
+    severity: warning
+    threshold_duration: 180
+    cooldown: 600
+    notification:
+      - slack
+    message: "AI task queue backing up: {{value}} tasks pending"
+    
+  - name: task_queue_backup_critical
+    condition: task_queue_length > 100
+    severity: critical
+    threshold_duration: 60
+    cooldown: 300
+    notification:
+      - email
+      - slack
+    message: "CRITICAL: AI task queue overloaded: {{value}} tasks pending"
+    
+  # Task Completion Rate Alerts
+  - name: low_task_completion_rate
+    condition: task_completion_rate < 0.9
+    severity: warning
+    threshold_duration: 300
+    cooldown: 900
+    notification:
+      - slack
+    message: "Task completion rate low: {{value}}%"
+    
+  - name: critical_task_completion_rate
+    condition: task_completion_rate < 0.75
+    severity: critical
+    threshold_duration: 120
+    cooldown: 600
+    notification:
+      - email
+      - slack
+    message: "CRITICAL: Task completion rate critical: {{value}}%"
+    
+  # WebSocket Alerts
+  - name: websocket_connection_spike
+    condition: ws_connection_count > 500
+    severity: warning
+    threshold_duration: 60
+    cooldown: 300
+    notification:
+      - slack
+    message: "WebSocket connections spike: {{value}} active connections"
+    
+  - name: websocket_latency_high
+    condition: ws_latency > 100
+    severity: warning
+    threshold_duration: 120
+    cooldown: 600
+    notification:
+      - slack
+    message: "WebSocket latency high: {{value}}ms"
+    
+  # Cache Performance Alerts
+  - name: cache_hit_rate_low
+    condition: cache_hit_rate < 0.6
+    severity: warning
+    threshold_duration: 600
+    cooldown: 1800
+    notification:
+      - slack
+    message: "Cache hit rate low: {{value}}%"
+    
+  - name: cache_evictions_high
+    condition: cache_eviction_rate > 100
+    severity: warning
+    threshold_duration: 300
+    cooldown: 900
+    notification:
+      - slack
+    message: "High cache eviction rate: {{value}} evictions/minute"
+    
+  # Service Health Alerts
+  - name: service_degraded
+    condition: service_health_score < 0.8
+    severity: warning
+    threshold_duration: 180
+    cooldown: 600
+    notification:
+      - slack
+    message: "Service {{service_name}} degraded: health score {{value}}"
+    
+  - name: service_down
+    condition: service_health_score == 0
+    severity: critical
+    threshold_duration: 30
+    cooldown: 300
+    notification:
+      - email
+      - slack
+      - pagerduty
+    message: "CRITICAL: Service {{service_name}} is DOWN"
+    
+  # Database Connection Alerts
+  - name: db_connection_pool_exhausted
+    condition: db_connections_available < 5
+    severity: warning
+    threshold_duration: 60
+    cooldown: 300
+    notification:
+      - slack
+    message: "Database connection pool nearly exhausted: {{value}} connections available"
+    
+  - name: db_query_slow
+    condition: db_query_time.p95 > 1000
+    severity: warning
+    threshold_duration: 300
+    cooldown: 900
+    notification:
+      - slack
+    message: "Database queries slow: P95 = {{value}}ms"
+
+# Notification Channels Configuration
+notification_channels:
+  email:
+    type: email
+    config:
+      smtp_host: smtp.gmail.com
+      smtp_port: 587
+      from: monitoring@stockportfolio.com
+      to:
+        - ops-team@stockportfolio.com
+        - dev-team@stockportfolio.com
+      
+  slack:
+    type: slack
+    config:
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      channel: "#alerts"
+      username: "Performance Monitor"
+      icon_emoji: ":chart_with_upwards_trend:"
+      
+  pagerduty:
+    type: pagerduty
+    config:
+      integration_key: ${PAGERDUTY_INTEGRATION_KEY}
+      service_id: ${PAGERDUTY_SERVICE_ID}
+
+# Alert Aggregation Rules
+aggregation:
+  # Group similar alerts
+  grouping:
+    - by: [service, severity]
+      interval: 60  # seconds
+      
+  # Suppress noisy alerts
+  suppression:
+    - condition: alert_count > 10
+      duration: 300  # seconds
+      action: throttle
+      
+  # Escalation rules
+  escalation:
+    - from: warning
+      to: critical
+      after: 1800  # seconds
+      if_unresolved: true
+
+# Maintenance Windows
+maintenance_windows:
+  - name: weekly_maintenance
+    schedule: "0 2 * * 0"  # Sunday 2 AM
+    duration: 3600  # 1 hour
+    suppress_alerts:
+      - all
+      
+  - name: deployment_window
+    schedule: manual
+    duration: 1800  # 30 minutes
+    suppress_alerts:
+      - high_response_time_warning
+      - elevated_error_rate

@@ -1,0 +1,172 @@
+{
+  "version": "1.0.0",
+  "project": "Stock Portfolio Management System",
+  "agents": {
+    "business-analyst": {
+      "name": "Business Analyst",
+      "description": "Analyze and document business requirements, create user stories, manage CLAUDE.md",
+      "model": "claude-3-5-sonnet-20241022",
+      "template": ".claude/agents/business-analyst.md",
+      "capabilities": [
+        "Requirements gathering",
+        "Gap analysis",
+        "User journey mapping",
+        "Business process documentation",
+        "CLAUDE.md management"
+      ],
+      "language": "en"
+    },
+    "development-planner": {
+      "name": "Development Planner Enhanced",
+      "description": "Create detailed technical specifications and development plans",
+      "model": "claude-3-5-sonnet-20241022",
+      "template": ".claude/agents/development-planner-enhanced.md",
+      "capabilities": [
+        "Technical architecture design",
+        "WebSocket management planning",
+        "Session management design",
+        "Phased implementation planning",
+        "Risk assessment"
+      ],
+      "language": "en"
+    },
+    "devops-maturity-auditor": {
+      "name": "DevOps Maturity Auditor",
+      "description": "Audit and improve DevOps practices against maturity standards",
+      "model": "claude-3-5-sonnet-20241022",
+      "template": ".claude/agents/devops-maturity-auditor.md",
+      "capabilities": [
+        "CI/CD pipeline assessment",
+        "Infrastructure as Code review",
+        "Security scanning integration",
+        "Monitoring & observability",
+        "Disaster recovery planning"
+      ],
+      "language": "en"
+    },
+    "sop-enforcer": {
+      "name": "SOP Enforcer",
+      "description": "Enforce project standards and prevent breaking changes",
+      "model": "claude-3-5-sonnet-20241022",
+      "template": ".claude/agents/sop-enforcer.md",
+      "capabilities": [
+        "Code change validation",
+        "Git workflow enforcement",
+        "Next.js routing standards",
+        "Build/rebuild management",
+        "Zero hardcoding policy"
+      ],
+      "language": "th"
+    },
+    "dev-life-consultant": {
+      "name": "Development & Life Consultant",
+      "description": "Provide holistic development and life management advice",
+      "model": "claude-3-5-sonnet-20241022",
+      "template": ".claude/agents/dev-life-consultant.md",
+      "capabilities": [
+        "Software architecture consulting",
+        "Funding & business strategy",
+        "Productivity optimization",
+        "Work-life balance",
+        "Technical debugging"
+      ],
+      "language": "en"
+    },
+    "code-reviewer": {
+      "name": "Code Reviewer",
+      "description": "Review code against project standards",
+      "model": "claude-3-5-sonnet-20241022",
+      "builtin": true,
+      "capabilities": [
+        "Code quality checks",
+        "Security validation",
+        "Performance analysis",
+        "Best practices enforcement"
+      ],
+      "language": "en"
+    },
+    "technical-architect": {
+      "name": "Technical Architect",
+      "description": "Design system architecture and technical specifications",
+      "model": "claude-3-5-sonnet-20241022",
+      "builtin": true,
+      "capabilities": [
+        "System design",
+        "API specification",
+        "Database schema design",
+        "Integration patterns"
+      ],
+      "language": "en"
+    },
+    "system-analyst": {
+      "name": "System Analyst",
+      "description": "Analyze system requirements and create technical documentation",
+      "model": "claude-3-5-sonnet-20241022",
+      "builtin": true,
+      "capabilities": [
+        "System analysis",
+        "Technical documentation",
+        "Process optimization",
+        "Integration analysis"
+      ],
+      "language": "en"
+    }
+  },
+  "workflows": {
+    "new-feature": {
+      "name": "New Feature Development",
+      "steps": [
+        {
+          "agent": "business-analyst",
+          "task": "Gather and analyze requirements"
+        },
+        {
+          "agent": "technical-architect",
+          "task": "Design technical architecture"
+        },
+        {
+          "agent": "development-planner",
+          "task": "Create implementation plan"
+        },
+        {
+          "agent": "sop-enforcer",
+          "task": "Validate against SOPs"
+        },
+        {
+          "agent": "code-reviewer",
+          "task": "Review implementation"
+        }
+      ]
+    },
+    "bug-fix": {
+      "name": "Bug Fix Workflow",
+      "steps": [
+        {
+          "agent": "sop-enforcer",
+          "task": "Assess impact and check SOPs"
+        },
+        {
+          "agent": "code-reviewer",
+          "task": "Review fix implementation"
+        }
+      ]
+    },
+    "production-deployment": {
+      "name": "Production Deployment",
+      "steps": [
+        {
+          "agent": "devops-maturity-auditor",
+          "task": "Audit deployment readiness"
+        },
+        {
+          "agent": "sop-enforcer",
+          "task": "Validate all SOPs"
+        },
+        {
+          "agent": "code-reviewer",
+          "task": "Final code review"
+        }
+      ]
+    }
+  }
+}

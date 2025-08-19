@@ -109,31 +109,59 @@ compile_typescript_modules() {
     fi
 }
 
-# Function to check ports (inherited from original)
+# Function to check ports (enhanced with cleanup script)
 check_ports() {
     echo -e "${CYAN}🔌 Checking ports...${NC}"
     
     local ports=("$PORT" "$WS_PORT" "$CLAUDE_WS_PORT")
     local port_names=("Main" "Terminal WebSocket" "Claude Terminal")
+    local ports_in_use=()
     
+    # First pass - identify ports in use
     for i in "${!ports[@]}"; do
         local port="${ports[$i]}"
         local name="${port_names[$i]}"
         
         if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
             echo -e "${YELLOW}⚠️  ${name} port $port is already in use!${NC}"
-            echo -e "${YELLOW}   Killing existing process...${NC}"
+            ports_in_use+=("$port")
+        else
+            echo -e "${GREEN}✅ ${name} port $port is available${NC}"
+        fi
+    done
+    
+    # If any ports are in use, use cleanup script
+    if [ ${#ports_in_use[@]} -gt 0 ]; then
+        echo -e "${YELLOW}🔧 Running port cleanup for occupied ports...${NC}"
+        
+        # Use cleanup script with FORCE=true for automated cleanup
+        if [ -f "./scripts/cleanup-ports.sh" ]; then
+            FORCE=true ./scripts/cleanup-ports.sh "${ports_in_use[@]}"
+            local cleanup_result=$?
             
-            kill $(lsof -Pi :$port -sTCP:LISTEN -t) 2>/dev/null
-            sleep 1
-            
-            if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
-                echo -e "${RED}❌ Failed to free port $port${NC}"
+            if [ $cleanup_result -ne 0 ]; then
+                echo -e "${RED}❌ Failed to cleanup ports. Exiting...${NC}"
                 exit 1
             fi
+        else
+            # Fallback to old method if script not found
+            echo -e "${YELLOW}📝 Cleanup script not found, using fallback method...${NC}"
+            for port in "${ports_in_use[@]}"; do
+                echo -e "${YELLOW}   Killing processes on port $port...${NC}"
+                kill $(lsof -Pi :$port -sTCP:LISTEN -t) 2>/dev/null
+                sleep 1
+                
+                if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+                    echo -e "${RED}❌ Failed to free port $port${NC}"
+                    exit 1
+                fi
+            done
         fi
-        echo -e "${GREEN}✅ ${name} port $port is available${NC}"
-    done
+        
+        echo -e "${GREEN}✅ All required ports are now available${NC}"
+    else
+        echo -e "${GREEN}✅ All ports are available${NC}"
+    fi
 }
 
 # Function to get network info

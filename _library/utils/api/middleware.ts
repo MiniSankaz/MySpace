@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/infrastructure/auth/auth";
+import { AuthService } from "@/infrastructure/auth/auth";
 
 interface MiddlewareOptions {
   requireAuth?: boolean;
@@ -15,7 +15,7 @@ export function withApiMiddleware(
     try {
       // Authentication check
       if (options.requireAuth) {
-        const session = await auth();
+        const session = await AuthService.getSession(req);
         if (!session) {
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }

@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import * as fs from "fs";
+import * as path from "path";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 interface User {
   id: string;
@@ -22,20 +22,21 @@ interface AuthTokens {
 }
 
 export class LocalAuthService {
-  private readonly USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
-  private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-  private readonly JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
-  private readonly ACCESS_TOKEN_EXPIRY = '15m';
-  private readonly REFRESH_TOKEN_EXPIRY = '7d';
+  private readonly USERS_FILE = path.join(process.cwd(), "data", "users.json");
+  private readonly JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+  private readonly JWT_REFRESH_SECRET =
+    process.env.JWT_REFRESH_SECRET || "your-refresh-secret";
+  private readonly ACCESS_TOKEN_EXPIRY = "15m";
+  private readonly REFRESH_TOKEN_EXPIRY = "7d";
 
   private loadUsers(): User[] {
     try {
       if (fs.existsSync(this.USERS_FILE)) {
-        const data = fs.readFileSync(this.USERS_FILE, 'utf-8');
+        const data = fs.readFileSync(this.USERS_FILE, "utf-8");
         return JSON.parse(data);
       }
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error("Error loading users:", error);
     }
     return [];
   }
@@ -48,37 +49,45 @@ export class LocalAuthService {
       }
       fs.writeFileSync(this.USERS_FILE, JSON.stringify(users, null, 2));
     } catch (error) {
-      console.error('Error saving users:', error);
+      console.error("Error saving users:", error);
     }
   }
 
   async login(credentials: { emailOrUsername: string; password: string }) {
-    console.log('LocalAuthService: Attempting login for', credentials.emailOrUsername);
-    
+    console.log(
+      "LocalAuthService: Attempting login for",
+      credentials.emailOrUsername,
+    );
+
     const users = this.loadUsers();
-    
+
     // Find user by email or username
-    const user = users.find(u => 
-      (u.email === credentials.emailOrUsername || u.username === credentials.emailOrUsername) &&
-      u.isActive
+    const user = users.find(
+      (u) =>
+        (u.email === credentials.emailOrUsername ||
+          u.username === credentials.emailOrUsername) &&
+        u.isActive,
     );
 
     if (!user) {
-      console.log('LocalAuthService: User not found');
-      throw new Error('Invalid credentials');
+      console.log("LocalAuthService: User not found");
+      throw new Error("Invalid credentials");
     }
 
-    console.log('LocalAuthService: User found, verifying password');
-    
+    console.log("LocalAuthService: User found, verifying password");
+
     // Verify password
-    const isValidPassword = await bcrypt.compare(credentials.password, user.passwordHash);
+    const isValidPassword = await bcrypt.compare(
+      credentials.password,
+      user.passwordHash,
+    );
 
     if (!isValidPassword) {
-      console.log('LocalAuthService: Invalid password');
-      throw new Error('Invalid credentials');
+      console.log("LocalAuthService: Invalid password");
+      throw new Error("Invalid credentials");
     }
 
-    console.log('LocalAuthService: Login successful');
+    console.log("LocalAuthService: Login successful");
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id);
@@ -92,7 +101,7 @@ export class LocalAuthService {
         firstName: user.firstName,
         lastName: user.lastName,
       },
-      tokens
+      tokens,
     };
   }
 
@@ -104,14 +113,14 @@ export class LocalAuthService {
     lastName?: string;
   }) {
     const users = this.loadUsers();
-    
+
     // Check if user already exists
-    const existingUser = users.find(u => 
-      u.email === data.email || u.username === data.username
+    const existingUser = users.find(
+      (u) => u.email === data.email || u.username === data.username,
     );
 
     if (existingUser) {
-      throw new Error('User with this email or username already exists');
+      throw new Error("User with this email or username already exists");
     }
 
     // Hash password
@@ -125,7 +134,9 @@ export class LocalAuthService {
       passwordHash,
       firstName: data.firstName,
       lastName: data.lastName,
-      displayName: data.firstName ? `${data.firstName} ${data.lastName || ''}`.trim() : data.username,
+      displayName: data.firstName
+        ? `${data.firstName} ${data.lastName || ""}`.trim()
+        : data.username,
       isActive: true,
       createdAt: new Date().toISOString(),
     };
@@ -143,38 +154,38 @@ export class LocalAuthService {
         username: newUser.username,
         displayName: newUser.displayName,
       },
-      tokens
+      tokens,
     };
   }
 
   private async generateTokens(userId: string): Promise<AuthTokens> {
-    const user = this.loadUsers().find(u => u.id === userId);
-    
+    const user = this.loadUsers().find((u) => u.id === userId);
+
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     const payload = {
       userId: user.id,
       email: user.email,
       username: user.username,
-      roles: ['user'] // Default role
+      roles: ["user"], // Default role
     };
 
     const accessToken = jwt.sign(payload, this.JWT_SECRET, {
-      expiresIn: this.ACCESS_TOKEN_EXPIRY
+      expiresIn: this.ACCESS_TOKEN_EXPIRY,
     });
 
     const refreshToken = jwt.sign(
       { userId: user.id },
       this.JWT_REFRESH_SECRET,
-      { expiresIn: this.REFRESH_TOKEN_EXPIRY }
+      { expiresIn: this.REFRESH_TOKEN_EXPIRY },
     );
 
     return {
       accessToken,
       refreshToken,
-      expiresIn: 900 // 15 minutes in seconds
+      expiresIn: 900, // 15 minutes in seconds
     };
   }
 
@@ -182,7 +193,7 @@ export class LocalAuthService {
     try {
       return jwt.verify(token, this.JWT_SECRET);
     } catch (error) {
-      throw new Error('Invalid token');
+      throw new Error("Invalid token");
     }
   }
 
@@ -191,16 +202,16 @@ export class LocalAuthService {
       const decoded: any = jwt.verify(refreshToken, this.JWT_REFRESH_SECRET);
       return this.generateTokens(decoded.userId);
     } catch (error) {
-      throw new Error('Invalid refresh token');
+      throw new Error("Invalid refresh token");
     }
   }
 
   async getCurrentUser(userId: string) {
     const users = this.loadUsers();
-    const user = users.find(u => u.id === userId);
-    
+    const user = users.find((u) => u.id === userId);
+
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     return {

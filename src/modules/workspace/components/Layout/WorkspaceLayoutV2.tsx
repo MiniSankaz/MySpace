@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { useWorkspace } from '../../contexts/WorkspaceContext';
-import ProjectSidebarContainer from '@/components/workspace/ProjectSidebar/ProjectSidebarContainer';
-import GitConfigurationV2 from '../GitConfig/GitConfigurationV2';
-import FileExplorer from '../Sidebar/FileExplorer';
-import TerminalContainerV3 from '../Terminal/TerminalContainerV3';
-import TopBar from './TopBar';
-import StatusBar from './StatusBar';
-import QuickActions from './QuickActions';
-import KeyboardShortcuts from './KeyboardShortcuts';
-import FileEditorModal from '../FileEditor/FileEditorModal';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, GitBranch, Terminal, Code, Info } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { useWorkspace } from "../../contexts/WorkspaceContext";
+import ProjectSidebarContainer from "@/components/workspace/ProjectSidebar/ProjectSidebarContainer";
+import GitConfigurationV2 from "../GitConfig/GitConfigurationV2";
+import FileExplorer from "../Sidebar/FileExplorer";
+import TerminalContainerV3 from "../Terminal/TerminalContainerV3";
+import TopBar from "./TopBar";
+import StatusBar from "./StatusBar";
+import QuickActions from "./QuickActions";
+import KeyboardShortcuts from "./KeyboardShortcuts";
+import FileEditorModal from "../FileEditor/FileEditorModal";
+import { motion, AnimatePresence } from "framer-motion";
+import { FolderOpen, GitBranch, Terminal, Code, Info } from "lucide-react";
 
 const TerminalComponent = TerminalContainerV3;
 
@@ -27,17 +27,21 @@ export const WorkspaceLayoutV2: React.FC = () => {
     error,
   } = useWorkspace();
 
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [fullscreenTerminal, setFullscreenTerminal] = useState(false);
-  const [mainView, setMainView] = useState<'project-info' | 'terminal' | 'git' | 'code'>('project-info'); // Default to Project info view
-  const [rightSidebarTab, setRightSidebarTab] = useState<'files' | 'config'>('files');
+  const [mainView, setMainView] = useState<
+    "project-info" | "terminal" | "git" | "code"
+  >("project-info"); // Default to Project info view
+  const [rightSidebarTab, setRightSidebarTab] = useState<"files" | "config">(
+    "files",
+  );
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [isFileEditorOpen, setIsFileEditorOpen] = useState(false);
 
   // Handle project change from sidebar
   const handleProjectChange = useCallback((project: any) => {
-    console.log('[WorkspaceLayoutV2] Project changed:', project.name);
+    console.log("[WorkspaceLayoutV2] Project changed:", project.name);
     // The project change is handled by the context
   }, []);
 
@@ -45,52 +49,52 @@ export const WorkspaceLayoutV2: React.FC = () => {
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent) => {
       // Cmd/Ctrl + K for quick actions
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setShowQuickActions(!showQuickActions);
       }
       // Cmd/Ctrl + \ for sidebar toggle
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
         e.preventDefault();
         toggleSidebar();
       }
       // Cmd/Ctrl + Shift + F for fullscreen terminal
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'F') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
         e.preventDefault();
         setFullscreenTerminal(!fullscreenTerminal);
       }
       // Cmd/Ctrl + Shift + D for theme toggle
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "D") {
         e.preventDefault();
-        setTheme(theme === 'dark' ? 'light' : 'dark');
+        setTheme(theme === "dark" ? "light" : "dark");
       }
       // Cmd/Ctrl + I for Project Info view
-      if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "i") {
         e.preventDefault();
-        setMainView('project-info');
+        setMainView("project-info");
       }
       // Cmd/Ctrl + G for Git view
-      if ((e.metaKey || e.ctrlKey) && e.key === 'g') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "g") {
         e.preventDefault();
-        setMainView('git');
+        setMainView("git");
       }
       // Cmd/Ctrl + T for Terminal view
-      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "t") {
         e.preventDefault();
-        setMainView('terminal');
+        setMainView("terminal");
       }
     };
 
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
   }, [showQuickActions, fullscreenTerminal, theme, toggleSidebar]);
 
   // Apply theme
   useEffect(() => {
-    if (theme === 'light') {
-      document.documentElement.classList.add('light-mode');
+    if (theme === "light") {
+      document.documentElement.classList.add("light-mode");
     } else {
-      document.documentElement.classList.remove('light-mode');
+      document.documentElement.classList.remove("light-mode");
     }
   }, [theme]);
 
@@ -98,7 +102,7 @@ export const WorkspaceLayoutV2: React.FC = () => {
   if (loading && !currentProject) {
     return (
       <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
@@ -107,11 +111,25 @@ export const WorkspaceLayoutV2: React.FC = () => {
             <div className="absolute inset-0 blur-xl bg-gradient-to-r from-blue-500 to-purple-500 rounded-full opacity-30 animate-pulse"></div>
             <div className="relative bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700">
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-600 border-t-blue-500 mx-auto"></div>
-              <p className="mt-6 text-gray-300 font-medium">Initializing Workspace...</p>
+              <p className="mt-6 text-gray-300 font-medium">
+                Initializing Workspace...
+              </p>
               <div className="mt-4 flex justify-center space-x-1">
-                <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0 }} className="w-2 h-2 bg-blue-500 rounded-full"></motion.div>
-                <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }} className="w-2 h-2 bg-blue-500 rounded-full"></motion.div>
-                <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.4 }} className="w-2 h-2 bg-blue-500 rounded-full"></motion.div>
+                <motion.div
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
+                  className="w-2 h-2 bg-blue-500 rounded-full"
+                ></motion.div>
+                <motion.div
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
+                  className="w-2 h-2 bg-blue-500 rounded-full"
+                ></motion.div>
+                <motion.div
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.4 }}
+                  className="w-2 h-2 bg-blue-500 rounded-full"
+                ></motion.div>
               </div>
             </div>
           </div>
@@ -124,22 +142,34 @@ export const WorkspaceLayoutV2: React.FC = () => {
   if (error && !currentProject) {
     return (
       <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center max-w-md"
         >
           <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-red-900/50">
-            <motion.div 
+            <motion.div
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
               className="text-red-500 mb-4"
             >
-              <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-20 h-20 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </motion.div>
-            <h2 className="text-2xl font-bold text-white mb-3">Workspace Error</h2>
+            <h2 className="text-2xl font-bold text-white mb-3">
+              Workspace Error
+            </h2>
             <p className="text-gray-400 mb-6">{error}</p>
             <div className="flex gap-3 justify-center">
               <button
@@ -162,10 +192,12 @@ export const WorkspaceLayoutV2: React.FC = () => {
   }
 
   return (
-    <div className={`h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} text-gray-100 overflow-hidden flex flex-col`}>
+    <div
+      className={`h-screen ${theme === "dark" ? "bg-gray-900" : "bg-gray-50"} text-gray-100 overflow-hidden flex flex-col`}
+    >
       {/* Top Bar */}
-      <TopBar 
-        theme={theme} 
+      <TopBar
+        theme={theme}
         onThemeChange={setTheme}
         onQuickActions={() => setShowQuickActions(true)}
         fullscreen={fullscreenTerminal}
@@ -175,24 +207,24 @@ export const WorkspaceLayoutV2: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-hidden flex">
         {/* Project Sidebar (Left) */}
-        <ProjectSidebarContainer 
-          onProjectChange={handleProjectChange}
-        />
+        <ProjectSidebarContainer onProjectChange={handleProjectChange} />
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* View Selector Tabs */}
-          <div className={`flex items-center border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'} px-4`}>
+          <div
+            className={`flex items-center border-b ${theme === "dark" ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-white"} px-4`}
+          >
             <button
-              onClick={() => setMainView('project-info')}
+              onClick={() => setMainView("project-info")}
               className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-all ${
-                mainView === 'project-info'
-                  ? theme === 'dark' 
-                    ? 'text-blue-400 border-b-2 border-blue-400' 
-                    : 'text-blue-600 border-b-2 border-blue-600'
-                  : theme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-300'
-                    : 'text-gray-600 hover:text-gray-800'
+                mainView === "project-info"
+                  ? theme === "dark"
+                    ? "text-blue-400 border-b-2 border-blue-400"
+                    : "text-blue-600 border-b-2 border-blue-600"
+                  : theme === "dark"
+                    ? "text-gray-400 hover:text-gray-300"
+                    : "text-gray-600 hover:text-gray-800"
               }`}
             >
               <Info className="w-4 h-4" />
@@ -200,53 +232,53 @@ export const WorkspaceLayoutV2: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setMainView('terminal')}
+              onClick={() => setMainView("terminal")}
               className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-all ${
-                mainView === 'terminal'
-                  ? theme === 'dark' 
-                    ? 'text-blue-400 border-b-2 border-blue-400' 
-                    : 'text-blue-600 border-b-2 border-blue-600'
-                  : theme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-300'
-                    : 'text-gray-600 hover:text-gray-800'
+                mainView === "terminal"
+                  ? theme === "dark"
+                    ? "text-blue-400 border-b-2 border-blue-400"
+                    : "text-blue-600 border-b-2 border-blue-600"
+                  : theme === "dark"
+                    ? "text-gray-400 hover:text-gray-300"
+                    : "text-gray-600 hover:text-gray-800"
               }`}
             >
               <Terminal className="w-4 h-4" />
               <span>Terminal</span>
             </button>
-            
+
             <button
-              onClick={() => setMainView('git')}
+              onClick={() => setMainView("git")}
               className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-all ${
-                mainView === 'git'
-                  ? theme === 'dark' 
-                    ? 'text-blue-400 border-b-2 border-blue-400' 
-                    : 'text-blue-600 border-b-2 border-blue-600'
-                  : theme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-300'
-                    : 'text-gray-600 hover:text-gray-800'
+                mainView === "git"
+                  ? theme === "dark"
+                    ? "text-blue-400 border-b-2 border-blue-400"
+                    : "text-blue-600 border-b-2 border-blue-600"
+                  : theme === "dark"
+                    ? "text-gray-400 hover:text-gray-300"
+                    : "text-gray-600 hover:text-gray-800"
               }`}
             >
               <GitBranch className="w-4 h-4" />
               <span>Git</span>
             </button>
-            
+
             <button
-              onClick={() => setMainView('code')}
+              onClick={() => setMainView("code")}
               className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-all ${
-                mainView === 'code'
-                  ? theme === 'dark' 
-                    ? 'text-blue-400 border-b-2 border-blue-400' 
-                    : 'text-blue-600 border-b-2 border-blue-600'
-                  : theme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-300'
-                    : 'text-gray-600 hover:text-gray-800'
+                mainView === "code"
+                  ? theme === "dark"
+                    ? "text-blue-400 border-b-2 border-blue-400"
+                    : "text-blue-600 border-b-2 border-blue-600"
+                  : theme === "dark"
+                    ? "text-gray-400 hover:text-gray-300"
+                    : "text-gray-600 hover:text-gray-800"
               }`}
             >
               <Code className="w-4 h-4" />
               <span>Code</span>
             </button>
-            
+
             {/* Current Project Indicator */}
             {currentProject && (
               <div className="ml-auto flex items-center space-x-2 text-sm text-gray-500">
@@ -266,12 +298,18 @@ export const WorkspaceLayoutV2: React.FC = () => {
                   exit={{ opacity: 0 }}
                   className="h-full relative"
                 >
-                  {currentProject && <TerminalComponent project={currentProject} />}
+                  {currentProject && (
+                    <TerminalComponent project={currentProject} />
+                  )}
                 </motion.div>
               ) : (
                 <PanelGroup direction="horizontal" className="h-full">
                   {/* Main Content Panel */}
-                  <Panel defaultSize={75} minSize={50} className={`${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} overflow-hidden`}>
+                  <Panel
+                    defaultSize={75}
+                    minSize={50}
+                    className={`${theme === "dark" ? "bg-gray-900" : "bg-gray-50"} overflow-hidden`}
+                  >
                     {currentProject ? (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.98 }}
@@ -280,20 +318,32 @@ export const WorkspaceLayoutV2: React.FC = () => {
                         className="h-full relative"
                       >
                         {/* Project Info View */}
-                        {mainView === 'project-info' && (
+                        {mainView === "project-info" && (
                           <div className="h-full overflow-y-auto p-6">
                             <div className="max-w-4xl mx-auto">
-                              <div className={`${theme === 'dark' ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-sm rounded-2xl p-8 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                              <div
+                                className={`${theme === "dark" ? "bg-gray-800/50" : "bg-white/50"} backdrop-blur-sm rounded-2xl p-8 border ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}
+                              >
                                 <div className="flex items-center space-x-3 mb-6">
-                                  <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
-                                    <Info className={`w-8 h-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                                  <div
+                                    className={`p-3 rounded-lg ${theme === "dark" ? "bg-blue-500/20" : "bg-blue-100"}`}
+                                  >
+                                    <Info
+                                      className={`w-8 h-8 ${theme === "dark" ? "text-blue-400" : "text-blue-600"}`}
+                                    />
                                   </div>
                                   <div>
-                                    <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                      {currentProject?.name || 'Project Information'}
+                                    <h1
+                                      className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                    >
+                                      {currentProject?.name ||
+                                        "Project Information"}
                                     </h1>
-                                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                      {currentProject?.description || 'Project overview and details'}
+                                    <p
+                                      className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                    >
+                                      {currentProject?.description ||
+                                        "Project overview and details"}
                                     </p>
                                   </div>
                                 </div>
@@ -301,26 +351,48 @@ export const WorkspaceLayoutV2: React.FC = () => {
                                 {currentProject ? (
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {/* Project Details */}
-                                    <div className={`${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-xl p-6`}>
-                                      <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                    <div
+                                      className={`${theme === "dark" ? "bg-gray-700/30" : "bg-gray-50"} rounded-xl p-6`}
+                                    >
+                                      <h3
+                                        className={`text-lg font-semibold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                      >
                                         Project Details
                                       </h3>
                                       <div className="space-y-3">
                                         <div className="flex justify-between">
-                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Path:</span>
-                                          <span className={`font-mono text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'} break-all`}>
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                          >
+                                            Path:
+                                          </span>
+                                          <span
+                                            className={`font-mono text-sm ${theme === "dark" ? "text-gray-300" : "text-gray-800"} break-all`}
+                                          >
                                             {currentProject.path}
                                           </span>
                                         </div>
                                         <div className="flex justify-between">
-                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Type:</span>
-                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                          >
+                                            Type:
+                                          </span>
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-300" : "text-gray-800"}`}
+                                          >
                                             Web Application
                                           </span>
                                         </div>
                                         <div className="flex justify-between">
-                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Status:</span>
-                                          <span className={`px-2 py-1 rounded text-xs font-medium bg-green-500/20 text-green-400`}>
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                          >
+                                            Status:
+                                          </span>
+                                          <span
+                                            className={`px-2 py-1 rounded text-xs font-medium bg-green-500/20 text-green-400`}
+                                          >
                                             Active
                                           </span>
                                         </div>
@@ -328,57 +400,92 @@ export const WorkspaceLayoutV2: React.FC = () => {
                                     </div>
 
                                     {/* Recent Activity */}
-                                    <div className={`${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-xl p-6`}>
-                                      <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                    <div
+                                      className={`${theme === "dark" ? "bg-gray-700/30" : "bg-gray-50"} rounded-xl p-6`}
+                                    >
+                                      <h3
+                                        className={`text-lg font-semibold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                      >
                                         Recent Activity
                                       </h3>
                                       <div className="space-y-3">
                                         <div className="flex justify-between">
-                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Created:</span>
-                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
-                                            {new Date(currentProject.createdAt).toLocaleDateString()}
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                          >
+                                            Created:
+                                          </span>
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-300" : "text-gray-800"}`}
+                                          >
+                                            {new Date(
+                                              currentProject.createdAt,
+                                            ).toLocaleDateString()}
                                           </span>
                                         </div>
                                         <div className="flex justify-between">
-                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Last Access:</span>
-                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
-                                            {currentProject.preferences?.lastAccessedAt 
-                                              ? new Date(currentProject.preferences.lastAccessedAt).toLocaleDateString()
-                                              : 'Today'
-                                            }
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                          >
+                                            Last Access:
+                                          </span>
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-300" : "text-gray-800"}`}
+                                          >
+                                            {currentProject.preferences
+                                              ?.lastAccessedAt
+                                              ? new Date(
+                                                  currentProject.preferences.lastAccessedAt,
+                                                ).toLocaleDateString()
+                                              : "Today"}
                                           </span>
                                         </div>
                                         <div className="flex justify-between">
-                                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Pinned:</span>
-                                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
-                                            {currentProject.preferences?.isPinned ? 'Yes' : 'No'}
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                                          >
+                                            Pinned:
+                                          </span>
+                                          <span
+                                            className={`${theme === "dark" ? "text-gray-300" : "text-gray-800"}`}
+                                          >
+                                            {currentProject.preferences
+                                              ?.isPinned
+                                              ? "Yes"
+                                              : "No"}
                                           </span>
                                         </div>
                                       </div>
                                     </div>
 
                                     {/* Quick Actions */}
-                                    <div className={`${theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-xl p-6 md:col-span-2`}>
-                                      <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                    <div
+                                      className={`${theme === "dark" ? "bg-gray-700/30" : "bg-gray-50"} rounded-xl p-6 md:col-span-2`}
+                                    >
+                                      <h3
+                                        className={`text-lg font-semibold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                                      >
                                         Quick Actions
                                       </h3>
                                       <div className="flex flex-wrap gap-3">
                                         <button
-                                          onClick={() => setMainView('terminal')}
+                                          onClick={() =>
+                                            setMainView("terminal")
+                                          }
                                           className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all"
                                         >
                                           <Terminal className="w-4 h-4" />
                                           <span>Open Terminal</span>
                                         </button>
                                         <button
-                                          onClick={() => setMainView('git')}
+                                          onClick={() => setMainView("git")}
                                           className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all"
                                         >
                                           <GitBranch className="w-4 h-4" />
                                           <span>Git Management</span>
                                         </button>
                                         <button
-                                          onClick={() => setMainView('code')}
+                                          onClick={() => setMainView("code")}
                                           className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg transition-all"
                                         >
                                           <Code className="w-4 h-4" />
@@ -389,12 +496,19 @@ export const WorkspaceLayoutV2: React.FC = () => {
                                   </div>
                                 ) : (
                                   <div className="text-center py-12">
-                                    <Info className={`w-16 h-16 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'} mx-auto mb-4`} />
-                                    <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} mb-2`}>
+                                    <Info
+                                      className={`w-16 h-16 ${theme === "dark" ? "text-gray-600" : "text-gray-400"} mx-auto mb-4`}
+                                    />
+                                    <h3
+                                      className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"} mb-2`}
+                                    >
                                       No Project Selected
                                     </h3>
-                                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
-                                      Select a project from the sidebar to view its information
+                                    <p
+                                      className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"} mb-6`}
+                                    >
+                                      Select a project from the sidebar to view
+                                      its information
                                     </p>
                                   </div>
                                 )}
@@ -404,62 +518,80 @@ export const WorkspaceLayoutV2: React.FC = () => {
                         )}
 
                         {/* Terminal View */}
-                        {mainView === 'terminal' && (
+                        {mainView === "terminal" && (
                           <div className="h-full">
                             <TerminalComponent project={currentProject} />
                           </div>
                         )}
-                        
+
                         {/* Git View */}
-                        {mainView === 'git' && (
+                        {mainView === "git" && (
                           <div className="h-full">
                             {currentProject ? (
-                              <GitConfigurationV2 
+                              <GitConfigurationV2
                                 project={currentProject}
                                 onBranchChange={(branch) => {
-                                  console.log('[WorkspaceLayoutV2] Branch changed:', branch);
+                                  console.log(
+                                    "[WorkspaceLayoutV2] Branch changed:",
+                                    branch,
+                                  );
                                 }}
                               />
                             ) : (
                               <div className="flex items-center justify-center h-full">
                                 <div className="text-center">
                                   <GitBranch className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                  <h3 className="text-lg font-medium text-gray-300 mb-2">No Project Selected</h3>
-                                  <p className="text-gray-400">Please select a project from the sidebar to view Git configuration</p>
+                                  <h3 className="text-lg font-medium text-gray-300 mb-2">
+                                    No Project Selected
+                                  </h3>
+                                  <p className="text-gray-400">
+                                    Please select a project from the sidebar to
+                                    view Git configuration
+                                  </p>
                                 </div>
                               </div>
                             )}
                           </div>
                         )}
-                        
+
                         {/* Code View (placeholder) */}
-                        {mainView === 'code' && (
+                        {mainView === "code" && (
                           <div className="h-full flex items-center justify-center">
                             <div className="text-center">
                               <Code className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                              <p className="text-gray-400">Code editor coming soon</p>
+                              <p className="text-gray-400">
+                                Code editor coming soon
+                              </p>
                             </div>
                           </div>
                         )}
                       </motion.div>
                     ) : (
                       <div className="h-full flex items-center justify-center">
-                        <motion.div 
+                        <motion.div
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="text-center max-w-md"
                         >
-                          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} p-12 rounded-2xl shadow-2xl ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} border`}>
+                          <div
+                            className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} p-12 rounded-2xl shadow-2xl ${theme === "dark" ? "border-gray-700" : "border-gray-200"} border`}
+                          >
                             <motion.div
                               animate={{ rotate: [0, 10, -10, 0] }}
                               transition={{ duration: 4, repeat: Infinity }}
                             >
-                              <FolderOpen className={`mx-auto h-24 w-24 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
+                              <FolderOpen
+                                className={`mx-auto h-24 w-24 ${theme === "dark" ? "text-gray-600" : "text-gray-400"}`}
+                              />
                             </motion.div>
-                            <h3 className={`mt-6 text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            <h3
+                              className={`mt-6 text-xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                            >
                               No Project Selected
                             </h3>
-                            <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <p
+                              className={`mt-2 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+                            >
                               Select a project from the sidebar to get started
                             </p>
                             <button
@@ -475,10 +607,14 @@ export const WorkspaceLayoutV2: React.FC = () => {
                   </Panel>
 
                   {/* Resize Handle */}
-                  <PanelResizeHandle className={`w-1 ${theme === 'dark' ? 'bg-gray-700 hover:bg-blue-500' : 'bg-gray-300 hover:bg-blue-400'} transition-colors cursor-col-resize group`}>
+                  <PanelResizeHandle
+                    className={`w-1 ${theme === "dark" ? "bg-gray-700 hover:bg-blue-500" : "bg-gray-300 hover:bg-blue-400"} transition-colors cursor-col-resize group`}
+                  >
                     <div className="h-full w-full relative">
                       <div className="absolute inset-y-0 left-1/2 transform -translate-x-1/2 flex items-center">
-                        <div className={`w-0.5 h-8 ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-400'} rounded-full opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+                        <div
+                          className={`w-0.5 h-8 ${theme === "dark" ? "bg-gray-600" : "bg-gray-400"} rounded-full opacity-0 group-hover:opacity-100 transition-opacity`}
+                        ></div>
                       </div>
                     </div>
                   </PanelResizeHandle>
@@ -489,18 +625,18 @@ export const WorkspaceLayoutV2: React.FC = () => {
                     minSize={15}
                     maxSize={40}
                     collapsible={true}
-                    className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-l ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} transition-all duration-300`}
+                    className={`${theme === "dark" ? "bg-gray-800" : "bg-white"} border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} transition-all duration-300`}
                   >
                     <div className="h-full flex flex-col overflow-hidden">
                       {/* File Explorer */}
                       {currentProject && (
-                        <FileExplorer 
-                          projectPath={currentProject.path} 
+                        <FileExplorer
+                          projectPath={currentProject.path}
                           theme={theme}
                           onFileSelect={(file) => {
                             setSelectedFile(file);
                             setIsFileEditorOpen(true);
-                            console.log('File selected:', file);
+                            console.log("File selected:", file);
                           }}
                         />
                       )}
@@ -514,15 +650,12 @@ export const WorkspaceLayoutV2: React.FC = () => {
       </div>
 
       {/* Status Bar */}
-      <StatusBar 
-        project={currentProject}
-        theme={theme}
-      />
+      <StatusBar project={currentProject} theme={theme} />
 
       {/* Quick Actions Modal */}
       <AnimatePresence>
         {showQuickActions && (
-          <QuickActions 
+          <QuickActions
             onClose={() => setShowQuickActions(false)}
             theme={theme}
           />
@@ -549,16 +682,16 @@ export const WorkspaceLayoutV2: React.FC = () => {
           width: 8px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: ${theme === 'dark' ? '#1f2937' : '#f3f4f6'};
+          background: ${theme === "dark" ? "#1f2937" : "#f3f4f6"};
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: ${theme === 'dark' ? '#4b5563' : '#d1d5db'};
+          background: ${theme === "dark" ? "#4b5563" : "#d1d5db"};
           border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: ${theme === 'dark' ? '#6b7280' : '#9ca3af'};
+          background: ${theme === "dark" ? "#6b7280" : "#9ca3af"};
         }
-        
+
         .light-mode {
           color-scheme: light;
         }

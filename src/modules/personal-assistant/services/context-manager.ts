@@ -1,5 +1,5 @@
-import { AssistantContext, UserData, Message } from '../types';
-import { ConversationStorage } from './conversation-storage';
+import { AssistantContext, UserData, Message } from "../types";
+import { ConversationStorage } from "./conversation-storage";
 
 export class ContextManager {
   private contexts: Map<string, AssistantContext> = new Map();
@@ -10,16 +10,22 @@ export class ContextManager {
     this.storage = new ConversationStorage();
   }
 
-  async getContext(userId: string, sessionId: string): Promise<AssistantContext> {
+  async getContext(
+    userId: string,
+    sessionId: string,
+  ): Promise<AssistantContext> {
     const key = `${userId}-${sessionId}`;
-    
+
     if (this.contexts.has(key)) {
       return this.contexts.get(key)!;
     }
-    
+
     // Try to load from storage first
-    const savedMessages = await this.storage.loadConversation(userId, sessionId);
-    
+    const savedMessages = await this.storage.loadConversation(
+      userId,
+      sessionId,
+    );
+
     const userData = await this.getUserData(userId);
     const context: AssistantContext = {
       userId,
@@ -28,10 +34,10 @@ export class ContextManager {
       userData,
       metadata: {
         startTime: new Date(),
-        lastActivity: new Date()
-      }
+        lastActivity: new Date(),
+      },
     };
-    
+
     this.contexts.set(key, context);
     return context;
   }
@@ -40,15 +46,15 @@ export class ContextManager {
     const key = `${context.userId}-${context.sessionId}`;
     context.metadata = {
       ...context.metadata,
-      lastActivity: new Date()
+      lastActivity: new Date(),
     };
     this.contexts.set(key, context);
-    
+
     // Persist to storage
     await this.storage.saveConversation(
       context.userId,
       context.sessionId,
-      context.conversation
+      context.conversation,
     );
   }
 
@@ -56,22 +62,22 @@ export class ContextManager {
     if (this.userDataCache.has(userId)) {
       return this.userDataCache.get(userId)!;
     }
-    
+
     // In production, this would fetch from database
     // For now, return default user data
     const userData: UserData = {
       preferences: {
-        language: 'en',
-        timezone: 'UTC',
-        theme: 'auto',
-        notifications: true
+        language: "en",
+        timezone: "UTC",
+        theme: "auto",
+        notifications: true,
       },
       history: [],
       tasks: [],
       reminders: [],
-      notes: []
+      notes: [],
     };
-    
+
     this.userDataCache.set(userId, userData);
     return userData;
   }
@@ -80,7 +86,7 @@ export class ContextManager {
     const currentData = await this.getUserData(userId);
     const updatedData = { ...currentData, ...data };
     this.userDataCache.set(userId, updatedData);
-    
+
     // In production, this would persist to database
   }
 

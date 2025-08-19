@@ -9,6 +9,7 @@
 ## 📊 Current Situation Analysis
 
 ### Critical Metrics
+
 - **SOP Compliance Score**: 25/100 (CRITICAL FAILURE)
 - **Hardcoded Values**: 3,651 violations detected
 - **Critical Violations**: 19 instances
@@ -17,6 +18,7 @@
 - **Development Status**: BLOCKED until score ≥ 85/100
 
 ### Previous Agent Work Referenced
+
 - **SOP Enforcer** [2025-08-13 16:30]: Created validation tools and enforcement scripts
 - **System Analyst** [Previous sessions]: Defined terminal architecture specifications
 - **Business Analyst** [Previous sessions]: Established zero-hardcoding requirements
@@ -24,6 +26,7 @@
 ## 🎯 Success Criteria
 
 ### Mandatory Requirements
+
 - [ ] SOP Compliance Score ≥ 85/100
 - [ ] Zero hardcoded values in production code
 - [ ] All configuration externalized
@@ -33,6 +36,7 @@
 - [ ] Documentation updated
 
 ## 📋 PHASE 1: EMERGENCY FIX (Day 1-2)
+
 **Duration**: 1-2 days  
 **Priority**: CRITICAL  
 **Goal**: Stop the bleeding and fix critical violations
@@ -40,6 +44,7 @@
 ### Day 1: Initial Assessment & Automated Fixes (8 hours)
 
 #### Morning Session (4 hours)
+
 - [ ] **Task 1.1**: Run initial compliance assessment
   - Acceptance: Full violation report generated
   - Dependencies: None
@@ -57,30 +62,33 @@
   - Dependencies: Task 1.2
   - Time: 1 hour
   - Template:
+
   ```typescript
   // src/config/terminal-refactor.config.ts
   export const terminalRefactorConfig = {
     api: {
-      baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000',
-      timeout: parseInt(process.env.API_TIMEOUT || '5000'),
+      baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:4110",
+      timeout: parseInt(process.env.API_TIMEOUT || "5000"),
     },
     websocket: {
-      host: process.env.WS_HOST || '127.0.0.1',
-      systemPort: parseInt(process.env.TERMINAL_WS_PORT || '4001'),
-      claudePort: parseInt(process.env.CLAUDE_WS_PORT || '4002'),
-      reconnectAttempts: parseInt(process.env.WS_RECONNECT_ATTEMPTS || '3'),
-      reconnectDelay: parseInt(process.env.WS_RECONNECT_DELAY || '1000'),
+      host: process.env.WS_HOST || "127.0.0.1",
+      systemPort: parseInt(process.env.TERMINAL_WS_PORT || "4001"),
+      claudePort: parseInt(process.env.CLAUDE_WS_PORT || "4002"),
+      reconnectAttempts: parseInt(process.env.WS_RECONNECT_ATTEMPTS || "3"),
+      reconnectDelay: parseInt(process.env.WS_RECONNECT_DELAY || "1000"),
     },
     security: {
-      jwtSecret: process.env.JWT_SECRET_KEY || '',
-      wsAuthRequired: process.env.WS_AUTH_REQUIRED === 'true',
-      rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
-    }
+      jwtSecret: process.env.JWT_SECRET_KEY || "",
+      wsAuthRequired: process.env.WS_AUTH_REQUIRED === "true",
+      rateLimitMaxRequests: parseInt(
+        process.env.RATE_LIMIT_MAX_REQUESTS || "100",
+      ),
+    },
   };
 
-  export const getWebSocketUrl = (type: 'system' | 'claude'): string => {
+  export const getWebSocketUrl = (type: "system" | "claude"): string => {
     const { host, systemPort, claudePort } = terminalRefactorConfig.websocket;
-    const port = type === 'system' ? systemPort : claudePort;
+    const port = type === "system" ? systemPort : claudePort;
     return `ws://${host}:${port}`;
   };
 
@@ -104,11 +112,13 @@
   ```
 
 #### Afternoon Session (4 hours)
+
 - [ ] **Task 1.5**: Manual fix for package.json scripts
   - Acceptance: All hardcoded URLs in scripts replaced
   - Dependencies: Task 1.4
   - Time: 30 minutes
   - Changes:
+
   ```json
   {
     "scripts": {
@@ -122,7 +132,7 @@
   - Dependencies: Task 1.5
   - Time: 1 hour
   - Files to update:
-    - docs/claude/*.md (replace hardcoded examples)
+    - docs/claude/\*.md (replace hardcoded examples)
     - README.md (update connection examples)
 
 - [ ] **Task 1.7**: Create security.config.ts
@@ -146,6 +156,7 @@
 ### Day 2: Deep Fixes & Configuration Migration (8 hours)
 
 #### Morning Session (4 hours)
+
 - [ ] **Task 2.1**: Fix WebSocket service hardcoding
   - Acceptance: All WS URLs use configuration
   - Dependencies: Day 1 completion
@@ -160,7 +171,7 @@
   - Dependencies: Task 2.1
   - Time: 1.5 hours
   - Files:
-    - src/services/api/*.ts
+    - src/services/api/\*.ts
     - src/lib/api-client.ts
 
 - [ ] **Task 2.3**: Update environment variables
@@ -174,6 +185,7 @@
     - WS_AUTH_REQUIRED
 
 #### Afternoon Session (4 hours)
+
 - [ ] **Task 2.4**: Fix test files
   - Acceptance: Tests use mock configuration
   - Dependencies: Task 2.3
@@ -199,6 +211,7 @@
   - File: docs/configuration-guide.md
 
 ## 📋 PHASE 2: SECURITY IMPLEMENTATION (Day 3)
+
 **Duration**: 1 day  
 **Priority**: HIGH  
 **Goal**: Implement security standards and monitoring
@@ -206,6 +219,7 @@
 ### Security Tasks (8 hours)
 
 #### Morning Session (4 hours)
+
 - [ ] **Task 3.1**: Implement JWT authentication for WebSockets
   - Acceptance: WS connections require valid JWT
   - Dependencies: Phase 1 completion
@@ -234,6 +248,7 @@
     - Suspicious patterns
 
 #### Afternoon Session (4 hours)
+
 - [ ] **Task 3.4**: Add input validation
   - Acceptance: All inputs validated
   - Dependencies: Task 3.3
@@ -268,6 +283,7 @@
   - File: docs/security-guidelines.md
 
 ## 📋 PHASE 3: TESTING & VALIDATION (Day 4)
+
 **Duration**: 1 day  
 **Priority**: HIGH  
 **Goal**: Ensure all fixes work and achieve compliance
@@ -275,6 +291,7 @@
 ### Validation Tasks (8 hours)
 
 #### Morning Session (4 hours)
+
 - [ ] **Task 4.1**: Unit test updates
   - Acceptance: All tests passing
   - Dependencies: Phase 2 completion
@@ -303,6 +320,7 @@
     - Connection stability
 
 #### Afternoon Session (4 hours)
+
 - [ ] **Task 4.4**: Install pre-commit hooks
   - Acceptance: Hooks preventing violations
   - Dependencies: Task 4.3
@@ -332,6 +350,7 @@
     - Recommendations
 
 ## 📋 PHASE 4: TEAM TRAINING (Day 4.5)
+
 **Duration**: 0.5 day  
 **Priority**: MEDIUM  
 **Goal**: Ensure team follows new standards
@@ -374,6 +393,7 @@
 ## 🔧 Automated Tools Usage
 
 ### Available Scripts
+
 1. **Validation**: `node scripts/sop-compliance-validator.js`
    - Run hourly during fixing
    - Target: Score ≥ 85/100
@@ -391,23 +411,23 @@
 ## 📊 Progress Tracking
 
 ### Daily Metrics Target
-| Day | Phase | Target Score | Critical Violations | Status |
-|-----|-------|--------------|---------------------|--------|
-| 0 | Baseline | 25/100 | 19 | ❌ BLOCKED |
-| 1 | Emergency Fix | 50/100 | <10 | 🔄 Working |
-| 2 | Deep Fixes | 70/100 | <5 | 🔄 Working |
-| 3 | Security | 80/100 | 0 | 🔄 Working |
-| 4 | Validation | 90/100 | 0 | ✅ READY |
+
+| Day | Phase         | Target Score | Critical Violations | Status     |
+| --- | ------------- | ------------ | ------------------- | ---------- |
+| 0   | Baseline      | 25/100       | 19                  | ❌ BLOCKED |
+| 1   | Emergency Fix | 50/100       | <10                 | 🔄 Working |
+| 2   | Deep Fixes    | 70/100       | <5                  | 🔄 Working |
+| 3   | Security      | 80/100       | 0                   | 🔄 Working |
+| 4   | Validation    | 90/100       | 0                   | ✅ READY   |
 
 ### Risk Mitigation
 
 #### High Risk Areas
+
 1. **WebSocket Services**: Complex refactoring needed
    - Mitigation: Incremental changes with testing
-   
 2. **Package-lock.json**: Many false positives
    - Mitigation: Exclude from validation or use filters
-   
 3. **Documentation Examples**: Need careful updating
    - Mitigation: Mark as examples explicitly
 
@@ -417,18 +437,16 @@
 ## 📝 Rollout Strategy
 
 ### Phased Deployment
+
 1. **Development Environment** (Day 1-2)
    - Test all fixes locally
    - Run full test suite
-   
 2. **Staging Environment** (Day 3)
    - Deploy to staging
    - Monitor for 24 hours
-   
 3. **Production Readiness** (Day 4)
    - Final validation
    - Rollback plan ready
-   
 4. **Production Deployment** (Day 5)
    - Deploy during low-traffic window
    - Monitor closely for 48 hours
@@ -436,6 +454,7 @@
 ## ✅ Self-Verification Checklist
 
 ### Development Planner Verification
+
 - [✓] BA requirements reviewed (zero-hardcoding policy)
 - [✓] SA specifications reviewed (terminal architecture)
 - [✓] Current codebase analyzed (3,651 violations found)
@@ -457,6 +476,7 @@
 ## 🎯 Definition of Done
 
 ### Overall Success Criteria
+
 - [ ] SOP Compliance Score ≥ 85/100 achieved
 - [ ] Zero critical violations remaining
 - [ ] All configuration externalized
@@ -473,6 +493,7 @@
 ## 📞 Escalation Path
 
 ### When to Escalate
+
 - Score remains <50 after Day 2
 - Critical security vulnerabilities found
 - Performance degradation >20%
@@ -480,6 +501,7 @@
 - Production incidents occur
 
 ### Escalation Contacts
+
 1. Technical Lead: Review approach
 2. Security Team: Validate security fixes
 3. DevOps Team: Deployment assistance

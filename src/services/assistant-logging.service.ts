@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { prisma } from '@/core/database/prisma';
+import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/core/database/prisma";
 
 export interface AssistantSession {
   id: string;
@@ -20,7 +20,7 @@ export interface AssistantSession {
 export interface AssistantMessage {
   id: string;
   conversationId: string;
-  type: 'user' | 'assistant' | 'system';
+  type: "user" | "assistant" | "system";
   content: string;
   metadata?: any;
   createdAt: Date;
@@ -66,53 +66,60 @@ class AssistantLoggingService {
       // Check if session exists first to avoid unnecessary upsert
       const existingSession = await this.db.assistantChatSession.findUnique({
         where: { id: data.sessionId },
-        select: { id: true, sessionName: true, userId: true, startedAt: true, endedAt: true, metadata: true }
+        select: {
+          id: true,
+          sessionName: true,
+          userId: true,
+          startedAt: true,
+          endedAt: true,
+          metadata: true,
+        },
       });
-      
+
       if (existingSession) {
         // Just update lastActiveAt if session exists
         await this.db.assistantChatSession.update({
           where: { id: data.sessionId },
-          data: { lastActiveAt: new Date(), endedAt: null }
+          data: { lastActiveAt: new Date(), endedAt: null },
         });
-        
+
         return {
           id: existingSession.id,
           sessionId: existingSession.id,
-          title: existingSession.sessionName || 'Unnamed Session',
+          title: existingSession.sessionName || "Unnamed Session",
           userId: existingSession.userId,
           isActive: true,
           startedAt: existingSession.startedAt,
           endedAt: existingSession.endedAt,
           metadata: existingSession.metadata,
-          _count: { messages: 0 } // Skip count for performance
+          _count: { messages: 0 }, // Skip count for performance
         };
       }
-      
+
       // Ensure user exists first
       try {
         const existingUser = await this.db.user.findUnique({
           where: { id: data.userId },
-          select: { id: true }
+          select: { id: true },
         });
-        
+
         if (!existingUser) {
           await this.db.user.create({
             data: {
               id: data.userId,
               email: `${data.userId}@assistant.local`,
-              username: data.userId.replace(/[^a-zA-Z0-9]/g, '_'),
-              passwordHash: 'ASSISTANT_USER',
+              username: data.userId.replace(/[^a-zA-Z0-9]/g, "_"),
+              passwordHash: "ASSISTANT_USER",
               isActive: true,
               createdAt: new Date(),
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           });
         }
       } catch (userError: any) {
         // User might already exist from another request
-        if (userError.code !== 'P2002') {
-          console.warn('Failed to ensure user exists:', userError);
+        if (userError.code !== "P2002") {
+          console.warn("Failed to ensure user exists:", userError);
         }
       }
 
@@ -120,35 +127,36 @@ class AssistantLoggingService {
       const session = await this.db.assistantChatSession.create({
         data: {
           id: data.sessionId,
-          sessionName: data.sessionName || `Session ${new Date().toISOString()}`,
+          sessionName:
+            data.sessionName || `Session ${new Date().toISOString()}`,
           userId: data.userId,
           projectId: data.projectId || null,
-          model: data.model || 'claude-direct',
+          model: data.model || "claude-direct",
           temperature: data.temperature || 0.7,
           maxTokens: data.maxTokens || 4096,
           totalTokensUsed: 0,
           totalCost: 0,
-          metadata: { source: 'assistant-api' },
+          metadata: { source: "assistant-api" },
           startedAt: new Date(),
           lastActiveAt: new Date(),
-        }
+        },
       });
 
       return {
         id: session.id,
         sessionId: session.id,
-        title: session.sessionName || 'Unnamed Session',
+        title: session.sessionName || "Unnamed Session",
         userId: session.userId,
         isActive: true,
         startedAt: session.startedAt,
         endedAt: session.endedAt,
         metadata: session.metadata,
         _count: {
-          messages: 0 // New session has no messages yet
-        }
+          messages: 0, // New session has no messages yet
+        },
       };
     } catch (error) {
-      console.error('Error creating assistant session:', error);
+      console.error("Error creating assistant session:", error);
       throw error;
     }
   }
@@ -156,7 +164,7 @@ class AssistantLoggingService {
   // Log message with guaranteed session-first creation
   async logMessage(data: {
     sessionId: string;
-    role: 'user' | 'assistant' | 'system';
+    role: "user" | "assistant" | "system";
     content: string;
     tokens?: number;
     cost?: number;
@@ -166,12 +174,15 @@ class AssistantLoggingService {
     try {
       // Ensure we have required data
       if (!data.userId) {
-        console.warn('Cannot log message without userId');
+        console.warn("Cannot log message without userId");
         return;
       }
 
-      const contentString = typeof data.content === 'string' ? data.content : JSON.stringify(data.content);
-      
+      const contentString =
+        typeof data.content === "string"
+          ? data.content
+          : JSON.stringify(data.content);
+
       // Use separate transaction with proper error handling
       await this.db.$transaction(async (tx) => {
         // ALWAYS ensure session exists first
@@ -179,7 +190,7 @@ class AssistantLoggingService {
         try {
           const existingSession = await tx.assistantChatSession.findUnique({
             where: { id: data.sessionId },
-            select: { id: true }
+            select: { id: true },
           });
           sessionExists = !!existingSession;
         } catch (checkError) {
@@ -195,7 +206,7 @@ class AssistantLoggingService {
             try {
               const existingUser = await tx.user.findUnique({
                 where: { id: data.userId },
-                select: { id: true }
+                select: { id: true },
               });
               userExists = !!existingUser;
             } catch (userCheckError) {
@@ -209,17 +220,20 @@ class AssistantLoggingService {
                   data: {
                     id: data.userId,
                     email: `${data.userId}@assistant.local`,
-                    username: data.userId.replace(/[^a-zA-Z0-9]/g, '_'),
-                    passwordHash: 'ASSISTANT_USER',
+                    username: data.userId.replace(/[^a-zA-Z0-9]/g, "_"),
+                    passwordHash: "ASSISTANT_USER",
                     isActive: true,
                     createdAt: new Date(),
-                    updatedAt: new Date()
-                  }
+                    updatedAt: new Date(),
+                  },
                 });
               } catch (userCreateError: any) {
                 // User might have been created by another request
-                if (userCreateError.code !== 'P2002') {
-                  console.warn('Failed to create user for assistant session:', userCreateError);
+                if (userCreateError.code !== "P2002") {
+                  console.warn(
+                    "Failed to create user for assistant session:",
+                    userCreateError,
+                  );
                 }
               }
             }
@@ -231,25 +245,26 @@ class AssistantLoggingService {
                 sessionName: `Session ${new Date().toISOString()}`,
                 userId: data.userId,
                 projectId: data.projectId || null,
-                model: 'claude-direct',
+                model: "claude-direct",
                 temperature: 0.7,
                 maxTokens: 4096,
                 totalTokensUsed: data.tokens || 0,
                 totalCost: data.cost || 0,
-                metadata: { source: 'assistant-api' },
+                metadata: { source: "assistant-api" },
                 startedAt: new Date(),
                 lastActiveAt: new Date(),
-              }
+              },
             });
           } catch (createError: any) {
             // Session might have been created by another request - that's ok
-            if (createError.code !== 'P2002') { // Not a unique constraint error
-              console.warn('Failed to create assistant session:', createError);
+            if (createError.code !== "P2002") {
+              // Not a unique constraint error
+              console.warn("Failed to create assistant session:", createError);
               // Don't throw - we'll continue with message creation attempt
             }
           }
         }
-        
+
         // Now create the message (session definitely exists)
         await tx.assistantChatMessage.create({
           data: {
@@ -259,13 +274,13 @@ class AssistantLoggingService {
             projectId: data.projectId || null,
             role: data.role,
             content: contentString,
-            model: 'claude-direct',
+            model: "claude-direct",
             tokensUsed: data.tokens || null,
             cost: data.cost || null,
             timestamp: new Date(),
-          }
+          },
         });
-        
+
         // Update session stats if we have tokens/cost
         if (data.tokens || data.cost) {
           await tx.assistantChatSession.updateMany({
@@ -274,36 +289,39 @@ class AssistantLoggingService {
               totalTokensUsed: { increment: data.tokens || 0 },
               totalCost: { increment: data.cost || 0 },
               lastActiveAt: new Date(),
-            }
+            },
           });
         }
       });
     } catch (error) {
-      console.error('Error logging assistant message:', error);
+      console.error("Error logging assistant message:", error);
       // Don't throw to avoid breaking the main flow
     }
   }
 
   // Get user sessions
-  async getUserSessions(userId: string, projectId?: string): Promise<AssistantSession[]> {
+  async getUserSessions(
+    userId: string,
+    projectId?: string,
+  ): Promise<AssistantSession[]> {
     try {
       const sessions = await this.db.assistantChatSession.findMany({
         where: {
           userId,
           ...(projectId && { projectId }),
         },
-        orderBy: { startedAt: 'desc' },
+        orderBy: { startedAt: "desc" },
         include: {
           _count: {
             select: {
               messages: true,
-            }
-          }
+            },
+          },
         },
         take: 100,
       });
 
-      return sessions.map(s => ({
+      return sessions.map((s) => ({
         id: s.id,
         sessionId: s.id, // Use same ID for consistency
         title: s.sessionName,
@@ -316,7 +334,7 @@ class AssistantLoggingService {
         _count: s._count,
       }));
     } catch (error) {
-      console.error('Error fetching user sessions:', error);
+      console.error("Error fetching user sessions:", error);
       return [];
     }
   }
@@ -327,19 +345,19 @@ class AssistantLoggingService {
       // Use NEW AssistantChatMessage table directly
       const messages = await this.db.assistantChatMessage.findMany({
         where: { sessionId: sessionId },
-        orderBy: { timestamp: 'asc' },
+        orderBy: { timestamp: "asc" },
       });
 
-      return messages.map(m => ({
+      return messages.map((m) => ({
         id: m.id,
         conversationId: m.sessionId, // Use sessionId as conversationId for compatibility
-        type: m.role as 'user' | 'assistant' | 'system',
+        type: m.role as "user" | "assistant" | "system",
         content: m.content,
         metadata: m.metadata,
         createdAt: m.timestamp,
       }));
     } catch (error) {
-      console.error('Error fetching session history:', error);
+      console.error("Error fetching session history:", error);
       return [];
     }
   }
@@ -352,7 +370,7 @@ class AssistantLoggingService {
         where: {},
         include: {
           messages: true,
-        }
+        },
       });
 
       const stats: AssistantStats = {
@@ -362,37 +380,37 @@ class AssistantLoggingService {
         avgTokensPerMessage: 0,
         modelUsage: {},
         totalSessions: sessions.length,
-        activeSessions: sessions.filter(s => {
-          const metadata = s.metadata as any || {};
+        activeSessions: sessions.filter((s) => {
+          const metadata = (s.metadata as any) || {};
           return metadata.projectId === projectId && s.isActive;
         }).length,
       };
 
-      sessions.forEach(session => {
-        const metadata = session.metadata as any || {};
-        
+      sessions.forEach((session) => {
+        const metadata = (session.metadata as any) || {};
+
         // Only count sessions for this projectId
         if (metadata.projectId !== projectId) {
           return;
         }
-        
+
         stats.totalTokens += metadata.totalTokensUsed || 0;
         stats.totalCost += metadata.totalCost || 0;
         stats.totalMessages += session.messages?.length || 0;
-        
+
         // Count model usage
         if (metadata.model) {
-          stats.modelUsage[metadata.model] = (stats.modelUsage[metadata.model] || 0) + 1;
+          stats.modelUsage[metadata.model] =
+            (stats.modelUsage[metadata.model] || 0) + 1;
         }
       });
 
-      stats.avgTokensPerMessage = stats.totalMessages > 0 
-        ? stats.totalTokens / stats.totalMessages 
-        : 0;
+      stats.avgTokensPerMessage =
+        stats.totalMessages > 0 ? stats.totalTokens / stats.totalMessages : 0;
 
       return stats;
     } catch (error) {
-      console.error('Error calculating project stats:', error);
+      console.error("Error calculating project stats:", error);
       return {
         totalMessages: 0,
         totalTokens: 0,
@@ -408,20 +426,22 @@ class AssistantLoggingService {
   // Clear old sessions
   async clearOldSessions(daysToKeep: number = 30): Promise<number> {
     try {
-      const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
-      
+      const cutoffDate = new Date(
+        Date.now() - daysToKeep * 24 * 60 * 60 * 1000,
+      );
+
       const result = await this.db.assistantConversation.deleteMany({
         where: {
           endedAt: {
-            lt: cutoffDate
+            lt: cutoffDate,
           },
-          isActive: false
-        }
+          isActive: false,
+        },
       });
 
       return result.count;
     } catch (error) {
-      console.error('Error clearing old sessions:', error);
+      console.error("Error clearing old sessions:", error);
       return 0;
     }
   }

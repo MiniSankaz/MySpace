@@ -5,6 +5,7 @@
 ---
 
 ## 📋 Pre-Development Checklist (MUST be 100% before coding)
+
 **Status**: ⏳ Not Started (0/6 tasks)
 
 - [ ] **Test Suite Creation**
@@ -14,7 +15,6 @@
   - [ ] Document expected behaviors and edge cases
   - **Owner**: QA Team
   - **Due**: Day 0
-  
 - [ ] **API Contract Documentation**
   - [ ] Document all REST endpoints used by terminal
   - [ ] Document WebSocket message formats
@@ -58,9 +58,11 @@
 ---
 
 ## 🏗️ Phase 1: Foundation (Days 1-3)
+
 **Status**: ⏳ Not Started (0/12 tasks)
 
 ### Day 1: Service Structure Creation
+
 - [ ] Create `/src/services/refactored/` directory
 - [ ] Create `SessionManager.service.ts` with interface
 - [ ] Create `StreamManager.service.ts` with interface
@@ -69,6 +71,7 @@
 - [ ] Create service factory pattern for initialization
 
 ### Day 2: SessionManager Implementation
+
 - [ ] Implement session creation and deletion
 - [ ] Implement session state management
 - [ ] Implement project-session mapping
@@ -77,6 +80,7 @@
 - [ ] Add comprehensive error handling
 
 ### Day 3: StreamManager & MetricsCollector
+
 - [ ] Implement WebSocket connection pooling
 - [ ] Implement process spawn management
 - [ ] Implement stream multiplexing
@@ -87,9 +91,11 @@
 ---
 
 ## 🔄 Phase 2: Migration Layer (Days 4-6)
+
 **Status**: ⏳ Not Started (0/9 tasks)
 
 ### Day 4: Adapter Pattern Implementation
+
 - [ ] Create `LegacyAdapter` base class
 - [ ] Implement `TerminalServiceAdapter`
 - [ ] Implement `MemoryServiceAdapter`
@@ -97,6 +103,7 @@
 - [ ] Add adapter registration system
 
 ### Day 5: Feature Flags & Logging
+
 - [ ] Implement terminal refactor feature flag
 - [ ] Add flag checks to all adapters
 - [ ] Implement dual-write capability
@@ -105,6 +112,7 @@
 - [ ] Set up log-based alerts
 
 ### Day 6: Testing & Validation
+
 - [ ] Test adapter pattern with unit tests
 - [ ] Test feature flag toggling
 - [ ] Validate backward compatibility
@@ -114,9 +122,11 @@
 ---
 
 ## 🚀 Phase 3: Gradual Migration (Days 7-10)
+
 **Status**: ⏳ Not Started (0/15 tasks)
 
 ### Day 7: terminal.service.ts Migration
+
 - [ ] Update imports to use SessionManager
 - [ ] Replace state management calls
 - [ ] Update WebSocket handlers
@@ -124,6 +134,7 @@
 - [ ] Add migration logging
 
 ### Day 8: terminal-memory.service.ts Migration
+
 - [ ] Move session state to SessionManager
 - [ ] Migrate memory pool to SessionManager
 - [ ] Update state synchronization
@@ -131,6 +142,7 @@
 - [ ] Validate state consistency
 
 ### Day 9: terminal-orchestrator.service.ts Migration
+
 - [ ] Move process management to StreamManager
 - [ ] Update coordination logic
 - [ ] Migrate event handling
@@ -138,6 +150,7 @@
 - [ ] Test failover scenarios
 
 ### Day 10: Integration Testing
+
 - [ ] Run full integration test suite
 - [ ] Validate all API endpoints
 - [ ] Test WebSocket stability
@@ -147,21 +160,25 @@
 ---
 
 ## 🔧 Phase 4: Service Consolidation (Days 11-13)
+
 **Status**: ⏳ Not Started (0/12 tasks)
 
 ### Day 11: Lifecycle Consolidation
+
 - [ ] Merge lifecycle logic into SessionManager
 - [ ] Update session creation flow
 - [ ] Update session termination flow
 - [ ] Migrate cleanup procedures
 
 ### Day 12: Metrics & Analytics Consolidation
+
 - [ ] Merge analytics into MetricsCollector
 - [ ] Merge metrics service into MetricsCollector
 - [ ] Update dashboard connections
 - [ ] Migrate historical data
 
 ### Day 13: Logging Unification
+
 - [ ] Consolidate terminal-logging.service.ts
 - [ ] Consolidate workspace-terminal-logging.service.ts
 - [ ] Create unified logging interface
@@ -170,15 +187,18 @@
 ---
 
 ## 🎯 Phase 5: Cleanup & Optimization (Days 14-15)
+
 **Status**: ⏳ Not Started (0/10 tasks)
 
 ### Day 14: Legacy Code Removal
+
 - [ ] Remove deprecated services
 - [ ] Remove adapter layer (after validation)
 - [ ] Clean up unused dependencies
 - [ ] Update imports throughout codebase
 
 ### Day 15: Performance Optimization
+
 - [ ] Implement connection pooling optimizations
 - [ ] Optimize state synchronization
 - [ ] Implement caching strategies
@@ -188,33 +208,39 @@
 ---
 
 ## ✅ Final Validation Checklist
+
 **Status**: ⏳ Not Started (0/20 tasks)
 
 ### Performance Validation
+
 - [ ] CPU usage reduced by 60% or more
 - [ ] Memory usage reduced by 50% or more
 - [ ] WebSocket latency < 50ms p95
 - [ ] Support for 100+ concurrent sessions
 
 ### Functional Validation
+
 - [ ] All terminal operations working
 - [ ] Project switching smooth
 - [ ] Session persistence functional
 - [ ] No data loss during migration
 
 ### Quality Validation
+
 - [ ] Test coverage > 90%
 - [ ] No critical bugs
 - [ ] No memory leaks
 - [ ] No race conditions
 
 ### Operational Validation
+
 - [ ] Zero downtime achieved
 - [ ] Rollback tested successfully
 - [ ] Monitoring operational
 - [ ] Alerts configured
 
 ### Documentation
+
 - [ ] API documentation updated
 - [ ] Architecture diagrams updated
 - [ ] Runbook updated
@@ -225,16 +251,19 @@
 ## 📝 Sign-off Requirements
 
 ### Technical Sign-off
+
 - [ ] Lead Developer approval
 - [ ] System Architect approval
 - [ ] QA Lead approval
 - [ ] DevOps approval
 
 ### Business Sign-off
+
 - [ ] Product Owner approval
 - [ ] Engineering Manager approval
 
 ### Deployment Authorization
+
 - [ ] Final performance metrics reviewed
 - [ ] Rollback plan confirmed
 - [ ] Deployment window scheduled
@@ -245,15 +274,18 @@
 ## 🚨 Blockers & Issues
 
 ### Current Blockers
+
 - None identified yet
 
 ### Risks Being Monitored
+
 1. State synchronization complexity
 2. WebSocket connection stability
 3. Memory management in new services
 4. Performance during migration
 
 ### Issues Log
+
 - No issues reported yet
 
 ---
@@ -261,6 +293,7 @@
 ## 📈 Metrics Dashboard
 
 ### Current Metrics (Baseline)
+
 - **CPU Usage**: 100% (baseline)
 - **Memory Usage**: 100% (baseline)
 - **WebSocket Latency**: ~150ms p95
@@ -268,6 +301,7 @@
 - **Error Rate**: 0.5% average
 
 ### Target Metrics (Post-Refactor)
+
 - **CPU Usage**: 40% (-60%)
 - **Memory Usage**: 50% (-50%)
 - **WebSocket Latency**: <50ms p95
@@ -275,6 +309,7 @@
 - **Error Rate**: <0.1%
 
 ### Progress Indicators
+
 - **Tasks Completed**: 0 of 88 total tasks
 - **Days Elapsed**: 0 of 15 days
 - **Blockers Resolved**: 0 of 0

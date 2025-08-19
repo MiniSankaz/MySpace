@@ -5,6 +5,7 @@ The login system has been successfully set up with database authentication. The 
 ## System Architecture
 
 ### 1. Database Schema
+
 - **User Table**: Stores user credentials with encrypted passwords
 - **Session Table**: Manages user sessions
 - **Role Table**: Defines user roles and permissions
@@ -23,6 +24,7 @@ The login system has been successfully set up with database authentication. The 
    - Redirects to dashboard on success
 
 ### 3. Security Features
+
 - Password hashing with bcrypt (12 rounds)
 - JWT token-based authentication
 - Session management
@@ -73,7 +75,7 @@ npx tsx scripts/database/seed-test-users.ts
 You can register new users via the API:
 
 ```bash
-curl -X POST http://localhost:4000/api/ums/auth/register \
+curl -X POST http://localhost:4110/api/ums/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "newuser@example.com",
@@ -91,13 +93,15 @@ If you have database access, you can manually insert users using a database clie
 ## Testing the Login
 
 1. **Start the application**:
+
    ```bash
    npm run dev
    ```
 
 2. **Navigate to login page**:
+
    ```
-   http://localhost:4000/login
+   http://localhost:4110/login
    ```
 
 3. **Enter credentials**:
@@ -114,7 +118,7 @@ If you have database access, you can manually insert users using a database clie
 Test the login API directly:
 
 ```bash
-curl -X POST http://localhost:4000/api/ums/auth/login \
+curl -X POST http://localhost:4110/api/ums/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "emailOrUsername": "admin",

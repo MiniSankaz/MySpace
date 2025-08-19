@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
-import { 
+import { useState, useEffect } from "react";
+import { terminalConfig, getWebSocketUrl } from "@/config/terminal.config";
+import {
   UserIcon,
   KeyIcon,
   Cog6ToothIcon,
@@ -21,17 +21,17 @@ import {
   CircleStackIcon,
   DocumentTextIcon,
   ChartBarIcon,
-  ChatBubbleLeftRightIcon
-} from '@heroicons/react/24/outline';
-import AppLayout from '@/components/layout/AppLayout';
-import UserSettings from '@/components/settings/UserSettings';
-import ApiSettings from '@/components/settings/ApiSettings';
-import SystemSettings from '@/components/settings/SystemSettings';
-import SecuritySettings from '@/components/settings/SecuritySettings';
-import NotificationSettings from '@/components/settings/NotificationSettings';
-import AppearanceSettings from '@/components/settings/AppearanceSettings';
-import AIAssistantSettings from '@/components/settings/AIAssistantSettings';
-import { authClient } from '@/core/auth/auth-client';
+  ChatBubbleLeftRightIcon,
+} from "@heroicons/react/24/outline";
+import AppLayout from "@/components/layout/AppLayout";
+import UserSettings from "@/components/settings/UserSettings";
+import ApiSettings from "@/components/settings/ApiSettings";
+import SystemSettings from "@/components/settings/SystemSettings";
+import SecuritySettings from "@/components/settings/SecuritySettings";
+import NotificationSettings from "@/components/settings/NotificationSettings";
+import AppearanceSettings from "@/components/settings/AppearanceSettings";
+import AIAssistantSettings from "@/components/settings/AIAssistantSettings";
+import { authClient } from "@/core/auth/auth-client";
 
 interface SettingsTab {
   id: string;
@@ -39,118 +39,118 @@ interface SettingsTab {
   icon: any;
   component: any;
   description: string;
-  category: 'user' | 'api' | 'system' | 'ai';
+  category: "user" | "api" | "system" | "ai";
   requiresAdmin?: boolean;
 }
 
 const settingsTabs: SettingsTab[] = [
   // User Settings
   {
-    id: 'profile',
-    name: 'Profile',
+    id: "profile",
+    name: "Profile",
     icon: UserIcon,
     component: UserSettings,
-    description: 'Manage your personal information and preferences',
-    category: 'user'
+    description: "Manage your personal information and preferences",
+    category: "user",
   },
   {
-    id: 'appearance',
-    name: 'Appearance',
+    id: "appearance",
+    name: "Appearance",
     icon: PaintBrushIcon,
     component: AppearanceSettings,
-    description: 'Customize the look and feel of the application',
-    category: 'user'
+    description: "Customize the look and feel of the application",
+    category: "user",
   },
   {
-    id: 'notifications',
-    name: 'Notifications',
+    id: "notifications",
+    name: "Notifications",
     icon: BellIcon,
     component: NotificationSettings,
-    description: 'Configure how you receive notifications',
-    category: 'user'
+    description: "Configure how you receive notifications",
+    category: "user",
   },
   {
-    id: 'security',
-    name: 'Security',
+    id: "security",
+    name: "Security",
     icon: ShieldCheckIcon,
     component: SecuritySettings,
-    description: 'Manage your security settings and two-factor authentication',
-    category: 'user'
+    description: "Manage your security settings and two-factor authentication",
+    category: "user",
   },
   // AI Assistant Settings
   {
-    id: 'ai-assistant',
-    name: 'AI Assistant',
+    id: "ai-assistant",
+    name: "AI Assistant",
     icon: ChatBubbleLeftRightIcon,
     component: AIAssistantSettings,
-    description: 'Configure AI Assistant behavior and response settings',
-    category: 'ai'
+    description: "Configure AI Assistant behavior and response settings",
+    category: "ai",
   },
   // API Settings
   {
-    id: 'api-tokens',
-    name: 'API Tokens',
+    id: "api-tokens",
+    name: "API Tokens",
     icon: KeyIcon,
     component: ApiSettings,
-    description: 'Manage API tokens and access keys',
-    category: 'api'
+    description: "Manage API tokens and access keys",
+    category: "api",
   },
   {
-    id: 'api-limits',
-    name: 'API Limits',
+    id: "api-limits",
+    name: "API Limits",
     icon: ChartBarIcon,
     component: ApiSettings,
-    description: 'Configure rate limits and usage quotas',
-    category: 'api'
+    description: "Configure rate limits and usage quotas",
+    category: "api",
   },
   {
-    id: 'webhooks',
-    name: 'Webhooks',
+    id: "webhooks",
+    name: "Webhooks",
     icon: GlobeAltIcon,
     component: ApiSettings,
-    description: 'Set up webhook endpoints for events',
-    category: 'api'
+    description: "Set up webhook endpoints for events",
+    category: "api",
   },
   {
-    id: 'integrations',
-    name: 'Integrations',
+    id: "integrations",
+    name: "Integrations",
     icon: ServerIcon,
     component: ApiSettings,
-    description: 'Connect with external services',
-    category: 'api'
+    description: "Connect with external services",
+    category: "api",
   },
   // System Settings (Admin Only)
   {
-    id: 'system',
-    name: 'System',
+    id: "system",
+    name: "System",
     icon: Cog6ToothIcon,
     component: SystemSettings,
-    description: 'System-wide configuration and settings',
-    category: 'system',
-    requiresAdmin: true
+    description: "System-wide configuration and settings",
+    category: "system",
+    requiresAdmin: true,
   },
   {
-    id: 'database',
-    name: 'Database',
+    id: "database",
+    name: "Database",
     icon: CircleStackIcon,
     component: SystemSettings,
-    description: 'Database configuration and maintenance',
-    category: 'system',
-    requiresAdmin: true
+    description: "Database configuration and maintenance",
+    category: "system",
+    requiresAdmin: true,
   },
   {
-    id: 'logs',
-    name: 'Logs',
+    id: "logs",
+    name: "Logs",
     icon: DocumentTextIcon,
     component: SystemSettings,
-    description: 'View and manage system logs',
-    category: 'system',
-    requiresAdmin: true
-  }
+    description: "View and manage system logs",
+    category: "system",
+    requiresAdmin: true,
+  },
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState("profile");
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -162,13 +162,13 @@ export default function SettingsPage() {
 
   const loadUserData = async () => {
     try {
-      const storedUser = localStorage.getItem('user');
+      const storedUser = localStorage.getItem("user");
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         setUser(userData);
       }
     } catch (error) {
-      console.error('Failed to load user data:', error);
+      console.error("Failed to load user data:", error);
     } finally {
       setLoading(false);
     }
@@ -177,71 +177,79 @@ export default function SettingsPage() {
   const handleSave = async (data: any) => {
     setSaving(true);
     setSavedMessage(null);
-    
+
     try {
       // Save settings based on active tab
-      console.log('Saving settings:', activeTab, data);
-      
+      console.log("Saving settings:", activeTab, data);
+
       // Check if data already contains category and settings (from AIAssistantSettings)
       const hasStructure = data.category && data.settings;
-      
+
       // Make actual API call to save settings
       // Convert ai-assistant to ai_assistant for backend consistency
-      const categoryForBackend = hasStructure ? 
-        (data.category === 'ai-assistant' ? 'ai_assistant' : data.category) : 
-        (activeTab === 'ai-assistant' ? 'ai_assistant' : activeTab);
-      
-      const response = await authClient.fetch('/api/settings/user', {
-        method: 'POST',
+      const categoryForBackend = hasStructure
+        ? data.category === "ai-assistant"
+          ? "ai_assistant"
+          : data.category
+        : activeTab === "ai-assistant"
+          ? "ai_assistant"
+          : activeTab;
+
+      const response = await authClient.fetch("/api/settings/user", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           category: categoryForBackend,
-          settings: hasStructure ? data.settings : data
-        })
+          settings: hasStructure ? data.settings : data,
+        }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to save settings');
+        throw new Error(error.error || "Failed to save settings");
       }
 
       const result = await response.json();
-      console.log('Settings saved:', result);
-      
+      console.log("Settings saved:", result);
+
       // Show success message
-      setSavedMessage('Settings saved successfully!');
+      setSavedMessage("Settings saved successfully!");
       setTimeout(() => setSavedMessage(null), process.env.PORT || 3000);
-      
+
       // Reload page to apply new settings
-      if (activeTab === 'ai-assistant' || activeTab === 'ai_assistant') {
+      if (activeTab === "ai-assistant" || activeTab === "ai_assistant") {
         setTimeout(() => {
           window.location.reload();
         }, 1000);
       }
     } catch (error) {
-      console.error('Failed to save settings:', error);
-      setSavedMessage(error instanceof Error ? error.message : 'Failed to save settings. Please try again.');
+      console.error("Failed to save settings:", error);
+      setSavedMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to save settings. Please try again.",
+      );
       setTimeout(() => setSavedMessage(null), terminalConfig.websocket.timeout);
     } finally {
       setSaving(false);
     }
   };
 
-  const activeTabData = settingsTabs.find(tab => tab.id === activeTab);
-  const isAdmin = user?.roles?.includes('admin');
+  const activeTabData = settingsTabs.find((tab) => tab.id === activeTab);
+  const isAdmin = user?.roles?.includes("admin");
 
   // Filter tabs based on user role
-  const visibleTabs = settingsTabs.filter(tab => 
-    !tab.requiresAdmin || isAdmin
+  const visibleTabs = settingsTabs.filter(
+    (tab) => !tab.requiresAdmin || isAdmin,
   );
 
   // Group tabs by category
-  const userTabs = visibleTabs.filter(tab => tab.category === 'user');
-  const aiTabs = visibleTabs.filter(tab => tab.category === 'ai');
-  const apiTabs = visibleTabs.filter(tab => tab.category === 'api');
-  const systemTabs = visibleTabs.filter(tab => tab.category === 'system');
+  const userTabs = visibleTabs.filter((tab) => tab.category === "user");
+  const aiTabs = visibleTabs.filter((tab) => tab.category === "ai");
+  const apiTabs = visibleTabs.filter((tab) => tab.category === "api");
+  const systemTabs = visibleTabs.filter((tab) => tab.category === "system");
 
   if (loading) {
     return (
@@ -280,8 +288,8 @@ export default function SettingsPage() {
                         onClick={() => setActiveTab(tab.id)}
                         className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                           activeTab === tab.id
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? "bg-indigo-100 text-indigo-700"
+                            : "text-gray-700 hover:bg-gray-100"
                         }`}
                       >
                         <tab.icon className="mr-3 h-5 w-5" />
@@ -305,8 +313,8 @@ export default function SettingsPage() {
                           onClick={() => setActiveTab(tab.id)}
                           className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                             activeTab === tab.id
-                              ? 'bg-indigo-100 text-indigo-700'
-                              : 'text-gray-700 hover:bg-gray-100'
+                              ? "bg-indigo-100 text-indigo-700"
+                              : "text-gray-700 hover:bg-gray-100"
                           }`}
                         >
                           <tab.icon className="mr-3 h-5 w-5" />
@@ -330,8 +338,8 @@ export default function SettingsPage() {
                         onClick={() => setActiveTab(tab.id)}
                         className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                           activeTab === tab.id
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? "bg-indigo-100 text-indigo-700"
+                            : "text-gray-700 hover:bg-gray-100"
                         }`}
                       >
                         <tab.icon className="mr-3 h-5 w-5" />
@@ -355,8 +363,8 @@ export default function SettingsPage() {
                           onClick={() => setActiveTab(tab.id)}
                           className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                             activeTab === tab.id
-                              ? 'bg-indigo-100 text-indigo-700'
-                              : 'text-gray-700 hover:bg-gray-100'
+                              ? "bg-indigo-100 text-indigo-700"
+                              : "text-gray-700 hover:bg-gray-100"
                           }`}
                         >
                           <tab.icon className="mr-3 h-5 w-5" />
@@ -398,11 +406,13 @@ export default function SettingsPage() {
               {/* Tab Content */}
               <div className="p-6">
                 {savedMessage && (
-                  <div className={`mb-4 p-4 rounded-md ${
-                    savedMessage.includes('success') 
-                      ? 'bg-green-50 text-green-800' 
-                      : 'bg-red-50 text-red-800'
-                  }`}>
+                  <div
+                    className={`mb-4 p-4 rounded-md ${
+                      savedMessage.includes("success")
+                        ? "bg-green-50 text-green-800"
+                        : "bg-red-50 text-red-800"
+                    }`}
+                  >
                     {savedMessage}
                   </div>
                 )}

@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
-import io, { Socket } from 'socket.io-client';
-import { Message } from '../types';
+import { useEffect, useState, useCallback } from "react";
+import io, { Socket } from "socket.io-client";
+import { Message } from "../types";
 
 interface UseSocketProps {
   userId: string;
@@ -15,63 +15,67 @@ export function useSocket({
   sessionId,
   onMessage,
   onTyping,
-  onStopTyping
+  onStopTyping,
 }: UseSocketProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(
+    null,
+  );
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:process.env.PORT || 4000';
+    const socketUrl =
+      process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
+      "http://localhost:process.env.PORT || 4000";
     const newSocket = io(socketUrl, {
-      path: '/socket.io',
-      transports: ['websocket', 'polling']
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
     });
 
-    newSocket.on('connect', () => {
-      console.log('Socket connected');
+    newSocket.on("connect", () => {
+      console.log("Socket connected");
       setConnected(true);
-      
+
       // Join session room
-      newSocket.emit('join-session', { userId, sessionId });
+      newSocket.emit("join-session", { userId, sessionId });
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
+    newSocket.on("disconnect", () => {
+      console.log("Socket disconnected");
       setConnected(false);
     });
 
-    newSocket.on('session-joined', (data) => {
-      console.log('Joined session:', data.roomName);
+    newSocket.on("session-joined", (data) => {
+      console.log("Joined session:", data.roomName);
     });
 
-    newSocket.on('user-message', (message: Message) => {
+    newSocket.on("user-message", (message: Message) => {
       onMessage?.(message);
     });
 
-    newSocket.on('assistant-response', (data) => {
+    newSocket.on("assistant-response", (data) => {
       const message: Message = {
         id: data.id,
-        userId: 'assistant',
+        userId: "assistant",
         content: data.content,
-        type: 'assistant',
+        type: "assistant",
         timestamp: data.timestamp,
-        metadata: { suggestions: data.suggestions }
+        metadata: { suggestions: data.suggestions },
       };
       onMessage?.(message);
     });
 
-    newSocket.on('user-typing', (data) => {
+    newSocket.on("user-typing", (data) => {
       onTyping?.(data.userId);
     });
 
-    newSocket.on('user-stopped-typing', (data) => {
+    newSocket.on("user-stopped-typing", (data) => {
       onStopTyping?.(data.userId);
     });
 
-    newSocket.on('error', (error) => {
-      console.error('Socket error:', error);
+    newSocket.on("error", (error) => {
+      console.error("Socket error:", error);
     });
 
     setSocket(newSocket);
@@ -81,19 +85,22 @@ export function useSocket({
     };
   }, [userId, sessionId]);
 
-  const sendMessage = useCallback((message: string) => {
-    if (socket && connected) {
-      socket.emit('assistant-message', {
-        userId,
-        sessionId,
-        message
-      });
-    }
-  }, [socket, connected, userId, sessionId]);
+  const sendMessage = useCallback(
+    (message: string) => {
+      if (socket && connected) {
+        socket.emit("assistant-message", {
+          userId,
+          sessionId,
+          message,
+        });
+      }
+    },
+    [socket, connected, userId, sessionId],
+  );
 
   const startTyping = useCallback(() => {
     if (socket && connected && !typing) {
-      socket.emit('typing-start', { userId, sessionId });
+      socket.emit("typing-start", { userId, sessionId });
       setTyping(true);
 
       // Clear existing timeout
@@ -105,14 +112,14 @@ export function useSocket({
       const timeout = setTimeout(() => {
         stopTyping();
       }, 2000);
-      
+
       setTypingTimeout(timeout);
     }
   }, [socket, connected, typing, userId, sessionId, typingTimeout]);
 
   const stopTyping = useCallback(() => {
     if (socket && connected && typing) {
-      socket.emit('typing-stop', { userId, sessionId });
+      socket.emit("typing-stop", { userId, sessionId });
       setTyping(false);
 
       if (typingTimeout) {
@@ -127,6 +134,6 @@ export function useSocket({
     connected,
     sendMessage,
     startTyping,
-    stopTyping
+    stopTyping,
   };
 }

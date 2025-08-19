@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { UserService } from '@/modules/ums/services/user.service';
-import { requireAuth } from '@/modules/ums/middleware/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { UserService } from "@/modules/ums/services/user.service";
+import { requireAuth } from "@/modules/ums/middleware/auth";
 
 const userService = new UserService();
 
@@ -11,31 +11,31 @@ const updateUserSchema = z.object({
   displayName: z.string().optional(),
   phone: z.string().optional(),
   bio: z.string().optional(),
-  avatar: z.string().optional()
+  avatar: z.string().optional(),
 });
 
 // GET /api/ums/users/[userId] - Get user details
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
     const { userId } = await params;
-    
+
     // Verify authentication
     const authResult = await requireAuth(request);
     if (!authResult.authenticated) {
       return NextResponse.json(
         { success: false, error: authResult.error },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     // Users can only get their own data unless they're admin
-    if (userId !== authResult.userId && !authResult.roles?.includes('admin')) {
+    if (userId !== authResult.userId && !authResult.roles?.includes("admin")) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden' },
-        { status: 403 }
+        { success: false, error: "Forbidden" },
+        { status: 403 },
       );
     }
 
@@ -43,16 +43,16 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      user
+      user,
     });
   } catch (error: any) {
-    console.error('Get user error:', error);
+    console.error("Get user error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to get user' 
+      {
+        success: false,
+        error: error.message || "Failed to get user",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
@@ -60,25 +60,25 @@ export async function GET(
 // PUT /api/ums/users/[userId] - Update user
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
     const { userId } = await params;
-    
+
     // Verify authentication
     const authResult = await requireAuth(request);
     if (!authResult.authenticated) {
       return NextResponse.json(
         { success: false, error: authResult.error },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     // Users can only update their own data unless they're admin
-    if (userId !== authResult.userId && !authResult.roles?.includes('admin')) {
+    if (userId !== authResult.userId && !authResult.roles?.includes("admin")) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden' },
-        { status: 403 }
+        { success: false, error: "Forbidden" },
+        { status: 403 },
       );
     }
 
@@ -89,16 +89,16 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      user
+      user,
     });
   } catch (error: any) {
-    console.error('Update user error:', error);
+    console.error("Update user error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to update user' 
+      {
+        success: false,
+        error: error.message || "Failed to update user",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
@@ -106,17 +106,17 @@ export async function PUT(
 // DELETE /api/ums/users/[userId] - Delete user
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
     const { userId } = await params;
-    
+
     // Verify authentication - only admins can delete users
-    const authResult = await requireAuth(request, ['admin']);
+    const authResult = await requireAuth(request, ["admin"]);
     if (!authResult.authenticated) {
       return NextResponse.json(
         { success: false, error: authResult.error },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -124,16 +124,16 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'User deleted successfully'
+      message: "User deleted successfully",
     });
   } catch (error: any) {
-    console.error('Delete user error:', error);
+    console.error("Delete user error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to delete user' 
+      {
+        success: false,
+        error: error.message || "Failed to delete user",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

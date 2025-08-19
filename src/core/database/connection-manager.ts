@@ -3,16 +3,16 @@
  * Handles connection pooling, retry logic, and failover
  */
 
-import { PrismaClient } from '@prisma/client';
-import { developmentConfig } from '@/core/config/development.config';
-import { offlineStore } from './offline-store';
+import { PrismaClient } from "@prisma/client";
+import { developmentConfig } from "@/core/config/development.config";
+import { offlineStore } from "./offline-store";
 
 export enum ConnectionStatus {
-  CONNECTED = 'connected',
-  CONNECTING = 'connecting',
-  DISCONNECTED = 'disconnected',
-  ERROR = 'error',
-  OFFLINE = 'offline'
+  CONNECTED = "connected",
+  CONNECTING = "connecting",
+  DISCONNECTED = "disconnected",
+  ERROR = "error",
+  OFFLINE = "offline",
 }
 
 interface ConnectionMetrics {
@@ -33,7 +33,7 @@ class DatabaseConnectionManager {
     totalAttempts: 0,
     successfulConnections: 0,
     failedConnections: 0,
-    averageResponseTime: 0
+    averageResponseTime: 0,
   };
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private connectionPromise: Promise<PrismaClient> | null = null;
@@ -52,11 +52,11 @@ class DatabaseConnectionManager {
   private async initialize() {
     // Start health check interval
     this.startHealthCheck();
-    
+
     // Attempt initial connection
     if (!developmentConfig.enableOfflineMode) {
-      this.connect().catch(error => {
-        console.error('[DBManager] Initial connection failed:', error);
+      this.connect().catch((error) => {
+        console.error("[DBManager] Initial connection failed:", error);
       });
     }
   }
@@ -89,7 +89,7 @@ class DatabaseConnectionManager {
     try {
       return await this.connect();
     } catch (error) {
-      console.error('[DBManager] Failed to get client:', error);
+      console.error("[DBManager] Failed to get client:", error);
       return null;
     }
   }
@@ -103,7 +103,7 @@ class DatabaseConnectionManager {
     }
 
     this.connectionPromise = this.attemptConnection();
-    
+
     try {
       const client = await this.connectionPromise;
       return client;
@@ -114,21 +114,24 @@ class DatabaseConnectionManager {
 
   private async attemptConnection(): Promise<PrismaClient> {
     this.status = ConnectionStatus.CONNECTING;
-    
+
     const maxAttempts = developmentConfig.databaseRetryAttempts;
     const retryDelay = developmentConfig.databaseRetryDelay;
-    
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       this.metrics.totalAttempts++;
-      
+
       try {
         console.log(`[DBManager] Connection attempt ${attempt}/${maxAttempts}`);
-        
+
         // Create new Prisma client if needed
         if (!this.prismaClient) {
           this.prismaClient = new PrismaClient({
-            log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-            errorFormat: 'minimal',
+            log:
+              process.env.NODE_ENV === "development"
+                ? ["warn", "error"]
+                : ["error"],
+            errorFormat: "minimal",
           });
         }
 
@@ -136,45 +139,51 @@ class DatabaseConnectionManager {
         const startTime = Date.now();
         await this.testConnection();
         const responseTime = Date.now() - startTime;
-        
+
         // Update metrics
         this.metrics.successfulConnections++;
         this.metrics.lastConnectionTime = new Date();
-        this.metrics.averageResponseTime = 
+        this.metrics.averageResponseTime =
           (this.metrics.averageResponseTime + responseTime) / 2;
-        
+
         this.status = ConnectionStatus.CONNECTED;
-        console.log('[DBManager] Database connected successfully');
-        
+        console.log("[DBManager] Database connected successfully");
+
         return this.prismaClient;
       } catch (error) {
         this.metrics.failedConnections++;
         this.metrics.lastErrorTime = new Date();
-        this.metrics.lastError = error instanceof Error ? error.message : 'Unknown error';
-        
-        console.error(`[DBManager] Connection attempt ${attempt} failed:`, error);
-        
+        this.metrics.lastError =
+          error instanceof Error ? error.message : "Unknown error";
+
+        console.error(
+          `[DBManager] Connection attempt ${attempt} failed:`,
+          error,
+        );
+
         if (attempt === maxAttempts) {
           this.status = ConnectionStatus.ERROR;
-          
+
           // Switch to offline mode if configured
           if (developmentConfig.enableDatabaseFallback) {
-            console.log('[DBManager] Switching to offline mode');
+            console.log("[DBManager] Switching to offline mode");
             offlineStore.setOfflineMode(true);
             this.status = ConnectionStatus.OFFLINE;
           }
-          
-          throw new Error(`Database connection failed after ${maxAttempts} attempts`);
+
+          throw new Error(
+            `Database connection failed after ${maxAttempts} attempts`,
+          );
         }
-        
+
         // Wait before retry with exponential backoff
         const delay = retryDelay * Math.pow(2, attempt - 1);
         console.log(`[DBManager] Retrying in ${delay}ms...`);
         await this.sleep(delay);
       }
     }
-    
-    throw new Error('Connection failed');
+
+    throw new Error("Connection failed");
   }
 
   /**
@@ -182,11 +191,14 @@ class DatabaseConnectionManager {
    */
   private async testConnection(): Promise<void> {
     if (!this.prismaClient) {
-      throw new Error('Prisma client not initialized');
+      throw new Error("Prisma client not initialized");
     }
 
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Connection timeout')), developmentConfig.databaseTimeout);
+      setTimeout(
+        () => reject(new Error("Connection timeout")),
+        developmentConfig.databaseTimeout,
+      );
     });
 
     const queryPromise = this.prismaClient.$queryRaw`SELECT 1`;
@@ -202,7 +214,7 @@ class DatabaseConnectionManager {
       await this.prismaClient.$disconnect();
       this.prismaClient = null;
       this.status = ConnectionStatus.DISCONNECTED;
-      console.log('[DBManager] Database disconnected');
+      console.log("[DBManager] Database disconnected");
     }
 
     if (this.healthCheckInterval) {
@@ -225,13 +237,13 @@ class DatabaseConnectionManager {
         try {
           await this.testConnection();
         } catch (error) {
-          console.error('[DBManager] Health check failed:', error);
+          console.error("[DBManager] Health check failed:", error);
           this.status = ConnectionStatus.ERROR;
-          
+
           // Attempt reconnection
           if (developmentConfig.enableAutoRetry) {
-            this.connect().catch(err => {
-              console.error('[DBManager] Reconnection failed:', err);
+            this.connect().catch((err) => {
+              console.error("[DBManager] Reconnection failed:", err);
             });
           }
         }
@@ -244,27 +256,27 @@ class DatabaseConnectionManager {
    */
   async executeWithFallback<T>(
     query: (client: PrismaClient) => Promise<T>,
-    fallback: () => T | Promise<T>
+    fallback: () => T | Promise<T>,
   ): Promise<T> {
     const client = await this.getClient();
-    
+
     if (client) {
       try {
         return await query(client);
       } catch (error) {
-        console.error('[DBManager] Query failed:', error);
-        
+        console.error("[DBManager] Query failed:", error);
+
         // If query fails, try fallback
         if (developmentConfig.enableDatabaseFallback) {
-          console.log('[DBManager] Using fallback');
+          console.log("[DBManager] Using fallback");
           return await fallback();
         }
-        
+
         throw error;
       }
     } else {
       // No client available, use fallback
-      console.log('[DBManager] No database connection, using fallback');
+      console.log("[DBManager] No database connection, using fallback");
       return await fallback();
     }
   }
@@ -308,7 +320,7 @@ class DatabaseConnectionManager {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

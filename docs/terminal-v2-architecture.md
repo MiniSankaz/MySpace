@@ -44,9 +44,11 @@ Terminal V2 is a complete refactor of the terminal WebSocket module using Clean 
 ## Core Services
 
 ### 1. SessionManager (session-manager.service.ts)
+
 **Responsibility**: Single source of truth for all terminal session state
 
 **Key Features**:
+
 - Session lifecycle management (create, suspend, resume, close)
 - Project-based session grouping
 - Focus management with limits
@@ -54,6 +56,7 @@ Terminal V2 is a complete refactor of the terminal WebSocket module using Clean 
 - State persistence for suspended sessions
 
 **Key Methods**:
+
 ```typescript
 createSession(params): TerminalSession
 suspendProjectSessions(projectId): number
@@ -63,9 +66,11 @@ closeSession(sessionId): void
 ```
 
 ### 2. StreamManager (stream-manager.service.ts)
+
 **Responsibility**: Manages all I/O streams (WebSocket & PTY processes)
 
 **Key Features**:
+
 - PTY process management for terminal sessions
 - WebSocket connection handling
 - Circular buffer for output
@@ -73,6 +78,7 @@ closeSession(sessionId): void
 - Stream metrics tracking
 
 **Key Methods**:
+
 ```typescript
 createTerminalStream(params): StreamConnection
 createWebSocketStream(params): Promise<StreamConnection>
@@ -82,9 +88,11 @@ closeStream(sessionId): void
 ```
 
 ### 3. MetricsCollector (metrics-collector.service.ts)
+
 **Responsibility**: Passive observer for monitoring and metrics
 
 **Key Features**:
+
 - Real-time performance metrics
 - Health checks with thresholds
 - Error tracking and reporting
@@ -92,6 +100,7 @@ closeStream(sessionId): void
 - Performance recommendations
 
 **Key Methods**:
+
 ```typescript
 getCurrentMetrics(): SystemMetrics
 getHealthStatus(): HealthStatus
@@ -135,23 +144,24 @@ Phase 4 (Day 15): Full migration complete
 
 ### Terminal V2 API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/terminal-v2/create` | POST | Create new terminal session |
-| `/api/terminal-v2/list` | GET | List sessions for project |
-| `/api/terminal-v2/close/:id` | DELETE | Close terminal session |
-| `/api/terminal-v2/migration-status` | GET | Get migration status & metrics |
+| Endpoint                            | Method | Description                    |
+| ----------------------------------- | ------ | ------------------------------ |
+| `/api/terminal-v2/create`           | POST   | Create new terminal session    |
+| `/api/terminal-v2/list`             | GET    | List sessions for project      |
+| `/api/terminal-v2/close/:id`        | DELETE | Close terminal session         |
+| `/api/terminal-v2/migration-status` | GET    | Get migration status & metrics |
 
 ### WebSocket Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `ws://localhost:4000/ws/terminal-v2` | New WebSocket endpoint |
-| `ws://localhost:4001` | Legacy WebSocket (backward compatible) |
+| Endpoint                             | Description                            |
+| ------------------------------------ | -------------------------------------- |
+| `ws://localhost:4110/ws/terminal-v2` | New WebSocket endpoint                 |
+| `ws://localhost:4001`                | Legacy WebSocket (backward compatible) |
 
 ## Performance Improvements
 
 ### Before Refactor
+
 - 4,000+ lines of redundant code
 - 15+ service files with overlapping responsibilities
 - Circular dependencies between services
@@ -159,6 +169,7 @@ Phase 4 (Day 15): Full migration complete
 - Limited monitoring capabilities
 
 ### After Refactor
+
 - ~2,500 lines of clean, modular code
 - 3 core services with clear responsibilities
 - Zero circular dependencies
@@ -166,6 +177,7 @@ Phase 4 (Day 15): Full migration complete
 - Comprehensive metrics and monitoring
 
 ### Performance Metrics
+
 - **Memory Usage**: 60% reduction with focus-based rendering
 - **CPU Usage**: 40% reduction through efficient stream management
 - **Latency**: <50ms average response time
@@ -174,6 +186,7 @@ Phase 4 (Day 15): Full migration complete
 ## Configuration
 
 ### Development Config
+
 ```typescript
 {
   mode: 'progressive',
@@ -187,6 +200,7 @@ Phase 4 (Day 15): Full migration complete
 ```
 
 ### Production Config
+
 ```typescript
 {
   mode: 'new',
@@ -203,12 +217,15 @@ Phase 4 (Day 15): Full migration complete
 ## Testing
 
 ### Integration Tests
+
 Run integration tests with:
+
 ```bash
 npx tsx scripts/test-terminal-integration.ts
 ```
 
 Tests cover:
+
 - Session creation and management
 - Project switching (suspend/resume)
 - Memory management
@@ -216,12 +233,15 @@ Tests cover:
 - Performance metrics
 
 ### Load Testing
+
 Run load tests with:
+
 ```bash
 npx tsx scripts/load-test-terminal.ts
 ```
 
 Parameters:
+
 - `NUM_PROJECTS`: Number of test projects
 - `SESSIONS_PER_PROJECT`: Sessions per project
 - `MESSAGE_INTERVAL`: Message frequency (ms)
@@ -232,38 +252,44 @@ Parameters:
 ### Starting the Server
 
 #### Progressive Mode (Recommended)
+
 ```bash
 ./start-v2.sh --progressive
 ```
 
 #### Production Mode
+
 ```bash
 NODE_ENV=production ./start-v2.sh --new
 ```
 
 #### Testing Mode
+
 ```bash
 ./start-v2.sh --dual
 ```
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `TERMINAL_MIGRATION_MODE` | Migration strategy | `progressive` |
-| `TERMINAL_USE_V2` | Use V2 server | `true` |
-| `PORT` | Main server port | `4000` |
-| `WS_PORT` | Legacy WebSocket port | `4001` |
+| Variable                  | Description           | Default       |
+| ------------------------- | --------------------- | ------------- |
+| `TERMINAL_MIGRATION_MODE` | Migration strategy    | `progressive` |
+| `TERMINAL_USE_V2`         | Use V2 server         | `true`        |
+| `PORT`                    | Main server port      | `4110`        |
+| `WS_PORT`                 | Legacy WebSocket port | `4001`        |
 
 ## Monitoring
 
 ### Health Check
+
 Access health status at:
+
 ```
 GET /api/terminal-v2/migration-status
 ```
 
 Response includes:
+
 - Migration mode and progress
 - Feature flags status
 - System metrics (CPU, memory)
@@ -272,7 +298,9 @@ Response includes:
 - Recommendations
 
 ### Metrics Export
+
 Prometheus metrics available at:
+
 ```
 GET /metrics
 ```

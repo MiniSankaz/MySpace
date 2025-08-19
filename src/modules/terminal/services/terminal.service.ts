@@ -1,6 +1,6 @@
-import * as pty from 'node-pty';
-import { EventEmitter } from 'events';
-import { randomBytes } from 'crypto';
+import * as pty from "node-pty";
+import { EventEmitter } from "events";
+import { randomBytes } from "crypto";
 
 interface TerminalSession {
   id: string;
@@ -20,45 +20,48 @@ export class TerminalService extends EventEmitter {
   constructor() {
     super();
     // Cleanup inactive sessions every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupInactiveSessions();
-    }, 5 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupInactiveSessions();
+      },
+      5 * 60 * 1000,
+    );
   }
 
   createSession(userId: string, cols = 80, rows = 24): string {
-    const sessionId = `term_${Date.now()}_${randomBytes(8).toString('hex')}`;
-    
+    const sessionId = `term_${Date.now()}_${randomBytes(8).toString("hex")}`;
+
     try {
       // Determine shell based on platform
       let shell: string;
       let shellArgs: string[] = [];
-      
-      if (process.platform === 'win32') {
-        shell = 'powershell.exe';
-      } else if (process.platform === 'darwin') {
+
+      if (process.platform === "win32") {
+        shell = "powershell.exe";
+      } else if (process.platform === "darwin") {
         // macOS
-        shell = '/bin/zsh';
-        shellArgs = ['-l']; // Login shell
+        shell = "/bin/zsh";
+        shellArgs = ["-l"]; // Login shell
       } else {
         // Linux
-        shell = '/bin/bash';
-        shellArgs = ['-l']; // Login shell
+        shell = "/bin/bash";
+        shellArgs = ["-l"]; // Login shell
       }
-      
+
       console.log(`Creating PTY with shell: ${shell}, args: ${shellArgs}`);
-      
+
       // Create PTY instance with better error handling
       const ptyProcess = pty.spawn(shell, shellArgs, {
-        name: 'xterm-256color',
+        name: "xterm-256color",
         cols,
         rows,
         cwd: process.env.HOME || process.cwd(),
         env: {
           ...process.env,
-          TERM: 'xterm-256color',
-          COLORTERM: 'truecolor',
-          LANG: process.env.LANG || 'en_US.UTF-8'
-        }
+          TERM: "xterm-256color",
+          COLORTERM: "truecolor",
+          LANG: process.env.LANG || "en_US.UTF-8",
+        },
       });
 
       // Create session
@@ -69,7 +72,7 @@ export class TerminalService extends EventEmitter {
         createdAt: new Date(),
         lastActivity: new Date(),
         rows,
-        cols
+        cols,
       };
 
       this.sessions.set(sessionId, session);
@@ -77,19 +80,21 @@ export class TerminalService extends EventEmitter {
       // Set up PTY event handlers
       ptyProcess.onData((data) => {
         session.lastActivity = new Date();
-        this.emit('data', sessionId, data);
+        this.emit("data", sessionId, data);
       });
 
       ptyProcess.onExit(({ exitCode, signal }) => {
-        console.log(`Terminal ${sessionId} exited with code ${exitCode} and signal ${signal}`);
+        console.log(
+          `Terminal ${sessionId} exited with code ${exitCode} and signal ${signal}`,
+        );
         this.destroySession(sessionId);
       });
 
       console.log(`Created terminal session ${sessionId} for user ${userId}`);
-      
+
       // Send initial prompt
       setTimeout(() => {
-        this.emit('data', sessionId, '\r\n🚀 Web Terminal Ready\r\n\r\n');
+        this.emit("data", sessionId, "\r\n🚀 Web Terminal Ready\r\n\r\n");
       }, 100);
 
       return sessionId;
@@ -99,7 +104,9 @@ export class TerminalService extends EventEmitter {
       if (this.sessions.has(sessionId)) {
         this.sessions.delete(sessionId);
       }
-      throw new Error(`Failed to create terminal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create terminal: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -145,7 +152,7 @@ export class TerminalService extends EventEmitter {
 
   getUserSessions(userId: string): TerminalSession[] {
     const userSessions: TerminalSession[] = [];
-    this.sessions.forEach(session => {
+    this.sessions.forEach((session) => {
       if (session.userId === userId) {
         userSessions.push(session);
       }
@@ -167,7 +174,7 @@ export class TerminalService extends EventEmitter {
     }
 
     this.sessions.delete(sessionId);
-    this.emit('session-closed', sessionId);
+    this.emit("session-closed", sessionId);
     console.log(`Destroyed terminal session ${sessionId}`);
     return true;
   }
@@ -175,13 +182,13 @@ export class TerminalService extends EventEmitter {
   destroyUserSessions(userId: string): number {
     let count = 0;
     const userSessions = this.getUserSessions(userId);
-    
+
     for (const session of userSessions) {
       if (this.destroySession(session.id)) {
         count++;
       }
     }
-    
+
     return count;
   }
 
@@ -206,13 +213,13 @@ export class TerminalService extends EventEmitter {
     return new Promise((resolve, reject) => {
       const session = this.sessions.get(sessionId);
       if (!session) {
-        reject(new Error('Session not found'));
+        reject(new Error("Session not found"));
         return;
       }
 
-      let output = '';
+      let output = "";
       const timeout = setTimeout(() => {
-        this.removeListener('data', dataHandler);
+        this.removeListener("data", dataHandler);
         resolve(output);
       }, 5000); // 5 second timeout
 
@@ -222,15 +229,15 @@ export class TerminalService extends EventEmitter {
         }
       };
 
-      this.on('data', dataHandler);
-      
+      this.on("data", dataHandler);
+
       // Send command
-      session.pty.write(command + '\r');
-      
+      session.pty.write(command + "\r");
+
       // Cleanup after response
       setTimeout(() => {
         clearTimeout(timeout);
-        this.removeListener('data', dataHandler);
+        this.removeListener("data", dataHandler);
         resolve(output);
       }, 1000);
     });
@@ -242,10 +249,10 @@ export class TerminalService extends EventEmitter {
       totalSessions: this.sessions.size,
       userSessions: new Map<string, number>(),
       oldestSession: null as Date | null,
-      newestSession: null as Date | null
+      newestSession: null as Date | null,
     };
 
-    this.sessions.forEach(session => {
+    this.sessions.forEach((session) => {
       // Count sessions per user
       const count = stats.userSessions.get(session.userId) || 0;
       stats.userSessions.set(session.userId, count + 1);
@@ -265,7 +272,7 @@ export class TerminalService extends EventEmitter {
   // Cleanup all sessions on shutdown
   cleanup() {
     clearInterval(this.cleanupInterval);
-    
+
     this.sessions.forEach((session, sessionId) => {
       this.destroySession(sessionId);
     });
@@ -276,16 +283,16 @@ export class TerminalService extends EventEmitter {
 export const terminalService = new TerminalService();
 
 // Cleanup on process exit
-process.on('exit', () => {
+process.on("exit", () => {
   terminalService.cleanup();
 });
 
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   terminalService.cleanup();
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   terminalService.cleanup();
   process.exit(0);
 });

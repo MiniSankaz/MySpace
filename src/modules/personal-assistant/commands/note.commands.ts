@@ -1,33 +1,38 @@
-import { Command, AssistantContext, AssistantResponse, Note } from '../types';
+import { Command, AssistantContext, AssistantResponse, Note } from "../types";
 
 export const noteCreateCommand: Command = {
-  name: 'note.create',
-  description: 'Create a new note',
-  aliases: ['note', 'n.create', 'memo'],
+  name: "note.create",
+  description: "Create a new note",
+  aliases: ["note", "n.create", "memo"],
   parameters: [
     {
-      name: 'content',
-      type: 'string',
+      name: "content",
+      type: "string",
       required: true,
-      description: 'Note content'
-    }
+      description: "Note content",
+    },
   ],
-  handler: async (context: AssistantContext, args: Record<string, any>): Promise<AssistantResponse> => {
+  handler: async (
+    context: AssistantContext,
+    args: Record<string, any>,
+  ): Promise<AssistantResponse> => {
     const { content } = args;
-    
+
     if (!content) {
       return {
-        message: 'กรุณาระบุเนื้อหาโน้ต ตัวอย่าง: `note create ไอเดียสำหรับโปรเจคใหม่`',
+        message:
+          "กรุณาระบุเนื้อหาโน้ต ตัวอย่าง: `note create ไอเดียสำหรับโปรเจคใหม่`",
         suggestions: [
-          'note create รายการซื้อของ',
-          'note create ไอเดียการประชุม'
-        ]
+          "note create รายการซื้อของ",
+          "note create ไอเดียการประชุม",
+        ],
       };
     }
 
     // Extract title from first line or first 50 chars
-    const lines = content.split('\n');
-    const title = lines[0].substring(0, 50) + (lines[0].length > 50 ? '...' : '');
+    const lines = content.split("\n");
+    const title =
+      lines[0].substring(0, 50) + (lines[0].length > 50 ? "..." : "");
 
     const newNote: Note = {
       id: `note-${Date.now()}`,
@@ -35,42 +40,39 @@ export const noteCreateCommand: Command = {
       content,
       tags: extractTags(content),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     if (!context.userData) {
       return {
-        message: 'ไม่สามารถเข้าถึงข้อมูลผู้ใช้ได้',
-        suggestions: ['help', 'note list']
+        message: "ไม่สามารถเข้าถึงข้อมูลผู้ใช้ได้",
+        suggestions: ["help", "note list"],
       };
     }
 
     context.userData.notes.push(newNote);
 
     return {
-      message: `📝 สร้างโน้ต: "${title}"\n${newNote.tags?.length > 0 ? `Tags: ${newNote.tags.join(', ')}` : ''}`,
+      message: `📝 สร้างโน้ต: "${title}"\n${newNote.tags?.length > 0 ? `Tags: ${newNote.tags.join(", ")}` : ""}`,
       suggestions: [
-        'note list',
-        'note search [keyword]',
-        'note create โน้ตอื่น'
+        "note list",
+        "note search [keyword]",
+        "note create โน้ตอื่น",
       ],
-      data: newNote
+      data: newNote,
     };
-  }
+  },
 };
 
 export const noteListCommand: Command = {
-  name: 'note.list',
-  description: 'List all notes',
-  aliases: ['notes', 'n.list'],
+  name: "note.list",
+  description: "List all notes",
+  aliases: ["notes", "n.list"],
   handler: async (context: AssistantContext): Promise<AssistantResponse> => {
     if (!context.userData || context.userData.notes.length === 0) {
       return {
-        message: 'คุณยังไม่มีโน้ตใดๆ ใช้ `note create [เนื้อหา]` เพื่อเพิ่ม',
-        suggestions: [
-          'note create รายการซื้อของ',
-          'note create ไอเดียโปรเจค'
-        ]
+        message: "คุณยังไม่มีโน้ตใดๆ ใช้ `note create [เนื้อหา]` เพื่อเพิ่ม",
+        suggestions: ["note create รายการซื้อของ", "note create ไอเดียโปรเจค"],
       };
     }
 
@@ -78,14 +80,14 @@ export const noteListCommand: Command = {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, 10); // Show last 10 notes
 
-    const noteList = ['**📝 โน้ตของคุณ (10 รายการล่าสุด):**'];
-    
-    notes.forEach(note => {
-      const dateStr = note.createdAt.toLocaleDateString('th-TH', {
-        day: '2-digit',
-        month: 'short'
+    const noteList = ["**📝 โน้ตของคุณ (10 รายการล่าสุด):**"];
+
+    notes.forEach((note) => {
+      const dateStr = note.createdAt.toLocaleDateString("th-TH", {
+        day: "2-digit",
+        month: "short",
       });
-      const tags = note.tags?.length > 0 ? ` [${note.tags.join(', ')}]` : '';
+      const tags = note.tags?.length > 0 ? ` [${note.tags.join(", ")}]` : "";
       noteList.push(`• ${note.title} - ${dateStr}${tags}`);
     });
 
@@ -94,67 +96,70 @@ export const noteListCommand: Command = {
     }
 
     return {
-      message: noteList.join('\n'),
+      message: noteList.join("\n"),
       suggestions: [
-        'note create โน้ตใหม่',
-        'note search [keyword]',
-        'note view [id]'
+        "note create โน้ตใหม่",
+        "note search [keyword]",
+        "note view [id]",
       ],
-      data: { notes }
+      data: { notes },
     };
-  }
+  },
 };
 
 export const noteSearchCommand: Command = {
-  name: 'note.search',
-  description: 'Search notes',
-  aliases: ['n.search', 'n.find'],
+  name: "note.search",
+  description: "Search notes",
+  aliases: ["n.search", "n.find"],
   parameters: [
     {
-      name: 'keyword',
-      type: 'string',
+      name: "keyword",
+      type: "string",
       required: true,
-      description: 'Search keyword'
-    }
+      description: "Search keyword",
+    },
   ],
-  handler: async (context: AssistantContext, args: Record<string, any>): Promise<AssistantResponse> => {
+  handler: async (
+    context: AssistantContext,
+    args: Record<string, any>,
+  ): Promise<AssistantResponse> => {
     const { keyword } = args;
-    
+
     if (!keyword) {
       return {
-        message: 'กรุณาระบุคำค้นหา ตัวอย่าง: `note search ประชุม`',
-        suggestions: ['note search ไอเดีย', 'note list']
+        message: "กรุณาระบุคำค้นหา ตัวอย่าง: `note search ประชุม`",
+        suggestions: ["note search ไอเดีย", "note list"],
       };
     }
 
     if (!context.userData || context.userData.notes.length === 0) {
       return {
-        message: 'คุณยังไม่มีโน้ตใดๆ',
-        suggestions: ['note create โน้ตแรก']
+        message: "คุณยังไม่มีโน้ตใดๆ",
+        suggestions: ["note create โน้ตแรก"],
       };
     }
 
     const searchTerm = keyword.toLowerCase();
-    const foundNotes = context.userData.notes.filter(note =>
-      note.title.toLowerCase().includes(searchTerm) ||
-      note.content.toLowerCase().includes(searchTerm) ||
-      note.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
+    const foundNotes = context.userData.notes.filter(
+      (note) =>
+        note.title.toLowerCase().includes(searchTerm) ||
+        note.content.toLowerCase().includes(searchTerm) ||
+        note.tags?.some((tag) => tag.toLowerCase().includes(searchTerm)),
     );
 
     if (foundNotes.length === 0) {
       return {
         message: `ไม่พบโน้ตที่ตรงกับ "${keyword}"`,
-        suggestions: [
-          'note list',
-          'note create โน้ตใหม่'
-        ]
+        suggestions: ["note list", "note create โน้ตใหม่"],
       };
     }
 
     const resultList = [`**🔍 พบ ${foundNotes.length} โน้ต:**`];
-    
-    foundNotes.slice(0, 5).forEach(note => {
-      const preview = note.content.substring(0, 100) + (note.content.length > 100 ? '...' : '');
+
+    foundNotes.slice(0, 5).forEach((note) => {
+      const preview =
+        note.content.substring(0, 100) +
+        (note.content.length > 100 ? "..." : "");
       resultList.push(`\n**${note.title}**\n${preview}`);
     });
 
@@ -163,55 +168,55 @@ export const noteSearchCommand: Command = {
     }
 
     return {
-      message: resultList.join('\n'),
-      suggestions: [
-        'note view [id]',
-        'note edit [id]',
-        'note list'
-      ],
-      data: { notes: foundNotes }
+      message: resultList.join("\n"),
+      suggestions: ["note view [id]", "note edit [id]", "note list"],
+      data: { notes: foundNotes },
     };
-  }
+  },
 };
 
 export const noteDeleteCommand: Command = {
-  name: 'note.delete',
-  description: 'Delete a note',
-  aliases: ['n.delete', 'n.remove'],
+  name: "note.delete",
+  description: "Delete a note",
+  aliases: ["n.delete", "n.remove"],
   parameters: [
     {
-      name: 'identifier',
-      type: 'string',
+      name: "identifier",
+      type: "string",
       required: true,
-      description: 'Note ID or title'
-    }
+      description: "Note ID or title",
+    },
   ],
-  handler: async (context: AssistantContext, args: Record<string, any>): Promise<AssistantResponse> => {
+  handler: async (
+    context: AssistantContext,
+    args: Record<string, any>,
+  ): Promise<AssistantResponse> => {
     const { identifier } = args;
-    
+
     if (!identifier) {
       return {
-        message: 'กรุณาระบุ ID หรือหัวข้อของโน้ตที่ต้องการลบ',
-        suggestions: ['note list', 'note delete note-123']
+        message: "กรุณาระบุ ID หรือหัวข้อของโน้ตที่ต้องการลบ",
+        suggestions: ["note list", "note delete note-123"],
       };
     }
 
     if (!context.userData) {
       return {
-        message: 'ไม่สามารถเข้าถึงข้อมูลผู้ใช้ได้',
-        suggestions: ['help', 'note list']
+        message: "ไม่สามารถเข้าถึงข้อมูลผู้ใช้ได้",
+        suggestions: ["help", "note list"],
       };
     }
 
-    const noteIndex = context.userData.notes.findIndex(n => 
-      n.id === identifier || 
-      n.title.toLowerCase().includes(identifier.toLowerCase())
+    const noteIndex = context.userData.notes.findIndex(
+      (n) =>
+        n.id === identifier ||
+        n.title.toLowerCase().includes(identifier.toLowerCase()),
     );
 
     if (noteIndex === -1) {
       return {
         message: `ไม่พบโน้ต "${identifier}" ใช้ \`note list\` เพื่อดูรายการ`,
-        suggestions: ['note list', 'note search']
+        suggestions: ["note list", "note search"],
       };
     }
 
@@ -219,13 +224,10 @@ export const noteDeleteCommand: Command = {
 
     return {
       message: `🗑️ ลบโน้ต: "${deletedNote.title}" เรียบร้อย`,
-      suggestions: [
-        'note list',
-        'note create โน้ตใหม่'
-      ],
-      data: deletedNote
+      suggestions: ["note list", "note create โน้ตใหม่"],
+      data: deletedNote,
     };
-  }
+  },
 };
 
 // Helper function to extract hashtags from content
@@ -233,10 +235,10 @@ function extractTags(content: string): string[] {
   const tagRegex = /#(\w+)/g;
   const tags: string[] = [];
   let match;
-  
+
   while ((match = tagRegex.exec(content)) !== null) {
     tags.push(match[1]);
   }
-  
+
   return [...new Set(tags)]; // Remove duplicates
 }

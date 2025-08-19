@@ -327,3 +327,6 @@ export function ProgressBar({
     </div>
   );
 }
+
+// Named export for compatibility
+export { Loading };

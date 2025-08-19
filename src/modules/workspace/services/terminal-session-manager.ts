@@ -1,8 +1,8 @@
-import { EventEmitter } from 'events';
-import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
-import { TerminalSession, TerminalMessage } from '../types';
-import { prisma } from '@/core/database/prisma';
-import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter } from "events";
+import { terminalConfig, getWebSocketUrl } from "@/config/terminal.config";
+import { TerminalSession, TerminalMessage } from "../types";
+import { prisma } from "@/core/database/prisma";
+import { v4 as uuidv4 } from "uuid";
 
 interface SessionMetadata {
   projectId: string;
@@ -25,7 +25,7 @@ export class TerminalSessionManager extends EventEmitter {
   private sessions: Map<string, SessionState> = new Map();
   private projectSessions: Map<string, Set<string>> = new Map();
   private userSessions: Map<string, Set<string>> = new Map();
-  
+
   constructor() {
     super();
     this.initializeFromDatabase();
@@ -37,19 +37,24 @@ export class TerminalSessionManager extends EventEmitter {
   private async initializeFromDatabase() {
     try {
       // EMERGENCY FIX: Add timeout to prevent blocking on database connection failure
-      const timeout = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Database connection timeout')), terminalConfig.websocket.timeout)
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Database connection timeout")),
+          terminalConfig.websocket.timeout,
+        ),
       );
-      
-      console.log('Attempting to connect to database for terminal session initialization...');
-      
+
+      console.log(
+        "Attempting to connect to database for terminal session initialization...",
+      );
+
       // Load active sessions from database with timeout
       const activeSessions = await Promise.race([
         prisma.terminalSession.findMany({
           where: { active: true },
-          orderBy: { updatedAt: 'desc' }
+          orderBy: { updatedAt: "desc" },
         }),
-        timeout
+        timeout,
       ]);
 
       for (const dbSession of activeSessions) {
@@ -60,13 +65,13 @@ export class TerminalSessionManager extends EventEmitter {
             projectId: session.projectId,
             projectPath: session.currentPath,
             userId: dbSession.userId || undefined,
-            lastActivity: session.createdAt
+            lastActivity: session.createdAt,
           },
           isConnected: false,
           buffer: [],
-          maxBufferSize: 500 // REDUCED from 1000 to save memory
+          maxBufferSize: 500, // REDUCED from 1000 to save memory
         };
-        
+
         this.sessions.set(session.id, state);
         this.addToProjectIndex(session.projectId, session.id);
         if (dbSession.userId) {
@@ -74,10 +79,17 @@ export class TerminalSessionManager extends EventEmitter {
         }
       }
 
-      console.log(`✓ Loaded ${activeSessions.length} active terminal sessions from database`);
+      console.log(
+        `✓ Loaded ${activeSessions.length} active terminal sessions from database`,
+      );
     } catch (error) {
-      console.warn('⚠️ Database unavailable, starting with in-memory only mode:', error.message);
-      console.log('✓ Terminal session manager will operate without database persistence');
+      console.warn(
+        "⚠️ Database unavailable, starting with in-memory only mode:",
+        error.message,
+      );
+      console.log(
+        "✓ Terminal session manager will operate without database persistence",
+      );
       // Continue with empty session state - system will work in memory-only mode
       return;
     }
@@ -88,13 +100,17 @@ export class TerminalSessionManager extends EventEmitter {
    */
   async createOrRestoreSession(
     projectId: string,
-    type: 'system' | 'claude',
+    type: "system" | "claude",
     tabName: string,
     projectPath: string,
-    userId?: string
+    userId?: string,
   ): Promise<TerminalSession> {
     // Check if we have an existing session with the same parameters
-    const existingSession = await this.findExistingSession(projectId, type, tabName);
+    const existingSession = await this.findExistingSession(
+      projectId,
+      type,
+      tabName,
+    );
     if (existingSession) {
       // Mark as active and return
       await this.updateSessionStatus(existingSession.id, true);
@@ -106,20 +122,26 @@ export class TerminalSessionManager extends EventEmitter {
     try {
       await this.ensureProjectExists(projectId, projectPath);
     } catch (error) {
-      console.warn(`Project creation check failed, continuing with session creation:`, error);
+      console.warn(
+        `Project creation check failed, continuing with session creation:`,
+        error,
+      );
     }
 
     // Create new session with simple ID format for WebSocket compatibility
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-    
+
     let session: TerminalSession;
-    
+
     try {
       // EMERGENCY FIX: Add timeout to database operations
-      const timeout = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Database operation timeout')), process.env.PORT || 3000)
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Database operation timeout")),
+          process.env.PORT || 3000,
+        ),
       );
-      
+
       // First attempt: try with projectId
       const dbSession = await Promise.race([
         prisma.terminalSession.create({
@@ -134,22 +156,27 @@ export class TerminalSessionManager extends EventEmitter {
             currentPath: projectPath,
             metadata: {
               environment: process.env,
-              createdAt: new Date().toISOString()
-            }
-          }
+              createdAt: new Date().toISOString(),
+            },
+          },
         }),
-        timeout
+        timeout,
       ]);
 
       session = this.formatSession(dbSession);
       console.log(`✓ Created database session ${sessionId}`);
     } catch (error: any) {
       console.warn(`Database session creation failed: ${error.message}`);
-      
+
       // IMMEDIATE FALLBACK: Create in-memory session without database retries
-      if (error.message?.includes('timeout') || error.message?.includes('reach database')) {
-        console.log(`Database timeout detected, creating in-memory session immediately`);
-        
+      if (
+        error.message?.includes("timeout") ||
+        error.message?.includes("reach database")
+      ) {
+        console.log(
+          `Database timeout detected, creating in-memory session immediately`,
+        );
+
         session = {
           id: sessionId,
           projectId,
@@ -159,68 +186,78 @@ export class TerminalSessionManager extends EventEmitter {
           output: [],
           currentPath: projectPath,
           pid: null,
-          createdAt: new Date()
+          createdAt: new Date(),
         };
-        
+
         console.log(`✓ Created in-memory fallback session ${sessionId}`);
       } else {
-      // Check if it's a foreign key constraint error
-      if (error.code === 'P2003' || error.message?.includes('foreign key')) {
-        console.warn(`Foreign key constraint error, attempting to create project and retry...`);
-        
-        // Try one more time to create the project
-        try {
-          await prisma.project.create({
-            data: {
-              id: projectId,
-              name: `Project ${projectId}`,
-              description: `Emergency project creation for terminal session`,
-              path: projectPath,
-              structure: {},
-              envVariables: {},
-              scripts: [],
-              settings: {
-                autoCreated: true,
-                createdBy: 'terminal-session-manager-emergency',
-                createdAt: new Date().toISOString()
-              }
-            }
-          });
-          
-          // Retry session creation
-          const dbSession = await prisma.terminalSession.create({
-            data: {
-              id: sessionId,
-              projectId,
-              userId,
-              type,
-              tabName,
-              active: true,
-              output: [],
-              currentPath: projectPath,
-              metadata: {
-                environment: process.env,
-                createdAt: new Date().toISOString()
-              }
-            }
-          });
-          
-          session = this.formatSession(dbSession);
-        } catch (retryError) {
-          console.error(`Failed to create terminal session even after project creation:`, retryError);
-          throw error; // Re-throw original error if retry fails
+        // Check if it's a foreign key constraint error
+        if (error.code === "P2003" || error.message?.includes("foreign key")) {
+          console.warn(
+            `Foreign key constraint error, attempting to create project and retry...`,
+          );
+
+          // Try one more time to create the project
+          try {
+            await prisma.project.create({
+              data: {
+                id: projectId,
+                name: `Project ${projectId}`,
+                description: `Emergency project creation for terminal session`,
+                path: projectPath,
+                structure: {},
+                envVariables: {},
+                scripts: [],
+                settings: {
+                  autoCreated: true,
+                  createdBy: "terminal-session-manager-emergency",
+                  createdAt: new Date().toISOString(),
+                },
+              },
+            });
+
+            // Retry session creation
+            const dbSession = await prisma.terminalSession.create({
+              data: {
+                id: sessionId,
+                projectId,
+                userId,
+                type,
+                tabName,
+                active: true,
+                output: [],
+                currentPath: projectPath,
+                metadata: {
+                  environment: process.env,
+                  createdAt: new Date().toISOString(),
+                },
+              },
+            });
+
+            session = this.formatSession(dbSession);
+          } catch (retryError) {
+            console.error(
+              `Failed to create terminal session even after project creation:`,
+              retryError,
+            );
+            throw error; // Re-throw original error if retry fails
+          }
+        } else {
+          console.error(
+            `Failed to create terminal session in database:`,
+            error,
+          );
+          throw error;
         }
-      } else {
-        console.error(`Failed to create terminal session in database:`, error);
-        throw error;
-      }
       }
     }
-    
+
     // If we still don't have a session, fall back to in-memory
     if (!session) {
-      console.error(`Database creation failed completely, falling back to in-memory session`);
-      
+      console.error(
+        `Database creation failed completely, falling back to in-memory session`,
+      );
+
       // Fallback: create session in memory only
       session = {
         id: sessionId,
@@ -231,12 +268,12 @@ export class TerminalSessionManager extends EventEmitter {
         output: [],
         currentPath: projectPath,
         pid: null,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
       console.log(`Created fallback in-memory session ${sessionId}`);
     }
-    
+
     const state: SessionState = {
       session,
       metadata: {
@@ -244,11 +281,11 @@ export class TerminalSessionManager extends EventEmitter {
         projectPath,
         userId,
         environment: process.env as any,
-        lastActivity: new Date()
+        lastActivity: new Date(),
       },
       isConnected: false,
       buffer: [],
-      maxBufferSize: 1000
+      maxBufferSize: 1000,
     };
 
     this.sessions.set(sessionId, state);
@@ -257,26 +294,29 @@ export class TerminalSessionManager extends EventEmitter {
       this.addToUserIndex(userId, sessionId);
     }
 
-    this.emit('session:created', session);
-    
+    this.emit("session:created", session);
+
     return session;
   }
 
   /**
    * Ensure project exists in database, create if not found
    */
-  private async ensureProjectExists(projectId: string, projectPath: string): Promise<void> {
+  private async ensureProjectExists(
+    projectId: string,
+    projectPath: string,
+  ): Promise<void> {
     try {
       // Check if project exists
       const existingProject = await prisma.project.findUnique({
-        where: { id: projectId }
+        where: { id: projectId },
       });
 
       if (!existingProject) {
         // Retry logic for project creation
         let retries = 3;
         let lastError: any;
-        
+
         while (retries > 0) {
           try {
             // Create project with fallback data
@@ -291,10 +331,10 @@ export class TerminalSessionManager extends EventEmitter {
                 scripts: [],
                 settings: {
                   autoCreated: true,
-                  createdBy: 'terminal-session-manager',
-                  createdAt: new Date().toISOString()
-                }
-              }
+                  createdBy: "terminal-session-manager",
+                  createdAt: new Date().toISOString(),
+                },
+              },
             });
             console.log(`Created project ${projectId} for terminal session`);
             return; // Success, exit function
@@ -302,14 +342,19 @@ export class TerminalSessionManager extends EventEmitter {
             lastError = createError;
             retries--;
             if (retries > 0) {
-              console.warn(`Retrying project creation (${retries} attempts left)...`);
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+              console.warn(
+                `Retrying project creation (${retries} attempts left)...`,
+              );
+              await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retry
             }
           }
         }
-        
+
         // If all retries failed, log the error but continue
-        console.error(`Failed to create project ${projectId} after 3 attempts:`, lastError);
+        console.error(
+          `Failed to create project ${projectId} after 3 attempts:`,
+          lastError,
+        );
       }
     } catch (error) {
       console.error(`Failed to ensure project ${projectId} exists:`, error);
@@ -323,18 +368,20 @@ export class TerminalSessionManager extends EventEmitter {
    */
   private async findExistingSession(
     projectId: string,
-    type: 'system' | 'claude',
-    tabName: string
+    type: "system" | "claude",
+    tabName: string,
   ): Promise<TerminalSession | null> {
     const projectSessionIds = this.projectSessions.get(projectId);
     if (!projectSessionIds) return null;
 
     for (const sessionId of projectSessionIds) {
       const state = this.sessions.get(sessionId);
-      if (state && 
-          state.session.type === type && 
-          state.session.tabName === tabName &&
-          !state.session.active) {
+      if (
+        state &&
+        state.session.type === type &&
+        state.session.tabName === tabName &&
+        !state.session.active
+      ) {
         return state.session;
       }
     }
@@ -345,9 +392,9 @@ export class TerminalSessionManager extends EventEmitter {
         projectId,
         type,
         tabName,
-        active: false
+        active: false,
       },
-      orderBy: { updatedAt: 'desc' }
+      orderBy: { updatedAt: "desc" },
     });
 
     if (dbSession) {
@@ -380,16 +427,19 @@ export class TerminalSessionManager extends EventEmitter {
       }
     }
 
-    return sessions.sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+    return sessions.sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
     );
   }
 
   /**
    * Get sessions by type for a project
    */
-  getProjectSessionsByType(projectId: string, type: 'system' | 'claude'): TerminalSession[] {
-    return this.getProjectSessions(projectId).filter(s => s.type === type);
+  getProjectSessionsByType(
+    projectId: string,
+    type: "system" | "claude",
+  ): TerminalSession[] {
+    return this.getProjectSessions(projectId).filter((s) => s.type === type);
   }
 
   /**
@@ -408,18 +458,21 @@ export class TerminalSessionManager extends EventEmitter {
     try {
       await prisma.terminalSession.update({
         where: { id: sessionId },
-        data: { 
+        data: {
           active,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
     } catch (error) {
-      console.error(`Failed to update session ${sessionId} in database:`, error);
+      console.error(
+        `Failed to update session ${sessionId} in database:`,
+        error,
+      );
       // Continue with in-memory update even if database update fails
       // This provides graceful degradation
     }
 
-    this.emit('session:updated', state.session);
+    this.emit("session:updated", state.session);
   }
 
   /**
@@ -436,17 +489,17 @@ export class TerminalSessionManager extends EventEmitter {
     // Flush buffered output if any
     if (state.buffer.length > 0) {
       // Send buffered output as a batch for better performance
-      this.emit('session:buffered-output', { 
-        sessionId, 
-        data: state.buffer.join(''),
-        bufferSize: state.buffer.length 
+      this.emit("session:buffered-output", {
+        sessionId,
+        data: state.buffer.join(""),
+        bufferSize: state.buffer.length,
       });
-      
+
       // Keep buffer for other reconnections but mark as sent
       // Don't clear buffer completely in case of multiple concurrent connections
     }
 
-    this.emit('session:connected', state.session);
+    this.emit("session:connected", state.session);
   }
 
   /**
@@ -458,10 +511,10 @@ export class TerminalSessionManager extends EventEmitter {
 
     state.isConnected = false;
     state.connectionId = undefined;
-    
+
     // DON'T mark session as inactive - keep it running in background
     // Only update the connection status, session remains active
-    this.emit('session:disconnected', state.session);
+    this.emit("session:disconnected", state.session);
   }
 
   /**
@@ -477,7 +530,7 @@ export class TerminalSessionManager extends EventEmitter {
     // Add to session output
     const output = state.session.output as string[];
     output.push(data);
-    
+
     // Limit output buffer size
     if (output.length > state.maxBufferSize) {
       output.splice(0, output.length - state.maxBufferSize);
@@ -485,13 +538,14 @@ export class TerminalSessionManager extends EventEmitter {
 
     // Always buffer output for background processing
     state.buffer.push(data);
-    if (state.buffer.length > 500) { // Increased buffer size for background sessions
+    if (state.buffer.length > 500) {
+      // Increased buffer size for background sessions
       state.buffer.splice(0, state.buffer.length - 500);
     }
 
     // If connected, emit immediately
     if (state.isConnected) {
-      this.emit('session:output', { sessionId, data });
+      this.emit("session:output", { sessionId, data });
     }
 
     // Periodically persist to database (debounced)
@@ -510,13 +564,13 @@ export class TerminalSessionManager extends EventEmitter {
 
     await prisma.terminalSession.update({
       where: { id: sessionId },
-      data: { 
+      data: {
         currentPath: path,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
-    this.emit('session:path-changed', { sessionId, path });
+    this.emit("session:path-changed", { sessionId, path });
   }
 
   /**
@@ -529,10 +583,10 @@ export class TerminalSessionManager extends EventEmitter {
     // Mark as inactive in database
     await prisma.terminalSession.update({
       where: { id: sessionId },
-      data: { 
+      data: {
         active: false,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     // Remove from indexes
@@ -544,7 +598,7 @@ export class TerminalSessionManager extends EventEmitter {
     // Remove from memory
     this.sessions.delete(sessionId);
 
-    this.emit('session:closed', { sessionId });
+    this.emit("session:closed", { sessionId });
   }
 
   /**
@@ -559,13 +613,13 @@ export class TerminalSessionManager extends EventEmitter {
 
     await prisma.terminalSession.update({
       where: { id: sessionId },
-      data: { 
+      data: {
         tabName: newName,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
-    this.emit('session:renamed', { sessionId, name: newName });
+    this.emit("session:renamed", { sessionId, name: newName });
   }
 
   /**
@@ -595,7 +649,7 @@ export class TerminalSessionManager extends EventEmitter {
       connectedSessions,
       backgroundSessions,
       projectCount: this.projectSessions.size,
-      userCount: this.userSessions.size
+      userCount: this.userSessions.size,
     };
   }
 
@@ -612,7 +666,7 @@ export class TerminalSessionManager extends EventEmitter {
    */
   isBackgroundSession(sessionId: string): boolean {
     const state = this.sessions.get(sessionId);
-    return state ? (state.session.active && !state.isConnected) : false;
+    return state ? state.session.active && !state.isConnected : false;
   }
 
   /**
@@ -620,27 +674,31 @@ export class TerminalSessionManager extends EventEmitter {
    */
   getBackgroundSessions(): TerminalSession[] {
     const backgroundSessions: TerminalSession[] = [];
-    
+
     for (const state of this.sessions.values()) {
       if (state.session.active && !state.isConnected) {
         backgroundSessions.push(state.session);
       }
     }
-    
+
     return backgroundSessions;
   }
 
   /**
    * Clean up inactive sessions
    */
-  async cleanupInactiveSessions(maxAge: number = 24 * 60 * 60 * 1000): Promise<void> {
+  async cleanupInactiveSessions(
+    maxAge: number = 24 * 60 * 60 * 1000,
+  ): Promise<void> {
     const cutoffTime = new Date(Date.now() - maxAge);
     const sessionsToRemove: string[] = [];
 
     for (const [sessionId, state] of this.sessions) {
-      if (!state.session.active && 
-          state.metadata.lastActivity && 
-          state.metadata.lastActivity < cutoffTime) {
+      if (
+        !state.session.active &&
+        state.metadata.lastActivity &&
+        state.metadata.lastActivity < cutoffTime
+      ) {
         sessionsToRemove.push(sessionId);
       }
     }
@@ -691,18 +749,18 @@ export class TerminalSessionManager extends EventEmitter {
     return {
       id: dbSession.id,
       projectId: dbSession.projectId,
-      type: dbSession.type as 'system' | 'claude',
+      type: dbSession.type as "system" | "claude",
       tabName: dbSession.tabName,
       active: dbSession.active,
       output: dbSession.output || [],
       currentPath: dbSession.currentPath,
       pid: dbSession.pid,
-      createdAt: new Date(dbSession.createdAt)
+      createdAt: new Date(dbSession.createdAt),
     };
   }
 
   private persistenceTimers = new Map<string, NodeJS.Timeout>();
-  
+
   private schedulePersistence(sessionId: string): void {
     // Clear existing timer
     const existingTimer = this.persistenceTimers.get(sessionId);
@@ -719,8 +777,8 @@ export class TerminalSessionManager extends EventEmitter {
             where: { id: sessionId },
             data: {
               output: state.session.output,
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           });
         } catch (error) {
           console.error(`Failed to persist session ${sessionId}:`, error);
@@ -747,7 +805,7 @@ export class TerminalSessionManager extends EventEmitter {
       await this.updateSessionStatus(sessionId, false);
     }
 
-    console.log('Terminal session manager shutdown complete');
+    console.log("Terminal session manager shutdown complete");
   }
 }
 
@@ -755,6 +813,6 @@ export class TerminalSessionManager extends EventEmitter {
 export const terminalSessionManager = new TerminalSessionManager();
 
 // Cleanup on process exit
-process.on('beforeExit', () => {
+process.on("beforeExit", () => {
   terminalSessionManager.shutdown();
 });

@@ -7,19 +7,22 @@
 ## 📋 วิธีใช้งาน
 
 ### 1. เริ่มระบบพร้อม Claude Background
+
 ```bash
 ./start-with-claude.sh
 ```
+
 - จะเริ่ม Claude ใน background อัตโนมัติ
 - Chat interface จะเชื่อมต่อกับ Claude process
 - ข้อความทั้งหมดจะถูกส่งไปยัง Claude จริง
 
 ### 2. ควบคุม Claude แยกต่างหาก
+
 ```bash
 # เริ่ม Claude
 ./claude-control.sh start
 
-# หยุด Claude  
+# หยุด Claude
 ./claude-control.sh stop
 
 # ดูสถานะ
@@ -36,15 +39,18 @@
 ```
 
 ### 3. เริ่มระบบปกติ (ไม่มี Claude background)
+
 ```bash
 ./start.sh
 ```
+
 - ใช้ NLP fallback หรือ API mode
 - เหมาะสำหรับทดสอบหรือไม่มี Claude CLI
 
 ## 🔧 การทำงาน
 
 ### Architecture
+
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌──────────────┐
 │  Chat Interface │────▶│  Assistant       │────▶│   Claude     │
@@ -77,12 +83,14 @@
 ## 🎯 Features
 
 ### เมื่อใช้ Claude Background:
+
 - **Real-time responses** - ตอบสนองแบบ streaming
 - **Persistent context** - Claude จำบทสนทนาได้
 - **No API limits** - ใช้ Claude CLI unlimited
 - **Better performance** - ไม่ต้อง spawn process ใหม่ทุกครั้ง
 
 ### Commands ที่ใช้ได้:
+
 - `ai [message]` - คุยกับ Claude
 - `code [requirement]` - สร้างโค้ด
 - `explain [concept]` - อธิบายแนวคิด
@@ -92,11 +100,13 @@
 ## 📊 Monitoring
 
 ### ดู Claude Logs:
+
 ```bash
 tail -f logs/claude.log
 ```
 
 ### ดู Server Logs:
+
 ```bash
 # Terminal 1 - Server
 npm run dev
@@ -108,6 +118,7 @@ npm run dev
 ## ⚙️ Configuration
 
 ### Environment Variables:
+
 ```env
 # .env.local
 CLAUDE_REALTIME=true    # เปิดใช้ background mode
@@ -115,6 +126,7 @@ CLAUDE_API_KEY=sk-...   # (Optional) สำหรับ API fallback
 ```
 
 ### Auto-start Claude:
+
 ```bash
 # เพิ่มใน ~/.bashrc หรือ ~/.zshrc
 alias assistant="cd /path/to/project && ./start-with-claude.sh"
@@ -123,6 +135,7 @@ alias assistant="cd /path/to/project && ./start-with-claude.sh"
 ## 🔍 Troubleshooting
 
 ### Claude ไม่ตอบสนอง:
+
 ```bash
 # ตรวจสอบ status
 ./claude-control.sh status
@@ -134,16 +147,18 @@ alias assistant="cd /path/to/project && ./start-with-claude.sh"
 ./claude-control.sh restart
 ```
 
-### Port 4000 ถูกใช้:
+### Port 4110 ถูกใช้:
+
 ```bash
 # หา process ที่ใช้ port
-lsof -i :4000
+lsof -i :4110
 
 # หรือเปลี่ยน port
 PORT=5000 ./start-with-claude.sh
 ```
 
 ### Claude CLI ไม่พบ:
+
 ```bash
 # ติดตั้ง Claude CLI
 npm install -g @anthropic/claude-cli
@@ -154,11 +169,12 @@ npm install -g @anthropic/claude-cli
 
 ## ✨ Tips
 
-1. **เริ่มแยก Terminal**: 
+1. **เริ่มแยก Terminal**:
    - Terminal 1: `./start-with-claude.sh`
    - Terminal 2: `./claude-control.sh logs`
 
 2. **Test Claude ตรงๆ**:
+
    ```bash
    ./claude-control.sh send "What is TypeScript?"
    ```
@@ -172,6 +188,7 @@ npm install -g @anthropic/claude-cli
 ## 🎉 พร้อมใช้งาน!
 
 ระบบสามารถ:
+
 - ✅ รัน Claude ใน background
 - ✅ เชื่อมต่อ chat interface กับ Claude process
 - ✅ ส่งข้อความและรับคำตอบแบบ realtime

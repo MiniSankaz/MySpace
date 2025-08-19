@@ -1,21 +1,23 @@
 // Register TypeScript paths
-require('tsconfig-paths/register');
+require("tsconfig-paths/register");
 
 // Check Node.js version for Claude CLI compatibility
 const nodeVersion = process.version;
-const majorVersion = parseInt(nodeVersion.split('.')[0].substring(1));
+const majorVersion = parseInt(nodeVersion.split(".")[0].substring(1));
 if (majorVersion >= 22) {
-  console.warn('⚠️  Warning: Node.js v22+ may have issues with Claude CLI. Consider using Node.js v18.');
+  console.warn(
+    "⚠️  Warning: Node.js v22+ may have issues with Claude CLI. Consider using Node.js v18.",
+  );
 }
 
-const { createServer } = require('http');
-const { parse } = require('url');
-const next = require('next');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const { createServer } = require("http");
+const { parse } = require("url");
+const next = require("next");
+const { createProxyMiddleware } = require("http-proxy-middleware");
 
-const dev = process.env.NODE_ENV !== 'production';
-const hostname = process.env.HOSTNAME || '127.0.0.1';
-const port = process.env.PORT || 4000;
+const dev = process.env.NODE_ENV !== "production";
+const hostname = process.env.HOSTNAME || "127.0.0.1";
+const port = process.env.PORT || 4100;
 
 // Next.js will handle its own internal port
 const app = next({ dev, hostname, port });
@@ -23,59 +25,71 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
   // EMERGENCY FIX: Add memory monitoring and garbage collection
-  console.log('Starting memory monitoring...');
-  
+  console.log("Starting memory monitoring...");
+
   setInterval(() => {
     const memUsage = process.memoryUsage();
-    const v8 = require('v8');
+    const v8 = require("v8");
     const heapStats = v8.getHeapStatistics();
-    
+
     const memUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
     const memAllocatedMB = Math.round(memUsage.heapTotal / 1024 / 1024);
     const memLimitMB = Math.round(heapStats.heap_size_limit / 1024 / 1024);
     const memAvailableMB = memLimitMB - memUsedMB;
-    
+
     // Log memory usage every 30 seconds with clearer format
-    console.log(`Memory: ${memUsedMB}MB used / ${memAllocatedMB}MB allocated / ${memLimitMB}MB limit (${memAvailableMB}MB available)`);
-    
+    console.log(
+      `Memory: ${memUsedMB}MB used / ${memAllocatedMB}MB allocated / ${memLimitMB}MB limit (${memAvailableMB}MB available)`,
+    );
+
     // Force garbage collection if memory usage is high (>4GB with 8GB total)
     if (memUsage.heapUsed > 4 * 1024 * 1024 * 1024) {
-      console.warn('🚨 High memory usage detected (>4GB), forcing garbage collection');
+      console.warn(
+        "🚨 High memory usage detected (>4GB), forcing garbage collection",
+      );
       if (global.gc) {
         global.gc();
         const afterGC = process.memoryUsage();
-        const freedMB = Math.round((memUsage.heapUsed - afterGC.heapUsed) / 1024 / 1024);
+        const freedMB = Math.round(
+          (memUsage.heapUsed - afterGC.heapUsed) / 1024 / 1024,
+        );
         console.log(`✓ Freed ${freedMB}MB of memory`);
       }
     }
-    
+
     // Exit if memory usage exceeds 7GB to prevent OOM crash (with 8GB limit)
     if (memUsage.heapUsed > 7 * 1024 * 1024 * 1024) {
-      console.error('🚨 CRITICAL: Memory usage exceeded 7GB, restarting to prevent crash');
+      console.error(
+        "🚨 CRITICAL: Memory usage exceeded 7GB, restarting to prevent crash",
+      );
       process.exit(1);
     }
   }, 30000);
 
   // In development, Next.js HMR is already handled internally
   // We don't need a separate proxy for HTTP since Next.js is handling it
-  
+
   const server = createServer(async (req, res) => {
     try {
       // Handle localhost redirect for development
-      if (dev && req.headers.host && req.headers.host.startsWith('localhost:')) {
+      if (
+        dev &&
+        req.headers.host &&
+        req.headers.host.startsWith("localhost:")
+      ) {
         res.writeHead(301, {
-          Location: `http://127.0.0.1:${port}${req.url}`
+          Location: `http://127.0.0.1:${port}${req.url}`,
         });
         res.end();
         return;
       }
-      
+
       const parsedUrl = parse(req.url, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
-      console.error('Error occurred handling', req.url, err);
+      console.error("Error occurred handling", req.url, err);
       res.statusCode = 500;
-      res.end('internal server error');
+      res.end("internal server error");
     }
   });
 
@@ -90,44 +104,51 @@ app.prepare().then(() => {
 
   // Initialize WebSocket servers
   let terminalWS, claudeWS;
-  
+
   try {
     // Use standalone WebSocket server on port 4001 for all terminals
-    const { TerminalWebSocketServer, setupShutdownHandlers: setupTerminalShutdown } = require('./src/server/websocket/terminal-ws-standalone');
-    const wsPort = process.env.WS_PORT || 4001;
+    const {
+      TerminalWebSocketServer,
+      setupShutdownHandlers: setupTerminalShutdown,
+    } = require("./src/server/websocket/terminal-ws-standalone");
+    const wsPort = process.env.WS_PORT || 4101;
     terminalWS = new TerminalWebSocketServer(wsPort);
     setupTerminalShutdown(terminalWS);
-    console.log(`✓ Unified Terminal WebSocket server listening on port ${wsPort}`);
-    
+    console.log(
+      `✓ Unified Terminal WebSocket server listening on port ${wsPort}`,
+    );
+
     // Initialize Claude WebSocket server for AI assistant (not terminal)
-    const { ClaudeWebSocketServer } = require('./src/server/websocket/claude-ws');
+    const {
+      ClaudeWebSocketServer,
+    } = require("./src/server/websocket/claude-ws");
     claudeWS = new ClaudeWebSocketServer(server);
-    console.log('✓ Claude Assistant WebSocket server initialized');
-    
+    console.log("✓ Claude Assistant WebSocket server initialized");
+
     // Only handle custom WebSocket upgrades, not HMR
     // Next.js will handle HMR WebSocket internally
-    
+
     // Graceful shutdown
     const shutdownHandler = () => {
-      console.log('Shutdown signal received: closing servers');
+      console.log("Shutdown signal received: closing servers");
       if (terminalWS) {
-        console.log('Closing terminal WebSocket sessions...');
+        console.log("Closing terminal WebSocket sessions...");
         terminalWS.closeAllSessions();
       }
       if (claudeWS) {
-        console.log('Closing Claude WebSocket sessions...');
+        console.log("Closing Claude WebSocket sessions...");
         claudeWS.closeAllSessions();
       }
       server.close(() => {
-        console.log('HTTP server closed');
+        console.log("HTTP server closed");
         process.exit(0);
       });
     };
 
-    process.on('SIGTERM', shutdownHandler);
-    process.on('SIGINT', shutdownHandler);  // Handle Ctrl+C
+    process.on("SIGTERM", shutdownHandler);
+    process.on("SIGINT", shutdownHandler); // Handle Ctrl+C
   } catch (error) {
-    console.error('Failed to initialize WebSocket servers:', error.message);
+    console.error("Failed to initialize WebSocket servers:", error.message);
   }
 
   server.listen(port, (err) => {

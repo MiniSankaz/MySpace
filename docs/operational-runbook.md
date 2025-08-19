@@ -1,7 +1,9 @@
 # Operational Runbook
+
 ## Stock Portfolio Management System v1.0
 
 ### Table of Contents
+
 1. [System Overview](#system-overview)
 2. [Quick Actions](#quick-actions)
 3. [Monitoring & Health Checks](#monitoring--health-checks)
@@ -18,15 +20,16 @@
 ## System Overview
 
 ### Architecture Components
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                   Load Balancer                         │
-│                  (Port 3000/443)                        │
+│                  (Port 4100/443)                        │
 └─────────────┬───────────────────────────────────────────┘
               │
 ┌─────────────▼───────────────────────────────────────────┐
 │             Next.js Application Servers                 │
-│         • Main App (Port 3000)                         │
+│         • Main App (Port 4100)                         │
 │         • API Routes (/api/*)                          │
 │         • Static Assets (/_next/*)                     │
 └─────────────┬───────────────────────────────────────────┘
@@ -44,6 +47,7 @@
 ```
 
 ### Key Metrics
+
 - **Target Response Time:** <100ms
 - **Achieved Response Time:** 2.59ms (39x better)
 - **Uptime Target:** 99.9%
@@ -56,6 +60,7 @@
 ## Quick Actions
 
 ### Start Production System
+
 ```bash
 # Full production start
 ./scripts/production-deployment.sh
@@ -68,6 +73,7 @@ NODE_ENV=production npm start
 ```
 
 ### Stop Production System
+
 ```bash
 # Graceful shutdown
 kill -TERM $(cat .production.pid)
@@ -80,9 +86,10 @@ kill -9 $(cat .production.pid)
 ```
 
 ### Check System Status
+
 ```bash
 # Health check
-curl http://localhost:3000/api/health
+curl http://localhost:4100/api/health
 
 # Detailed status
 ./scripts/check-system-status.sh
@@ -97,11 +104,11 @@ tail -f logs/production*.log
 
 ### Primary Health Endpoints
 
-| Endpoint | Purpose | Expected Response | Alert Threshold |
-|----------|---------|-------------------|-----------------|
-| `/api/health` | System health | `{"status":"ok"}` | 3 failures |
-| `/api/dashboard/metrics` | Performance metrics | JSON metrics | 5 failures |
-| `/api/ums/auth/session` | Auth service | Session data | 3 failures |
+| Endpoint                 | Purpose             | Expected Response | Alert Threshold |
+| ------------------------ | ------------------- | ----------------- | --------------- |
+| `/api/health`            | System health       | `{"status":"ok"}` | 3 failures      |
+| `/api/dashboard/metrics` | Performance metrics | JSON metrics      | 5 failures      |
+| `/api/ums/auth/session`  | Auth service        | Session data      | 3 failures      |
 
 ### Monitoring Commands
 
@@ -110,7 +117,7 @@ tail -f logs/production*.log
 node scripts/monitor-deployment.js
 
 # Performance metrics
-curl http://localhost:3000/api/dashboard/metrics | jq '.'
+curl http://localhost:4100/api/dashboard/metrics | jq '.'
 
 # Database health
 psql $DATABASE_URL -c "SELECT 1;"
@@ -214,11 +221,13 @@ tsx scripts/kill-session.ts SESSION_ID
 ### Issue: High Response Times
 
 **Symptoms:**
+
 - Response times >100ms
 - User complaints about slowness
 - Monitoring alerts
 
 **Diagnosis:**
+
 ```bash
 # Check database query performance
 psql $DATABASE_URL -c "SELECT * FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;"
@@ -232,6 +241,7 @@ ps aux | grep node
 ```
 
 **Resolution:**
+
 1. Restart application: `./quick-restart.sh`
 2. Clear cache: `redis-cli FLUSHALL`
 3. Check database indexes: `npx prisma db push`
@@ -240,11 +250,13 @@ ps aux | grep node
 ### Issue: Database Connection Errors
 
 **Symptoms:**
+
 - "Connection refused" errors
 - Timeout errors
 - P2002/P2003 Prisma errors
 
 **Diagnosis:**
+
 ```bash
 # Test database connection
 psql $DATABASE_URL -c "SELECT 1;"
@@ -257,6 +269,7 @@ tail -f logs/database*.log
 ```
 
 **Resolution:**
+
 1. Check environment variables: `grep DATABASE .env.production`
 2. Restart database connection: `npx prisma generate`
 3. Use offline mode fallback: System auto-switches to cache
@@ -265,11 +278,13 @@ tail -f logs/database*.log
 ### Issue: WebSocket Disconnections
 
 **Symptoms:**
+
 - Terminal sessions dropping
 - "Connection lost" messages
 - Reconnection loops
 
 **Diagnosis:**
+
 ```bash
 # Check WebSocket services
 lsof -i :4001
@@ -283,6 +298,7 @@ wscat -c ws://localhost:4001
 ```
 
 **Resolution:**
+
 1. Restart WebSocket services:
    ```bash
    kill $(cat .terminal-ws.pid)
@@ -294,23 +310,26 @@ wscat -c ws://localhost:4001
 ### Issue: Authentication Failures
 
 **Symptoms:**
+
 - Login failures
 - "Invalid token" errors
 - Session expiration issues
 
 **Diagnosis:**
+
 ```bash
 # Check JWT secret
 grep JWT_SECRET .env.production
 
 # Verify auth service
-curl -X POST http://localhost:3000/api/ums/auth/session
+curl -X POST http://localhost:4100/api/ums/auth/session
 
 # Check token expiration
 tsx scripts/check-token-expiry.ts
 ```
 
 **Resolution:**
+
 1. Refresh JWT secret if compromised
 2. Clear auth cache
 3. Restart auth service
@@ -323,25 +342,27 @@ tsx scripts/check-token-expiry.ts
 ### Complete System Failure
 
 1. **Immediate Actions:**
+
    ```bash
    # Stop all services
    ./scripts/emergency-stop.sh
-   
+
    # Switch to maintenance mode
    cp public/maintenance.html public/index.html
-   
+
    # Notify stakeholders
    ./scripts/send-emergency-notification.sh
    ```
 
 2. **Recovery Steps:**
+
    ```bash
    # Restore from backup
    ./scripts/database/restore.sh latest
-   
+
    # Start in safe mode
    NODE_ENV=recovery npm start
-   
+
    # Gradual service restoration
    ./scripts/phased-recovery.sh
    ```
@@ -349,25 +370,27 @@ tsx scripts/check-token-expiry.ts
 ### Security Breach
 
 1. **Containment:**
+
    ```bash
    # Disable external access
    iptables -A INPUT -j DROP
-   
+
    # Rotate all secrets
    ./scripts/rotate-secrets.sh
-   
+
    # Enable audit logging
    export AUDIT_MODE=true
    ```
 
 2. **Investigation:**
+
    ```bash
    # Check access logs
    grep -E "401|403|500" logs/access*.log
-   
+
    # Review authentication attempts
    tsx scripts/audit-auth-attempts.ts
-   
+
    # Export audit trail
    ./scripts/export-audit-trail.sh
    ```
@@ -375,22 +398,24 @@ tsx scripts/check-token-expiry.ts
 ### Data Corruption
 
 1. **Assessment:**
+
    ```bash
    # Check data integrity
    tsx scripts/check-data-integrity.ts
-   
+
    # Identify affected records
    psql $DATABASE_URL -c "SELECT * FROM audit_log WHERE status='corrupt';"
    ```
 
 2. **Recovery:**
+
    ```bash
    # Restore specific tables
    ./scripts/database/restore-table.sh users
-   
+
    # Rebuild indexes
    npx prisma db push --force-reset
-   
+
    # Validate recovery
    tsx scripts/validate-data-recovery.ts
    ```
@@ -417,9 +442,9 @@ node --expose-gc --trace-gc npm start
 
 ```sql
 -- Find slow queries
-SELECT query, mean_time, calls 
-FROM pg_stat_statements 
-ORDER BY mean_time DESC 
+SELECT query, mean_time, calls
+FROM pg_stat_statements
+ORDER BY mean_time DESC
 LIMIT 10;
 
 -- Update statistics
@@ -437,9 +462,9 @@ VACUUM FULL;
 ```javascript
 // Cache configuration
 const cacheConfig = {
-  ttl: 900,        // 15 minutes
-  maxSize: 1000,   // Max entries
-  strategy: 'LRU'  // Least Recently Used
+  ttl: 900, // 15 minutes
+  maxSize: 1000, // Max entries
+  strategy: "LRU", // Least Recently Used
 };
 
 // Monitor cache hit ratio
@@ -454,16 +479,19 @@ console.log(`Cache hit ratio: ${(hitRatio * 100).toFixed(2)}%`);
 ### Regular Security Tasks
 
 **Daily:**
+
 - Review authentication logs
 - Check failed login attempts
 - Monitor rate limiting
 
 **Weekly:**
+
 - Security patch updates
 - SSL certificate check
 - Permission audit
 
 **Monthly:**
+
 - Full security scan
 - Penetration testing
 - Secret rotation
@@ -496,12 +524,12 @@ netstat -tuln
 
 ### Backup Schedule
 
-| Type | Frequency | Retention | Location |
-|------|-----------|-----------|----------|
-| Database | Every 4 hours | 7 days | `/backups/db/` |
-| Code | Daily | 30 days | `/backups/code/` |
-| Config | On change | 90 days | `/backups/config/` |
-| Logs | Weekly | 30 days | `/backups/logs/` |
+| Type     | Frequency     | Retention | Location           |
+| -------- | ------------- | --------- | ------------------ |
+| Database | Every 4 hours | 7 days    | `/backups/db/`     |
+| Code     | Daily         | 30 days   | `/backups/code/`   |
+| Config   | On change     | 90 days   | `/backups/config/` |
+| Logs     | Weekly        | 30 days   | `/backups/logs/`   |
 
 ### Backup Commands
 
@@ -541,11 +569,11 @@ tar -czf app_backup_$(date +%Y%m%d).tar.gz \
 
 ### Escalation Matrix
 
-| Level | Contact | Response Time | When to Contact |
-|-------|---------|---------------|-----------------|
-| L1 | On-call Engineer | 15 min | Any production issue |
-| L2 | Team Lead | 30 min | Major outage, data loss |
-| L3 | CTO | 1 hour | Security breach, complete failure |
+| Level | Contact          | Response Time | When to Contact                   |
+| ----- | ---------------- | ------------- | --------------------------------- |
+| L1    | On-call Engineer | 15 min        | Any production issue              |
+| L2    | Team Lead        | 30 min        | Major outage, data loss           |
+| L3    | CTO              | 1 hour        | Security breach, complete failure |
 
 ### Support Channels
 
@@ -556,11 +584,11 @@ tar -czf app_backup_$(date +%Y%m%d).tar.gz \
 
 ### External Vendors
 
-| Service | Provider | Support | Account |
-|---------|----------|---------|---------|
-| Database | DigitalOcean | 24/7 | #123456 |
-| CDN | Cloudflare | 24/7 | enterprise@company |
-| Monitoring | Datadog | Business hours | #789012 |
+| Service    | Provider     | Support        | Account            |
+| ---------- | ------------ | -------------- | ------------------ |
+| Database   | DigitalOcean | 24/7           | #123456            |
+| CDN        | Cloudflare   | 24/7           | enterprise@company |
+| Monitoring | Datadog      | Business hours | #789012            |
 
 ---
 
@@ -580,12 +608,12 @@ NEXTAUTH_URL=https://stockportfolio.com
 
 ### Useful Scripts
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `quick-restart.sh` | Fast restart | `./quick-restart.sh` |
-| `check-health.sh` | Health check | `./scripts/check-health.sh` |
-| `monitor-live.sh` | Live monitoring | `./scripts/monitor-live.sh` |
-| `export-metrics.sh` | Export metrics | `./scripts/export-metrics.sh` |
+| Script              | Purpose         | Usage                         |
+| ------------------- | --------------- | ----------------------------- |
+| `quick-restart.sh`  | Fast restart    | `./quick-restart.sh`          |
+| `check-health.sh`   | Health check    | `./scripts/check-health.sh`   |
+| `monitor-live.sh`   | Live monitoring | `./scripts/monitor-live.sh`   |
+| `export-metrics.sh` | Export metrics  | `./scripts/export-metrics.sh` |
 
 ### System Requirements
 
@@ -599,6 +627,6 @@ NEXTAUTH_URL=https://stockportfolio.com
 
 ---
 
-*Last Updated: 2025-08-11*
-*Version: 1.0.0*
-*Maintained by: DevOps Team*
+_Last Updated: 2025-08-11_
+_Version: 1.0.0_
+_Maintained by: DevOps Team_

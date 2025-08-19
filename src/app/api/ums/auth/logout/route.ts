@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { AuthService } from '@/modules/ums/services/auth.service';
-import { verifyAuth } from '@/modules/ums/middleware/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { AuthService } from "@/modules/ums/services/auth.service";
+import { verifyAuth } from "@/modules/ums/middleware/auth";
 
 const authService = new AuthService();
 
@@ -10,13 +10,13 @@ export async function POST(request: NextRequest) {
     const authResult = await verifyAuth(request);
     if (!authResult.authenticated) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
       );
     }
 
     // Get refresh token from cookie
-    const refreshToken = request.cookies.get('refreshToken')?.value;
+    const refreshToken = request.cookies.get("refreshToken")?.value;
 
     // Logout user
     await authService.logout(authResult.userId!, refreshToken);
@@ -24,20 +24,20 @@ export async function POST(request: NextRequest) {
     // Clear cookies
     const response = NextResponse.json({
       success: true,
-      message: 'Logged out successfully'
+      message: "Logged out successfully",
     });
 
-    response.cookies.delete('refreshToken');
+    response.cookies.delete("refreshToken");
 
     return response;
   } catch (error: any) {
-    console.error('Logout error:', error);
+    console.error("Logout error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Logout failed' 
+      {
+        success: false,
+        error: error.message || "Logout failed",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

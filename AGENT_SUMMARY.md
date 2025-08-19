@@ -9,12 +9,14 @@
 ---
 
 ### 1. 🛡️ **SOP-Enforcer Agent**
+
 **Model**: Sonnet  
 **Color**: Pink  
 **Type**: Personal  
 **ภาษา**: ภาษาไทย
 
 #### หน้าที่หลัก:
+
 - **ป้องกันปัญหา "แก้แล้วพังที่อื่น"** - ตรวจสอบผลกระทบของการเปลี่ยนแปลงโค้ด
 - **บังคับใช้มาตรฐาน Git Workflow** - dev → uat → main
 - **ตรวจสอบมาตรฐาน Next.js** - routing, components, API routes
@@ -23,6 +25,7 @@
 - **Emergency Rollback** - วิธีการ rollback เมื่อเกิดปัญหา
 
 #### เมื่อควรใช้:
+
 - ก่อน commit code ทุกครั้ง
 - เมื่อสร้าง route หรือ module ใหม่
 - เมื่อแก้ไข functionality ที่มีอยู่
@@ -30,6 +33,7 @@
 - เมื่อไม่แน่ใจว่าการเปลี่ยนแปลงจะกระทบส่วนอื่นหรือไม่
 
 #### ตัวอย่างการใช้:
+
 ```
 "ฉันเพิ่ง implement feature ใหม่เสร็จ พร้อม commit"
 → Agent จะตรวจสอบ SOPs ก่อน commit
@@ -44,10 +48,12 @@
 ---
 
 ### 2. 💡 **Dev-Life-Consultant Agent**
+
 **Model**: Sonnet  
-**Type**: Personal  
+**Type**: Personal
 
 #### หน้าที่หลัก:
+
 - **Software Development Consulting** - architecture, design patterns, debugging
 - **Funding & Business Strategy** - VC, pitch decks, equity structures
 - **Conceptual Thinking** - brainstorming, problem-solving, innovation
@@ -56,6 +62,7 @@
 - **Life-Work Balance** - จัดการเวลาระหว่างงานและชีวิตส่วนตัว
 
 #### เมื่อควรใช้:
+
 - ต้องการความช่วยเหลือทั้งเรื่อง technical และ life management
 - ออกแบบ architecture แต่ต้อง pitch ให้ VC ด้วย
 - Review code พร้อมวางแผน sprint
@@ -63,6 +70,7 @@
 - จัดลำดับความสำคัญของงาน
 
 #### ตัวอย่างการใช้:
+
 ```
 "ต้องจัดการ deadline project กับ meeting investor อาทิตย์หน้า"
 → Agent จะช่วยจัดลำดับและวางแผน
@@ -77,10 +85,12 @@
 ---
 
 ### 3. 📊 **DevOps-Maturity-Auditor Agent**
+
 **Model**: Sonnet  
-**Type**: Personal  
+**Type**: Personal
 
 #### หน้าที่หลัก:
+
 - **Maturity Assessment** - ประเมิน DevOps practices ตาม industry standards
 - **CI/CD Pipeline Evaluation** - ตรวจสอบ automation pipeline
 - **Infrastructure as Code** - Terraform, CloudFormation, Pulumi
@@ -89,6 +99,7 @@
 - **Disaster Recovery** - backup, restore, failover planning
 
 #### DevOps Maturity Checklist:
+
 - ✅ Automated builds and tests
 - ✅ Infrastructure as Code
 - ✅ Continuous deployment
@@ -101,6 +112,7 @@
 - ✅ Disaster recovery
 
 #### เมื่อควรใช้:
+
 - ประเมิน DevOps practices ปัจจุบัน
 - Setup CI/CD pipeline
 - Implement monitoring
@@ -108,6 +120,7 @@
 - วางแผน disaster recovery
 
 #### ตัวอย่างการใช้:
+
 ```
 "Review CI/CD setup ว่าขาดอะไร"
 → Agent จะประเมินตาม maturity checklist
@@ -124,6 +137,7 @@
 ## 🚀 วิธีการเรียกใช้ Agents
 
 ### 1. ผ่านคำสั่งในแชท:
+
 ```
 "ใช้ sop-enforcer agent ตรวจสอบก่อน commit"
 "ให้ dev-life-consultant agent ช่วยวางแผน"
@@ -131,10 +145,13 @@
 ```
 
 ### 2. ผ่าน Task Tool (สำหรับ Claude):
+
 Agent จะถูกเรียกใช้อัตโนมัติเมื่อ context ตรงกับหน้าที่ของ agent
 
 ### 3. Proactive Usage:
+
 Agents จะถูกเรียกใช้โดยอัตโนมัติในสถานการณ์ที่เหมาะสม เช่น:
+
 - sop-enforcer: เมื่อมีการเปลี่ยนแปลงโค้ดสำคัญ
 - dev-life-consultant: เมื่อมีคำถามที่ซับซ้อน
 - devops-maturity-auditor: เมื่อมีปัญหา deployment
@@ -143,11 +160,11 @@ Agents จะถูกเรียกใช้โดยอัตโนมัต�
 
 ## 📊 สรุปภาพรวม
 
-| Agent | Model | Type | ภาษา | Focus Area |
-|-------|-------|------|------|------------|
-| **sop-enforcer** | Sonnet | Personal | ไทย | Code Quality & Standards |
-| **dev-life-consultant** | Sonnet | Personal | English/ไทย | Holistic Development |
-| **devops-maturity-auditor** | Sonnet | Personal | English | DevOps Excellence |
+| Agent                       | Model  | Type     | ภาษา        | Focus Area               |
+| --------------------------- | ------ | -------- | ----------- | ------------------------ |
+| **sop-enforcer**            | Sonnet | Personal | ไทย         | Code Quality & Standards |
+| **dev-life-consultant**     | Sonnet | Personal | English/ไทย | Holistic Development     |
+| **devops-maturity-auditor** | Sonnet | Personal | English     | DevOps Excellence        |
 
 ## 💡 Best Practices
 
@@ -198,22 +215,23 @@ git push origin feature/[name]           # Push to remote
 
 ### File Change Impact (จาก SOP-Enforcer):
 
-| File Type | Auto-reload | Needs Rebuild | Needs Restart |
-|-----------|-------------|---------------|---------------|
-| *.tsx (React) | ✅ | ❌ | ❌ |
-| API routes | ✅ | ❌ | ❌ |
-| *.css | ✅ | ❌ | ❌ |
-| Socket server | ❌ | ⚠️ | ❌ |
-| server.js | ❌ | ⚠️ | 🔴 |
-| package.json | ❌ | ❌ | 🔴 |
-| .env | ❌ | ❌ | 🔴 |
-| Prisma schema | ❌ | ⚠️ | 🔴 |
+| File Type      | Auto-reload | Needs Rebuild | Needs Restart |
+| -------------- | ----------- | ------------- | ------------- |
+| \*.tsx (React) | ✅          | ❌            | ❌            |
+| API routes     | ✅          | ❌            | ❌            |
+| \*.css         | ✅          | ❌            | ❌            |
+| Socket server  | ❌          | ⚠️            | ❌            |
+| server.js      | ❌          | ⚠️            | 🔴            |
+| package.json   | ❌          | ❌            | 🔴            |
+| .env           | ❌          | ❌            | 🔴            |
+| Prisma schema  | ❌          | ⚠️            | 🔴            |
 
 ---
 
 ## 🎯 สรุป
 
 Claude Code CLI มี 3 Agents หลักที่ช่วยในการพัฒนา:
+
 1. **sop-enforcer** - รักษามาตรฐานและป้องกันโค้ดพัง
 2. **dev-life-consultant** - ให้คำปรึกษาแบบองค์รวม
 3. **devops-maturity-auditor** - ยกระดับ DevOps practices

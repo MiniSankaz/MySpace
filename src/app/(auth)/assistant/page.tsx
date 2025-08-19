@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { ChatInterfaceWithFolders } from '@/modules/personal-assistant/components/ChatInterfaceWithFolders';
-import './assistant.module.scss';
+import React, { useState } from "react";
+import { ChatInterfaceWithFolders } from "@/modules/personal-assistant/components/ChatInterfaceWithFolders";
+import "./assistant.module.scss";
 
 export default function AssistantPage() {
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>("");
 
   return (
     <div className="assistant-page">
@@ -26,8 +26,8 @@ interface QuickActionProps {
 function QuickAction({ icon, label, command }: QuickActionProps) {
   const handleClick = () => {
     // ส่ง event เพื่อใส่คำสั่งใน input
-    const event = new CustomEvent('assistant-command', { 
-      detail: { command } 
+    const event = new CustomEvent("assistant-command", {
+      detail: { command },
     });
     window.dispatchEvent(event);
   };

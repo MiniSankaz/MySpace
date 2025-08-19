@@ -11,14 +11,14 @@ Real-time price API has been successfully integrated and is now 100% operational
 ## 1. Implementation Overview
 
 ### Components Deployed
-1. **Simple Price API Service** (Port 4600) - ✅ Running
+1. **Simple Price API Service** (Port 4170) - ✅ Running
 2. **Market Data Service Integration** - ✅ Complete
 3. **Portfolio Service Enhancement** - ✅ Updated
 4. **Gateway Routing** - ✅ Working
 
 ## 2. Working Endpoints
 
-### Market Data API (Port 4600)
+### Market Data API (Port 4170)
 | Endpoint | Description | Status |
 |----------|-------------|--------|
 | `GET /health` | Service health check | ✅ Working |
@@ -27,7 +27,7 @@ Real-time price API has been successfully integrated and is now 100% operational
 | `GET /api/v1/market/symbols` | Available symbols | ✅ Working |
 | `GET /api/v1/market/stream/:symbol` | Real-time streaming (SSE) | ✅ Working |
 
-### Portfolio Integration (Port 4500)
+### Portfolio Integration (Port 4160)
 | Endpoint | Description | Status |
 |----------|-------------|--------|
 | `GET /api/v1/portfolios/:id/value` | Real-time portfolio value | ✅ Working |
@@ -36,7 +36,7 @@ Real-time price API has been successfully integrated and is now 100% operational
 
 ### Single Quote Test
 ```bash
-curl http://localhost:4600/api/v1/market/quote/AAPL
+curl http://localhost:4170/api/v1/market/quote/AAPL
 ```
 **Result**: 
 ```json
@@ -50,7 +50,7 @@ curl http://localhost:4600/api/v1/market/quote/AAPL
 
 ### Portfolio Value Test
 ```bash
-curl http://localhost:4000/api/v1/portfolios/{id}/value
+curl http://localhost:4110/api/v1/portfolios/{id}/value
 ```
 **Result**:
 ```json
@@ -98,19 +98,19 @@ curl http://localhost:4000/api/v1/portfolios/{id}/value
 ## 6. Architecture
 
 ```
-Frontend (3000)
+Frontend (4100)
     ↓
-API Gateway (4000)
+API Gateway (4110)
     ↓
-Portfolio Service (4500)
+Portfolio Service (4160)
     ↓
-Market Data Service (4600)
+Market Data Service (4170)
 ```
 
 ## 7. Service Configuration
 
 ### Market Data Service
-- **Port**: 4600
+- **Port**: 4170
 - **Technology**: Node.js/Express
 - **Features**: Real-time quotes, SSE streaming
 - **Cache**: 30-second TTL
@@ -126,28 +126,28 @@ Market Data Service (4600)
 
 ### Check Service Health
 ```bash
-curl http://localhost:4600/health
+curl http://localhost:4170/health
 ```
 
 ### Get Single Quote
 ```bash
-curl http://localhost:4600/api/v1/market/quote/AAPL
+curl http://localhost:4170/api/v1/market/quote/AAPL
 ```
 
 ### Get Multiple Quotes
 ```bash
-curl "http://localhost:4600/api/v1/market/quotes?symbols=AAPL,GOOGL,MSFT"
+curl "http://localhost:4170/api/v1/market/quotes?symbols=AAPL,GOOGL,MSFT"
 ```
 
 ### Get Portfolio Real-Time Value
 ```bash
-curl http://localhost:4000/api/v1/portfolios/[portfolio-id]/value \
+curl http://localhost:4110/api/v1/portfolios/[portfolio-id]/value \
   -H "x-user-id: test-user"
 ```
 
 ### Stream Real-Time Updates (SSE)
 ```bash
-curl http://localhost:4600/api/v1/market/stream/AAPL
+curl http://localhost:4170/api/v1/market/stream/AAPL
 ```
 
 ## 9. Performance Metrics

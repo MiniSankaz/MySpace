@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { prisma } from '@/core/database/prisma';
+import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/core/database/prisma";
 
 export interface TerminalSession {
   id: string;
@@ -31,7 +31,7 @@ export interface TerminalCommand {
 export interface TerminalLog {
   id: string;
   sessionId: string;
-  type: 'stdout' | 'stderr' | 'info';
+  type: "stdout" | "stderr" | "info";
   content: string;
   timestamp: Date;
 }
@@ -65,16 +65,19 @@ class WorkspaceTerminalLoggingService {
   }): Promise<TerminalSession> {
     try {
       // Ensure project exists before creating session
-      await this.ensureProjectExists(data.projectId, data.currentPath || process.cwd());
-      
+      await this.ensureProjectExists(
+        data.projectId,
+        data.currentPath || process.cwd(),
+      );
+
       const session = await this.db.terminalSession.create({
         data: {
           id: data.tabId, // Use tabId as the session ID
           tabName: data.tabName,
-          type: data.type || 'system',
+          type: data.type || "system",
           active: true,
           currentPath: data.currentPath || process.cwd(),
-          projectId: data.projectId || 'default',
+          projectId: data.projectId || "default",
           userId: data.userId || null,
           startedAt: new Date(),
           metadata: {},
@@ -84,37 +87,40 @@ class WorkspaceTerminalLoggingService {
             select: {
               commands: true,
               logs: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       return this.mapPrismaSessionToTerminalSession(session);
     } catch (error) {
-      console.error('Error creating terminal session:', error);
-      
+      console.error("Error creating terminal session:", error);
+
       // Fallback: return in-memory session if database fails
       return {
         id: data.tabId,
         tabId: data.tabId,
         tabName: data.tabName,
-        type: data.type || 'system',
+        type: data.type || "system",
         active: true,
         currentPath: data.currentPath || process.cwd(),
         projectId: data.projectId,
         userId: data.userId,
         startedAt: new Date(),
-        _count: { commands: 0, logs: 0 }
+        _count: { commands: 0, logs: 0 },
       };
     }
   }
 
   // Ensure project exists in database, create if not found
-  private async ensureProjectExists(projectId: string, projectPath: string): Promise<void> {
+  private async ensureProjectExists(
+    projectId: string,
+    projectPath: string,
+  ): Promise<void> {
     try {
       // Check if project exists
       const existingProject = await this.db.project.findUnique({
-        where: { id: projectId }
+        where: { id: projectId },
       });
 
       if (!existingProject) {
@@ -130,12 +136,14 @@ class WorkspaceTerminalLoggingService {
             scripts: [],
             settings: {
               autoCreated: true,
-              createdBy: 'workspace-terminal-logging',
-              createdAt: new Date().toISOString()
-            }
-          }
+              createdBy: "workspace-terminal-logging",
+              createdAt: new Date().toISOString(),
+            },
+          },
         });
-        console.log(`Created project ${projectId} for workspace terminal logging`);
+        console.log(
+          `Created project ${projectId} for workspace terminal logging`,
+        );
       }
     } catch (error) {
       console.error(`Failed to ensure project ${projectId} exists:`, error);
@@ -154,11 +162,11 @@ class WorkspaceTerminalLoggingService {
     try {
       // Get projectId from session
       const session = await this.db.terminalSession.findUnique({
-        where: { id: data.sessionId }
+        where: { id: data.sessionId },
       });
-      
+
       if (!session) {
-        console.error('Session not found for command logging:', data.sessionId);
+        console.error("Session not found for command logging:", data.sessionId);
         return;
       }
 
@@ -167,13 +175,13 @@ class WorkspaceTerminalLoggingService {
           sessionId: data.sessionId,
           projectId: session.projectId,
           command: data.command,
-          output: '',  // Required field, can be updated later
+          output: "", // Required field, can be updated later
           exitCode: data.exitCode || 0,
           timestamp: new Date(),
-        }
+        },
       });
     } catch (error) {
-      console.error('Error logging terminal command:', error);
+      console.error("Error logging terminal command:", error);
       // Don't throw to avoid breaking the main flow
     }
   }
@@ -181,85 +189,99 @@ class WorkspaceTerminalLoggingService {
   // Log terminal output
   async logOutput(data: {
     sessionId: string;
-    type: 'stdout' | 'stderr' | 'info';
+    type: "stdout" | "stderr" | "info";
     content: string;
   }): Promise<void> {
     try {
       // Get the next sequence number for this session
       const lastLog = await this.db.terminalLog.findFirst({
         where: { sessionId: data.sessionId },
-        orderBy: { sequence: 'desc' }
+        orderBy: { sequence: "desc" },
       });
       const nextSequence = (lastLog?.sequence || 0) + 1;
 
       await this.db.terminalLog.create({
         data: {
           sessionId: data.sessionId,
-          type: data.type === 'stdout' ? 'output' : data.type === 'stderr' ? 'error' : 'system',
-          direction: 'output',
+          type:
+            data.type === "stdout"
+              ? "output"
+              : data.type === "stderr"
+                ? "error"
+                : "system",
+          direction: "output",
           content: data.content,
           timestamp: new Date(),
           sequence: nextSequence,
-          metadata: {}
-        }
+          metadata: {},
+        },
       });
     } catch (error) {
-      console.error('Error logging terminal output:', error);
+      console.error("Error logging terminal output:", error);
       // Don't throw to avoid breaking the main flow
     }
   }
 
   // Get project sessions
-  async getProjectSessions(projectId: string, activeOnly?: boolean): Promise<TerminalSession[]> {
+  async getProjectSessions(
+    projectId: string,
+    activeOnly?: boolean,
+  ): Promise<TerminalSession[]> {
     try {
       const sessions = await this.db.terminalSession.findMany({
         where: {
           projectId,
           ...(activeOnly !== undefined && { active: activeOnly }),
         },
-        orderBy: { startedAt: 'desc' },
+        orderBy: { startedAt: "desc" },
         include: {
           _count: {
             select: {
               commands: true,
               logs: true,
-            }
-          }
+            },
+          },
         },
         take: 100,
       });
 
-      return sessions.map(s => this.mapPrismaSessionToTerminalSession(s));
+      return sessions.map((s) => this.mapPrismaSessionToTerminalSession(s));
     } catch (error) {
-      console.error('Error fetching project sessions:', error);
+      console.error("Error fetching project sessions:", error);
       return [];
     }
   }
 
   // Get session logs
-  async getSessionLogs(sessionId: string, limit: number = 100): Promise<TerminalLog[]> {
+  async getSessionLogs(
+    sessionId: string,
+    limit: number = 100,
+  ): Promise<TerminalLog[]> {
     try {
       const logs = await this.db.terminalLog.findMany({
         where: { sessionId },
-        orderBy: { timestamp: 'desc' },
+        orderBy: { timestamp: "desc" },
         take: limit,
       });
 
-      return logs.map(log => ({
+      return logs.map((log) => ({
         id: log.id,
         sessionId: log.sessionId,
-        type: log.type as 'stdout' | 'stderr' | 'info',
+        type: log.type as "stdout" | "stderr" | "info",
         content: log.content,
         timestamp: log.timestamp,
       }));
     } catch (error) {
-      console.error('Error fetching session logs:', error);
+      console.error("Error fetching session logs:", error);
       return [];
     }
   }
 
   // Get project commands
-  async getProjectCommands(projectId: string, limit: number = 100): Promise<TerminalCommand[]> {
+  async getProjectCommands(
+    projectId: string,
+    limit: number = 100,
+  ): Promise<TerminalCommand[]> {
     try {
       // First get sessions for the project
       const sessions = await this.db.terminalSession.findMany({
@@ -267,27 +289,27 @@ class WorkspaceTerminalLoggingService {
         select: { id: true },
       });
 
-      const sessionIds = sessions.map(s => s.id);
+      const sessionIds = sessions.map((s) => s.id);
 
       const commands = await this.db.terminalCommand.findMany({
         where: {
           sessionId: { in: sessionIds },
         },
-        orderBy: { timestamp: 'desc' },
+        orderBy: { timestamp: "desc" },
         take: limit,
       });
 
-      return commands.map(cmd => ({
+      return commands.map((cmd) => ({
         id: cmd.id,
         sessionId: cmd.sessionId,
         command: cmd.command,
-        workingDir: undefined,  // Field doesn't exist in schema
+        workingDir: undefined, // Field doesn't exist in schema
         exitCode: cmd.exitCode || undefined,
-        duration: undefined,  // Field doesn't exist in schema
+        duration: undefined, // Field doesn't exist in schema
         timestamp: cmd.timestamp,
       }));
     } catch (error) {
-      console.error('Error fetching project commands:', error);
+      console.error("Error fetching project commands:", error);
       return [];
     }
   }
@@ -299,20 +321,22 @@ class WorkspaceTerminalLoggingService {
         where: { projectId },
         include: {
           commands: true,
-        }
+        },
       });
 
-      const allCommands = sessions.flatMap(s => s.commands);
-      
+      const allCommands = sessions.flatMap((s) => s.commands);
+
       const stats: TerminalStats = {
         totalCommands: allCommands.length,
-        successfulCommands: allCommands.filter(c => c.exitCode === 0).length,
-        failedCommands: allCommands.filter(c => c.exitCode !== 0 && c.exitCode !== null).length,
+        successfulCommands: allCommands.filter((c) => c.exitCode === 0).length,
+        failedCommands: allCommands.filter(
+          (c) => c.exitCode !== 0 && c.exitCode !== null,
+        ).length,
         errorRate: 0,
         avgExecutionTime: 0,
         mostUsedCommands: [],
         totalSessions: sessions.length,
-        activeSessions: sessions.filter(s => s.active).length,
+        activeSessions: sessions.filter((s) => s.active).length,
       };
 
       // Calculate error rate
@@ -325,9 +349,12 @@ class WorkspaceTerminalLoggingService {
 
       // Get most used commands
       const commandCounts = new Map<string, number>();
-      allCommands.forEach(cmd => {
-        const baseCommand = cmd.command.split(' ')[0]; // Get base command
-        commandCounts.set(baseCommand, (commandCounts.get(baseCommand) || 0) + 1);
+      allCommands.forEach((cmd) => {
+        const baseCommand = cmd.command.split(" ")[0]; // Get base command
+        commandCounts.set(
+          baseCommand,
+          (commandCounts.get(baseCommand) || 0) + 1,
+        );
       });
 
       stats.mostUsedCommands = Array.from(commandCounts.entries())
@@ -337,7 +364,7 @@ class WorkspaceTerminalLoggingService {
 
       return stats;
     } catch (error) {
-      console.error('Error calculating project stats:', error);
+      console.error("Error calculating project stats:", error);
       return {
         totalCommands: 0,
         successfulCommands: 0,
@@ -356,7 +383,7 @@ class WorkspaceTerminalLoggingService {
     try {
       // First check if session exists
       const existingSession = await this.db.terminalSession.findUnique({
-        where: { id: sessionId }
+        where: { id: sessionId },
       });
 
       if (existingSession) {
@@ -365,17 +392,22 @@ class WorkspaceTerminalLoggingService {
           data: {
             active: false,
             endedAt: new Date(),
-          }
+          },
         });
       } else {
-        console.warn(`Session ${sessionId} not found in database, skipping endSession`);
+        console.warn(
+          `Session ${sessionId} not found in database, skipping endSession`,
+        );
       }
     } catch (error: any) {
       // Handle P2025 error (record not found) gracefully
-      if (error.code === 'P2025') {
-        console.warn(`Session ${sessionId} not found when ending:`, error.message);
+      if (error.code === "P2025") {
+        console.warn(
+          `Session ${sessionId} not found when ending:`,
+          error.message,
+        );
       } else {
-        console.error('Error ending terminal session:', error);
+        console.error("Error ending terminal session:", error);
       }
     }
   }
@@ -383,20 +415,22 @@ class WorkspaceTerminalLoggingService {
   // Clear old sessions
   async clearOldSessions(daysToKeep: number = 30): Promise<number> {
     try {
-      const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
-      
+      const cutoffDate = new Date(
+        Date.now() - daysToKeep * 24 * 60 * 60 * 1000,
+      );
+
       const result = await this.db.terminalSession.deleteMany({
         where: {
           active: false,
           endedAt: {
-            lt: cutoffDate
-          }
-        }
+            lt: cutoffDate,
+          },
+        },
       });
 
       return result.count;
     } catch (error) {
-      console.error('Error clearing old sessions:', error);
+      console.error("Error clearing old sessions:", error);
       return 0;
     }
   }
@@ -405,7 +439,7 @@ class WorkspaceTerminalLoggingService {
   private mapPrismaSessionToTerminalSession(session: any): TerminalSession {
     return {
       id: session.id,
-      tabId: session.id,  // Use id as tabId since tabId field doesn't exist
+      tabId: session.id, // Use id as tabId since tabId field doesn't exist
       tabName: session.tabName,
       type: session.type,
       active: session.active,

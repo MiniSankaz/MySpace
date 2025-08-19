@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useEffect, Fragment } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { Menu, Transition } from '@headlessui/react';
-import { BellIcon } from '@heroicons/react/24/outline';
-import { authClient } from '@/core/auth/auth-client';
+import { useState, useEffect, Fragment } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import { Menu, Transition } from "@headlessui/react";
+import { BellIcon } from "@heroicons/react/24/outline";
+import { authClient } from "@/core/auth/auth-client";
 
 const userNavigation = [
-  { name: 'Your Profile', href: '/profile' },
-  { name: 'Settings', href: '/settings' },
+  { name: "Your Profile", href: "/profile" },
+  { name: "Settings", href: "/settings" },
 ];
 
 function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
+  return classes.filter(Boolean).join(" ");
 }
 
 interface User {
@@ -25,7 +25,11 @@ interface User {
   avatar?: string;
 }
 
-export default function MainNavigation({ children }: { children: React.ReactNode }) {
+export default function MainNavigation({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
@@ -39,13 +43,17 @@ export default function MainNavigation({ children }: { children: React.ReactNode
 
   const checkAuth = async () => {
     try {
-      const storedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('accessToken');
-      
+      const storedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("accessToken");
+
       if (!token || !storedUser) {
         // Redirect to login for protected routes
-        if (!pathname.startsWith('/login') && !pathname.startsWith('/register') && pathname !== '/') {
-          router.push('/login');
+        if (
+          !pathname.startsWith("/login") &&
+          !pathname.startsWith("/register") &&
+          pathname !== "/"
+        ) {
+          router.push("/login");
         }
         return;
       }
@@ -54,35 +62,39 @@ export default function MainNavigation({ children }: { children: React.ReactNode
       setUser(parsedUser);
 
       // Fetch updated user data
-      const response = await authClient.fetch('/api/ums/users/me');
+      const response = await authClient.fetch("/api/ums/users/me");
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
           setUser(data.user);
-          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem("user", JSON.stringify(data.user));
         }
       }
     } catch (error) {
-      console.error('Auth check error:', error);
-      if (!pathname.startsWith('/login') && !pathname.startsWith('/register') && pathname !== '/') {
-        router.push('/login');
+      console.error("Auth check error:", error);
+      if (
+        !pathname.startsWith("/login") &&
+        !pathname.startsWith("/register") &&
+        pathname !== "/"
+      ) {
+        router.push("/login");
       }
     }
   };
 
   const handleLogout = async () => {
     try {
-      await authClient.fetch('/api/ums/auth/logout', { method: 'POST' });
+      await authClient.fetch("/api/ums/auth/logout", { method: "POST" });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       authClient.logout();
-      router.push('/login');
+      router.push("/login");
     }
   };
 
   // Don't show navigation on auth pages
-  if (pathname === '/login' || pathname === '/register' || pathname === '/') {
+  if (pathname === "/login" || pathname === "/register" || pathname === "/") {
     return <>{children}</>;
   }
 
@@ -115,7 +127,9 @@ export default function MainNavigation({ children }: { children: React.ReactNode
                     <div className="flex items-center space-x-3 px-3 py-1">
                       <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center">
                         <span className="text-white text-sm font-medium">
-                          {user?.displayName?.charAt(0) || user?.username?.charAt(0) || 'U'}
+                          {user?.displayName?.charAt(0) ||
+                            user?.username?.charAt(0) ||
+                            "U"}
                         </span>
                       </div>
                       <div className="hidden md:block text-left">
@@ -143,8 +157,8 @@ export default function MainNavigation({ children }: { children: React.ReactNode
                           <Link
                             href={item.href}
                             className={classNames(
-                              active ? 'bg-gray-700' : '',
-                              'block px-4 py-2 text-sm text-gray-200'
+                              active ? "bg-gray-700" : "",
+                              "block px-4 py-2 text-sm text-gray-200",
                             )}
                           >
                             {item.name}
@@ -157,8 +171,8 @@ export default function MainNavigation({ children }: { children: React.ReactNode
                         <button
                           onClick={handleLogout}
                           className={classNames(
-                            active ? 'bg-gray-700' : '',
-                            'block w-full text-left px-4 py-2 text-sm text-gray-200'
+                            active ? "bg-gray-700" : "",
+                            "block w-full text-left px-4 py-2 text-sm text-gray-200",
                           )}
                         >
                           Sign out
@@ -173,9 +187,7 @@ export default function MainNavigation({ children }: { children: React.ReactNode
         </div>
       </div>
 
-      <main className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

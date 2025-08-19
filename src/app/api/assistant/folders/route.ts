@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { verifyAuth } from '@/middleware/auth';
-import { z } from 'zod';
-import { cacheManager } from '@/core/database/cache-manager';
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import { verifyAuth } from "@/middleware/auth";
+import { z } from "zod";
+import { cacheManager } from "@/core/database/cache-manager";
 
 const prisma = new PrismaClient();
 
@@ -13,7 +13,7 @@ const DB_TIMEOUT = 5000; // 5 seconds
 const createFolderSchema = z.object({
   name: z.string().min(1).max(50),
   color: z.string().optional(),
-  icon: z.string().optional()
+  icon: z.string().optional(),
 });
 
 // GET all folders for the user
@@ -22,14 +22,14 @@ export async function GET(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
+        { success: false, error: "Authentication required" },
+        { status: 401 },
       );
     }
 
     // Generate cache key for user folders
     const cacheKey = `folders:${user.id}`;
-    
+
     try {
       // Use cache with timeout handling
       const folders = await cacheManager.withCacheAndTimeout(
@@ -40,55 +40,52 @@ export async function GET(request: NextRequest) {
             where: { userId: user.id },
             include: {
               _count: {
-                select: { conversations: true }
-              }
+                select: { conversations: true },
+              },
             },
-            orderBy: [
-              { order: 'asc' },
-              { name: 'asc' }
-            ]
+            orderBy: [{ order: "asc" }, { name: "asc" }],
           });
         },
         {
           ttl: FOLDERS_CACHE_TTL,
           timeout: DB_TIMEOUT,
-          fallbackValue: [] // Return empty folders if timeout
-        }
+          fallbackValue: [], // Return empty folders if timeout
+        },
       );
 
       return NextResponse.json({
         success: true,
-        folders: folders.map(folder => ({
+        folders: folders.map((folder) => ({
           id: folder.id,
           name: folder.name,
           color: folder.color,
           icon: folder.icon,
           conversationCount: folder._count.conversations,
-          createdAt: folder.createdAt
+          createdAt: folder.createdAt,
         })),
-        cached: folders.length > 0 && cacheManager.get(cacheKey) !== null // Indicate if from cache
+        cached: folders.length > 0 && cacheManager.get(cacheKey) !== null, // Indicate if from cache
       });
     } catch (cacheError) {
-      console.error('[Folders] Cache operation failed:', cacheError);
-      
+      console.error("[Folders] Cache operation failed:", cacheError);
+
       // Return empty folders with warning if cache fails
       return NextResponse.json({
         success: true,
         folders: [],
-        warning: 'Database unavailable, showing cached or empty data'
+        warning: "Database unavailable, showing cached or empty data",
       });
     }
   } catch (error) {
-    console.error('Get folders error:', error);
+    console.error("Get folders error:", error);
     return NextResponse.json(
-      { success: false, error: 'Failed to get folders' },
-      { status: 500 }
+      { success: false, error: "Failed to get folders" },
+      { status: 500 },
     );
   } finally {
     try {
       await prisma.$disconnect();
     } catch (disconnectError) {
-      console.error('Prisma disconnect error:', disconnectError);
+      console.error("Prisma disconnect error:", disconnectError);
     }
   }
 }
@@ -99,8 +96,8 @@ export async function POST(request: NextRequest) {
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
+        { success: false, error: "Authentication required" },
+        { status: 401 },
       );
     }
 
@@ -109,8 +106,12 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Invalid folder data', details: validation.error.errors },
-        { status: 400 }
+        {
+          success: false,
+          error: "Invalid folder data",
+          details: validation.error.errors,
+        },
+        { status: 400 },
       );
     }
 
@@ -122,22 +123,22 @@ export async function POST(request: NextRequest) {
           return await prisma.assistantFolder.findFirst({
             where: {
               userId: user.id,
-              name: validation.data.name
-            }
+              name: validation.data.name,
+            },
           });
         },
         {
           ttl: 30000, // Short TTL for existence check
           timeout: DB_TIMEOUT,
           fallbackValue: null,
-          skipCache: true // Always check fresh for creates
-        }
+          skipCache: true, // Always check fresh for creates
+        },
       );
 
       if (existingFolder) {
         return NextResponse.json(
-          { success: false, error: 'Folder with this name already exists' },
-          { status: 400 }
+          { success: false, error: "Folder with this name already exists" },
+          { status: 400 },
         );
       }
 
@@ -147,15 +148,15 @@ export async function POST(request: NextRequest) {
         async () => {
           return await prisma.assistantFolder.findFirst({
             where: { userId: user.id },
-            orderBy: { order: 'desc' }
+            orderBy: { order: "desc" },
           });
         },
         {
           ttl: 30000, // Short TTL for order check
           timeout: DB_TIMEOUT,
           fallbackValue: null,
-          skipCache: true // Always check fresh for creates
-        }
+          skipCache: true, // Always check fresh for creates
+        },
       );
 
       // Create folder with timeout
@@ -166,21 +167,21 @@ export async function POST(request: NextRequest) {
             data: {
               userId: user.id,
               name: validation.data.name,
-              color: validation.data.color || '#3B82F6',
-              icon: validation.data.icon || 'folder',
-              order: maxOrderFolder ? maxOrderFolder.order + 1 : 0
-            }
+              color: validation.data.color || "#3B82F6",
+              icon: validation.data.icon || "folder",
+              order: maxOrderFolder ? maxOrderFolder.order + 1 : 0,
+            },
           });
         },
         {
           timeout: DB_TIMEOUT,
-          skipCache: true // Don't cache creates
-        }
+          skipCache: true, // Don't cache creates
+        },
       );
 
       // Clear folders cache after successful create
       cacheManager.clearByPattern(`folders:${user.id}`);
-      
+
       return NextResponse.json({
         success: true,
         folder: {
@@ -188,27 +189,30 @@ export async function POST(request: NextRequest) {
           name: folder.name,
           color: folder.color,
           icon: folder.icon,
-          createdAt: folder.createdAt
-        }
+          createdAt: folder.createdAt,
+        },
       });
     } catch (dbError) {
-      console.error('[Folders] Database operation failed:', dbError);
+      console.error("[Folders] Database operation failed:", dbError);
       return NextResponse.json(
-        { success: false, error: 'Database unavailable, please try again later' },
-        { status: 503 } // Service unavailable
+        {
+          success: false,
+          error: "Database unavailable, please try again later",
+        },
+        { status: 503 }, // Service unavailable
       );
     }
   } catch (error) {
-    console.error('Create folder error:', error);
+    console.error("Create folder error:", error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create folder' },
-      { status: 500 }
+      { success: false, error: "Failed to create folder" },
+      { status: 500 },
     );
   } finally {
     try {
       await prisma.$disconnect();
     } catch (disconnectError) {
-      console.error('Prisma disconnect error:', disconnectError);
+      console.error("Prisma disconnect error:", disconnectError);
     }
   }
 }

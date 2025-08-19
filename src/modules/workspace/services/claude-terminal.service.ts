@@ -1,7 +1,14 @@
-import { ClaudeService } from '@/services/claude.service';
+import { ClaudeService } from "@/services/claude.service";
 
 export interface ClaudeCommand {
-  type: 'code' | 'explain' | 'fix' | 'refactor' | 'test' | 'document' | 'general';
+  type:
+    | "code"
+    | "explain"
+    | "fix"
+    | "refactor"
+    | "test"
+    | "document"
+    | "general";
   command: string;
   context?: {
     currentFile?: string;
@@ -26,28 +33,28 @@ export class ClaudeTerminalService {
     try {
       const command = this.parseCommand(input);
       command.context = context;
-      
+
       this.commandHistory.push(command);
-      
+
       switch (command.type) {
-        case 'code':
+        case "code":
           return await this.handleCodeGeneration(command);
-        
-        case 'explain':
+
+        case "explain":
           return await this.handleExplain(command);
-        
-        case 'fix':
+
+        case "fix":
           return await this.handleFix(command);
-        
-        case 'refactor':
+
+        case "refactor":
           return await this.handleRefactor(command);
-        
-        case 'test':
+
+        case "test":
           return await this.handleTestGeneration(command);
-        
-        case 'document':
+
+        case "document":
           return await this.handleDocumentation(command);
-        
+
         default:
           return await this.handleGeneralQuery(command);
       }
@@ -61,59 +68,81 @@ export class ClaudeTerminalService {
    */
   private parseCommand(input: string): ClaudeCommand {
     const lowerInput = input.toLowerCase().trim();
-    
+
     // Code generation commands
-    if (lowerInput.startsWith('create ') || lowerInput.startsWith('generate ') || lowerInput.startsWith('code ')) {
+    if (
+      lowerInput.startsWith("create ") ||
+      lowerInput.startsWith("generate ") ||
+      lowerInput.startsWith("code ")
+    ) {
       return {
-        type: 'code',
-        command: input.replace(/^(create|generate|code)\s+/i, '')
+        type: "code",
+        command: input.replace(/^(create|generate|code)\s+/i, ""),
       };
     }
-    
+
     // Explain commands
-    if (lowerInput.startsWith('explain ') || lowerInput.startsWith('what is ') || lowerInput.startsWith('how does ')) {
+    if (
+      lowerInput.startsWith("explain ") ||
+      lowerInput.startsWith("what is ") ||
+      lowerInput.startsWith("how does ")
+    ) {
       return {
-        type: 'explain',
-        command: input.replace(/^(explain|what is|how does)\s+/i, '')
+        type: "explain",
+        command: input.replace(/^(explain|what is|how does)\s+/i, ""),
       };
     }
-    
+
     // Fix commands
-    if (lowerInput.startsWith('fix ') || lowerInput.startsWith('debug ') || lowerInput.startsWith('solve ')) {
+    if (
+      lowerInput.startsWith("fix ") ||
+      lowerInput.startsWith("debug ") ||
+      lowerInput.startsWith("solve ")
+    ) {
       return {
-        type: 'fix',
-        command: input.replace(/^(fix|debug|solve)\s+/i, '')
+        type: "fix",
+        command: input.replace(/^(fix|debug|solve)\s+/i, ""),
       };
     }
-    
+
     // Refactor commands
-    if (lowerInput.startsWith('refactor ') || lowerInput.startsWith('improve ') || lowerInput.startsWith('optimize ')) {
+    if (
+      lowerInput.startsWith("refactor ") ||
+      lowerInput.startsWith("improve ") ||
+      lowerInput.startsWith("optimize ")
+    ) {
       return {
-        type: 'refactor',
-        command: input.replace(/^(refactor|improve|optimize)\s+/i, '')
+        type: "refactor",
+        command: input.replace(/^(refactor|improve|optimize)\s+/i, ""),
       };
     }
-    
+
     // Test commands
-    if (lowerInput.startsWith('test ') || lowerInput.startsWith('write test ')) {
+    if (
+      lowerInput.startsWith("test ") ||
+      lowerInput.startsWith("write test ")
+    ) {
       return {
-        type: 'test',
-        command: input.replace(/^(write test|test)\s+/i, '')
+        type: "test",
+        command: input.replace(/^(write test|test)\s+/i, ""),
       };
     }
-    
+
     // Documentation commands
-    if (lowerInput.startsWith('document ') || lowerInput.startsWith('add docs ')) {
+    if (
+      lowerInput.startsWith("document ") ||
+      lowerInput.startsWith("add docs ")
+    ) {
       return {
-        type: 'document',
-        command: input.replace(/^(document|add docs)\s+/i, '')
+        type: "document",
+        command: input.replace(/^(document|add docs)\s+/i, ""),
       };
     }
-    
+
     // General query
     return {
-      type: 'general',
-      command: input
+      type: "general",
+      command: input,
     };
   }
 
@@ -124,8 +153,8 @@ export class ClaudeTerminalService {
     const prompt = `Generate code for: ${command.command}
     
 Context:
-- Project Path: ${command.context?.projectPath || 'Not specified'}
-- Language: ${command.context?.language || 'Auto-detect'}
+- Project Path: ${command.context?.projectPath || "Not specified"}
+- Language: ${command.context?.language || "Auto-detect"}
 
 Requirements:
 1. Provide clean, production-ready code
@@ -143,7 +172,7 @@ Requirements:
   private async handleExplain(command: ClaudeCommand): Promise<string> {
     const prompt = `Explain: ${command.command}
     
-${command.context?.selectedCode ? `Code to explain:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ''}
+${command.context?.selectedCode ? `Code to explain:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ""}
 
 Please provide:
 1. Clear explanation of what this does
@@ -160,7 +189,7 @@ Please provide:
   private async handleFix(command: ClaudeCommand): Promise<string> {
     const prompt = `Fix/Debug: ${command.command}
     
-${command.context?.selectedCode ? `Code with issue:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ''}
+${command.context?.selectedCode ? `Code with issue:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ""}
 
 Please:
 1. Identify the issue
@@ -178,7 +207,7 @@ Please:
   private async handleRefactor(command: ClaudeCommand): Promise<string> {
     const prompt = `Refactor: ${command.command}
     
-${command.context?.selectedCode ? `Code to refactor:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ''}
+${command.context?.selectedCode ? `Code to refactor:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ""}
 
 Focus on:
 1. Improving code quality and readability
@@ -196,7 +225,7 @@ Focus on:
   private async handleTestGeneration(command: ClaudeCommand): Promise<string> {
     const prompt = `Generate tests for: ${command.command}
     
-${command.context?.selectedCode ? `Code to test:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ''}
+${command.context?.selectedCode ? `Code to test:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ""}
 
 Requirements:
 1. Cover main functionality
@@ -214,7 +243,7 @@ Requirements:
   private async handleDocumentation(command: ClaudeCommand): Promise<string> {
     const prompt = `Add documentation for: ${command.command}
     
-${command.context?.selectedCode ? `Code to document:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ''}
+${command.context?.selectedCode ? `Code to document:\n\`\`\`\n${command.context.selectedCode}\n\`\`\`` : ""}
 
 Include:
 1. Function/class descriptions
@@ -232,7 +261,7 @@ Include:
   private async handleGeneralQuery(command: ClaudeCommand): Promise<string> {
     const prompt = `${command.command}
     
-Context: Working in project at ${command.context?.projectPath || 'current directory'}`;
+Context: Working in project at ${command.context?.projectPath || "current directory"}`;
 
     const response = await this.claudeService.sendMessage(prompt);
     return response;
@@ -245,17 +274,17 @@ Context: Working in project at ${command.context?.projectPath || 'current direct
     // Extract code blocks and format them
     const codeBlockRegex = /```[\s\S]*?```/g;
     let formatted = response;
-    
+
     const codeBlocks = response.match(codeBlockRegex);
     if (codeBlocks) {
-      codeBlocks.forEach(block => {
+      codeBlocks.forEach((block) => {
         const cleanBlock = block
-          .replace(/```(\w+)?\n/, '--- CODE ---\n')
-          .replace(/```$/, '\n--- END CODE ---');
+          .replace(/```(\w+)?\n/, "--- CODE ---\n")
+          .replace(/```$/, "\n--- END CODE ---");
         formatted = formatted.replace(block, cleanBlock);
       });
     }
-    
+
     return formatted;
   }
 
@@ -264,24 +293,24 @@ Context: Working in project at ${command.context?.projectPath || 'current direct
    */
   getSuggestions(partialInput: string): string[] {
     const suggestions = [
-      'create component',
-      'generate API endpoint',
-      'explain this code',
-      'fix error',
-      'refactor for performance',
-      'write tests',
-      'document this function',
-      'how to implement',
-      'what is the best way to',
-      'optimize this query',
-      'add error handling',
-      'implement authentication',
-      'create database schema',
-      'setup CI/CD pipeline',
+      "create component",
+      "generate API endpoint",
+      "explain this code",
+      "fix error",
+      "refactor for performance",
+      "write tests",
+      "document this function",
+      "how to implement",
+      "what is the best way to",
+      "optimize this query",
+      "add error handling",
+      "implement authentication",
+      "create database schema",
+      "setup CI/CD pipeline",
     ];
-    
+
     return suggestions
-      .filter(s => s.toLowerCase().includes(partialInput.toLowerCase()))
+      .filter((s) => s.toLowerCase().includes(partialInput.toLowerCase()))
       .slice(0, 5);
   }
 

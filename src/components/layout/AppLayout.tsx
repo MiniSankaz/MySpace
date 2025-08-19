@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import MainNavigation from './MainNavigation';
-import Sidebar from './Sidebar';
-import Breadcrumbs from './Breadcrumbs';
-import { Bars3Icon } from '@heroicons/react/24/outline';
+import { useState } from "react";
+import MainNavigation from "./MainNavigation";
+import Sidebar from "./Sidebar";
+import Breadcrumbs from "./Breadcrumbs";
+import { Bars3Icon } from "@heroicons/react/24/outline";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,7 +16,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <MainNavigation>
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      
+
       <div className="lg:pl-72">
         {/* Mobile sidebar toggle */}
         <div className="sticky top-0 z-40 lg:hidden">

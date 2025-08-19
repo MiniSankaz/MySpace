@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Clock, Folder, Loader2 } from 'lucide-react';
-import ProjectIcon from './ProjectIcon';
-import { Project } from '@/types/project';
+import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Star, Clock, Folder, Loader2 } from "lucide-react";
+import ProjectIcon from "./ProjectIcon";
+import { Project } from "@/types/project";
 
 interface ProjectListProps {
   projects: Project[];
@@ -12,7 +12,7 @@ interface ProjectListProps {
   recentProjects: Project[];
   currentProject: Project | null;
   isCollapsed: boolean;
-  viewMode: 'grid' | 'list';
+  viewMode: "grid" | "list";
   loading: boolean;
   onProjectSelect: (project: Project) => void;
   onPinToggle: (project: Project) => void;
@@ -36,7 +36,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
       </div>
     );
   }
-  
+
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-gray-500">
@@ -50,7 +50,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
       </div>
     );
   }
-  
+
   // Collapsed view - icons only
   if (isCollapsed) {
     return (
@@ -66,16 +66,12 @@ const ProjectList: React.FC<ProjectListProps> = ({
               onClick={() => onProjectSelect(project)}
               className={`w-full p-2 rounded-lg transition-all ${
                 currentProject?.id === project.id
-                  ? 'bg-blue-500/20 border border-blue-500/30'
-                  : 'hover:bg-gray-700/50'
+                  ? "bg-blue-500/20 border border-blue-500/30"
+                  : "hover:bg-gray-700/50"
               }`}
               title={project.name}
             >
-              <ProjectIcon
-                project={project}
-                size={28}
-                showStatus={false}
-              />
+              <ProjectIcon project={project} size={28} showStatus={false} />
               {project.preferences?.isPinned && (
                 <Star className="absolute top-1 right-1 w-3 h-3 text-yellow-400 fill-yellow-400" />
               )}
@@ -85,7 +81,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
       </div>
     );
   }
-  
+
   // Expanded view
   return (
     <div className="p-3 space-y-4">
@@ -94,7 +90,9 @@ const ProjectList: React.FC<ProjectListProps> = ({
         <div>
           <div className="flex items-center space-x-2 px-2 mb-2">
             <Star className="w-4 h-4 text-yellow-400" />
-            <span className="text-xs font-medium text-gray-400 uppercase">Pinned</span>
+            <span className="text-xs font-medium text-gray-400 uppercase">
+              Pinned
+            </span>
           </div>
           <ProjectSection
             projects={pinnedProjects}
@@ -106,13 +104,15 @@ const ProjectList: React.FC<ProjectListProps> = ({
           />
         </div>
       )}
-      
+
       {/* Recent Projects */}
       {recentProjects.length > 0 && (
         <div>
           <div className="flex items-center space-x-2 px-2 mb-2">
             <Clock className="w-4 h-4 text-gray-400" />
-            <span className="text-xs font-medium text-gray-400 uppercase">Recent</span>
+            <span className="text-xs font-medium text-gray-400 uppercase">
+              Recent
+            </span>
           </div>
           <ProjectSection
             projects={recentProjects}
@@ -124,17 +124,19 @@ const ProjectList: React.FC<ProjectListProps> = ({
           />
         </div>
       )}
-      
+
       {/* All Projects */}
       {projects.length > pinnedProjects.length + recentProjects.length && (
         <div>
           <div className="flex items-center space-x-2 px-2 mb-2">
             <Folder className="w-4 h-4 text-gray-400" />
-            <span className="text-xs font-medium text-gray-400 uppercase">All Projects</span>
+            <span className="text-xs font-medium text-gray-400 uppercase">
+              All Projects
+            </span>
           </div>
           <ProjectSection
-            projects={projects.filter(p => 
-              !pinnedProjects.includes(p) && !recentProjects.includes(p)
+            projects={projects.filter(
+              (p) => !pinnedProjects.includes(p) && !recentProjects.includes(p),
             )}
             currentProject={currentProject}
             viewMode={viewMode}
@@ -151,7 +153,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
 interface ProjectSectionProps {
   projects: Project[];
   currentProject: Project | null;
-  viewMode: 'grid' | 'list';
+  viewMode: "grid" | "list";
   onProjectSelect: (project: Project) => void;
   onPinToggle: (project: Project) => void;
   showPin?: boolean;
@@ -165,7 +167,7 @@ const ProjectSection: React.FC<ProjectSectionProps> = ({
   onPinToggle,
   showPin = false,
 }) => {
-  if (viewMode === 'grid') {
+  if (viewMode === "grid") {
     return (
       <div className="grid grid-cols-3 gap-2">
         {projects.map((project) => (
@@ -183,15 +185,11 @@ const ProjectSection: React.FC<ProjectSectionProps> = ({
               }}
               className={`w-full p-3 rounded-lg transition-all ${
                 currentProject?.id === project.id
-                  ? 'bg-blue-500/20 border border-blue-500/30'
-                  : 'hover:bg-gray-700/50'
+                  ? "bg-blue-500/20 border border-blue-500/30"
+                  : "hover:bg-gray-700/50"
               }`}
             >
-              <ProjectIcon
-                project={project}
-                size={32}
-                showStatus={true}
-              />
+              <ProjectIcon project={project} size={32} showStatus={true} />
               <p className="text-xs text-gray-300 mt-1 truncate">
                 {project.name}
               </p>
@@ -204,7 +202,7 @@ const ProjectSection: React.FC<ProjectSectionProps> = ({
       </div>
     );
   }
-  
+
   // List view
   return (
     <div className="space-y-1">
@@ -222,15 +220,11 @@ const ProjectSection: React.FC<ProjectSectionProps> = ({
             }}
             className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all ${
               currentProject?.id === project.id
-                ? 'bg-blue-500/20 border border-blue-500/30'
-                : 'hover:bg-gray-700/50'
+                ? "bg-blue-500/20 border border-blue-500/30"
+                : "hover:bg-gray-700/50"
             }`}
           >
-            <ProjectIcon
-              project={project}
-              size={24}
-              showStatus={true}
-            />
+            <ProjectIcon project={project} size={24} showStatus={true} />
             <div className="flex-1 text-left">
               <p className="text-sm font-medium text-gray-200 truncate">
                 {project.name}
@@ -249,11 +243,11 @@ const ProjectSection: React.FC<ProjectSectionProps> = ({
                 }}
                 className="p-1 hover:bg-gray-600/50 rounded transition-colors"
               >
-                <Star 
+                <Star
                   className={`w-4 h-4 ${
                     project.preferences?.isPinned
-                      ? 'text-yellow-400 fill-yellow-400'
-                      : 'text-gray-500'
+                      ? "text-yellow-400 fill-yellow-400"
+                      : "text-gray-500"
                   }`}
                 />
               </button>

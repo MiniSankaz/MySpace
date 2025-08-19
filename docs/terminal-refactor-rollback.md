@@ -3,9 +3,10 @@
 ## Quick Rollback Commands
 
 ### EMERGENCY ROLLBACK (< 30 seconds)
+
 ```bash
 # Immediate rollback via feature flag
-curl -X POST http://localhost:4000/api/admin/feature-flags \
+curl -X POST http://localhost:4110/api/admin/feature-flags \
   -H "Content-Type: application/json" \
   -d '{"terminal_refactor": false, "force": true}'
 
@@ -13,7 +14,7 @@ curl -X POST http://localhost:4000/api/admin/feature-flags \
 ./quick-restart.sh
 
 # Verify rollback
-curl http://localhost:4000/api/health/terminal
+curl http://localhost:4110/api/health/terminal
 ```
 
 ## Rollback Decision Tree
@@ -25,12 +26,12 @@ graph TD
     B -->|High| D[Planned Rollback]
     B -->|Medium| E[Partial Rollback]
     B -->|Low| F[Fix Forward]
-    
+
     C --> G[Disable Feature Flag]
     D --> H[Coordinate Team]
     E --> I[Rollback Specific Service]
     F --> J[Deploy Hotfix]
-    
+
     G --> K[Monitor 30min]
     H --> L[Execute Rollback Plan]
     I --> M[Test Affected Areas]
@@ -40,6 +41,7 @@ graph TD
 ## Phase-Specific Rollback Procedures
 
 ### Phase 1: Foundation (Days 1-3)
+
 **Risk Level**: LOW
 **Rollback Time**: < 5 minutes
 **Data Impact**: None
@@ -52,11 +54,13 @@ npm run restart
 ```
 
 **Validation**:
+
 - [ ] New services removed
 - [ ] No impact on existing services
 - [ ] All terminals functional
 
 ### Phase 2: Migration Layer (Days 4-6)
+
 **Risk Level**: MEDIUM
 **Rollback Time**: < 10 minutes
 **Data Impact**: None
@@ -77,12 +81,14 @@ npm run test:terminals
 ```
 
 **Validation**:
+
 - [ ] Feature flags disabled
 - [ ] Adapters bypassed
 - [ ] Original services active
 - [ ] No performance degradation
 
 ### Phase 3: Gradual Migration (Days 7-10)
+
 **Risk Level**: HIGH
 **Rollback Time**: < 15 minutes
 **Data Impact**: Possible state loss
@@ -94,13 +100,13 @@ npm run test:terminals
 echo "Starting Phase 3 Rollback..."
 
 # 1. Stop new connections
-curl -X POST http://localhost:4000/api/admin/maintenance/enable
+curl -X POST http://localhost:4110/api/admin/maintenance/enable
 
 # 2. Export current state
 node scripts/export-terminal-state.js > terminal-state-backup.json
 
 # 3. Disable refactored services
-curl -X POST http://localhost:4000/api/admin/feature-flags \
+curl -X POST http://localhost:4110/api/admin/feature-flags \
   -d '{"terminal_refactor": false}'
 
 # 4. Restore legacy service state
@@ -111,23 +117,25 @@ systemctl restart terminal-service
 
 # 6. Validate connections
 for i in {1..10}; do
-  curl -s http://localhost:4000/api/health/terminal || exit 1
+  curl -s http://localhost:4110/api/health/terminal || exit 1
   sleep 1
 done
 
 # 7. Re-enable connections
-curl -X POST http://localhost:4000/api/admin/maintenance/disable
+curl -X POST http://localhost:4110/api/admin/maintenance/disable
 
 echo "Rollback complete"
 ```
 
 **Validation**:
+
 - [ ] All sessions restored
 - [ ] No data loss
 - [ ] WebSocket connections stable
 - [ ] Performance baseline restored
 
 ### Phase 4: Service Consolidation (Days 11-13)
+
 **Risk Level**: HIGH
 **Rollback Time**: 20-30 minutes
 **Data Impact**: State migration required
@@ -172,6 +180,7 @@ npm run monitor:terminals --duration=900
 ```
 
 **Validation**:
+
 - [ ] All 7 legacy services running
 - [ ] Data migrated successfully
 - [ ] No session loss
@@ -179,6 +188,7 @@ npm run monitor:terminals --duration=900
 - [ ] Logging operational
 
 ### Phase 5: Cleanup (Days 14-15)
+
 **Risk Level**: CRITICAL
 **Rollback Time**: 30-60 minutes
 **Data Impact**: Full restoration required
@@ -196,7 +206,7 @@ echo "This will completely restore the pre-refactor state"
 curl -X POST $SLACK_WEBHOOK -d '{"text": "EMERGENCY: Terminal refactor rollback initiated"}'
 
 # 2. Enable maintenance mode
-curl -X POST http://localhost:4000/api/admin/maintenance/enable \
+curl -X POST http://localhost:4110/api/admin/maintenance/enable \
   -d '{"message": "System maintenance in progress", "eta": "60 minutes"}'
 
 # 3. Backup current state (even if broken)
@@ -228,12 +238,12 @@ npm run test:smoke
 # 10. Gradual traffic restoration
 for percent in 10 25 50 75 100; do
   echo "Restoring ${percent}% traffic"
-  curl -X POST http://localhost:4000/api/admin/traffic \
+  curl -X POST http://localhost:4110/api/admin/traffic \
     -d "{\"percentage\": $percent}"
   sleep 300  # Wait 5 minutes between increases
-  
+
   # Check error rate
-  ERROR_RATE=$(curl -s http://localhost:4000/api/metrics/errors | jq .rate)
+  ERROR_RATE=$(curl -s http://localhost:4110/api/metrics/errors | jq .rate)
   if (( $(echo "$ERROR_RATE > 1.0" | bc -l) )); then
     echo "Error rate too high: $ERROR_RATE"
     exit 1
@@ -241,7 +251,7 @@ for percent in 10 25 50 75 100; do
 done
 
 # 11. Disable maintenance mode
-curl -X POST http://localhost:4000/api/admin/maintenance/disable
+curl -X POST http://localhost:4110/api/admin/maintenance/disable
 
 echo "Rollback complete. System restored to pre-refactor state."
 ```
@@ -249,6 +259,7 @@ echo "Rollback complete. System restored to pre-refactor state."
 ## Rollback Validation Checklist
 
 ### Immediate Checks (< 5 minutes)
+
 - [ ] All terminals can connect
 - [ ] Existing sessions preserved
 - [ ] No WebSocket errors
@@ -256,6 +267,7 @@ echo "Rollback complete. System restored to pre-refactor state."
 - [ ] No memory leaks
 
 ### Short-term Monitoring (30 minutes)
+
 - [ ] CPU usage normal
 - [ ] Memory stable
 - [ ] No error spikes
@@ -263,6 +275,7 @@ echo "Rollback complete. System restored to pre-refactor state."
 - [ ] Project switching smooth
 
 ### Extended Validation (24 hours)
+
 - [ ] No performance degradation
 - [ ] All features functional
 - [ ] No data corruption
@@ -272,10 +285,11 @@ echo "Rollback complete. System restored to pre-refactor state."
 ## Data Recovery Procedures
 
 ### Session State Recovery
+
 ```javascript
 // recover-sessions.js
-const { SessionManager } = require('./src/services/terminal-memory.service');
-const backup = require('./terminal-state-backup.json');
+const { SessionManager } = require("./src/services/terminal-memory.service");
+const backup = require("./terminal-state-backup.json");
 
 async function recoverSessions() {
   for (const session of backup.sessions) {
@@ -292,15 +306,16 @@ recoverSessions();
 ```
 
 ### WebSocket Connection Recovery
+
 ```javascript
 // recover-connections.js
-const WebSocket = require('ws');
-const connections = require('./connection-backup.json');
+const WebSocket = require("ws");
+const connections = require("./connection-backup.json");
 
 async function recoverConnections() {
   for (const conn of connections) {
     const ws = new WebSocket(`ws://localhost:4001/terminal/${conn.sessionId}`);
-    ws.on('open', () => {
+    ws.on("open", () => {
       console.log(`Reconnected session: ${conn.sessionId}`);
     });
   }
@@ -310,9 +325,10 @@ async function recoverConnections() {
 ## Monitoring During Rollback
 
 ### Key Metrics to Watch
+
 ```bash
 # Terminal sessions
-watch -n 1 'curl -s http://localhost:4000/api/metrics/terminals | jq .'
+watch -n 1 'curl -s http://localhost:4110/api/metrics/terminals | jq .'
 
 # Memory usage
 watch -n 1 'ps aux | grep node | head -5'
@@ -325,6 +341,7 @@ watch -n 1 'netstat -an | grep :4001 | grep ESTABLISHED | wc -l'
 ```
 
 ### Alert Thresholds
+
 - **CPU > 80%**: Investigate immediately
 - **Memory > 2GB**: Potential memory leak
 - **Error rate > 1%**: Rollback recommended
@@ -334,6 +351,7 @@ watch -n 1 'netstat -an | grep :4001 | grep ESTABLISHED | wc -l'
 ## Communication Plan
 
 ### Internal Communication
+
 ```bash
 # Slack notification
 curl -X POST $SLACK_WEBHOOK -d @- << EOF
@@ -353,7 +371,9 @@ EOF
 ```
 
 ### Customer Communication
+
 Only if customer-facing impact:
+
 1. Update status page
 2. Send email to affected users
 3. Post in-app notification
@@ -362,18 +382,21 @@ Only if customer-facing impact:
 ## Post-Rollback Actions
 
 ### Immediate (Within 1 hour)
+
 1. [ ] Confirm system stability
 2. [ ] Document rollback reason
 3. [ ] Preserve logs for analysis
 4. [ ] Update team on status
 
 ### Short-term (Within 24 hours)
+
 1. [ ] Root cause analysis
 2. [ ] Update rollback procedures
 3. [ ] Plan remediation
 4. [ ] Schedule retry
 
 ### Long-term (Within 1 week)
+
 1. [ ] Implement fixes
 2. [ ] Enhanced testing
 3. [ ] Update documentation
@@ -382,6 +405,7 @@ Only if customer-facing impact:
 ## Rollback Test Plan
 
 ### Pre-Production Testing
+
 ```bash
 # Test rollback in staging
 ./scripts/test-rollback.sh --env=staging --phase=3
@@ -394,7 +418,9 @@ time ./scripts/rollback-phase3.sh
 ```
 
 ### Rollback Dry Run
+
 Every Friday at 3 PM (low traffic):
+
 1. Enable maintenance window
 2. Execute rollback procedure
 3. Validate system state
@@ -404,12 +430,14 @@ Every Friday at 3 PM (low traffic):
 ## Emergency Contacts
 
 ### Escalation Path
+
 1. **On-Call Engineer**: Check PagerDuty
 2. **Team Lead**: via Slack #terminal-team
 3. **DevOps**: via Slack #devops
 4. **Manager**: If customer impact > 10 minutes
 
 ### External Dependencies
+
 - **Database Team**: For data recovery assistance
 - **Infrastructure**: For resource scaling
 - **Security**: If any security concerns
@@ -420,6 +448,7 @@ Every Friday at 3 PM (low traffic):
 ## Quick Reference Card
 
 ### 🚨 EMERGENCY COMMANDS
+
 ```bash
 # STOP EVERYTHING
 docker-compose down
@@ -431,22 +460,24 @@ echo "TERMINAL_REFACTOR_ENABLED=false" >> .env
 TERMINAL_LEGACY_MODE=true npm run start
 
 # CHECK STATUS
-curl http://localhost:4000/api/health/terminal
+curl http://localhost:4110/api/health/terminal
 ```
 
 ### 📊 Key Metrics Commands
+
 ```bash
 # Session count
-curl http://localhost:4000/api/metrics/terminals/sessions
+curl http://localhost:4110/api/metrics/terminals/sessions
 
 # Error rate
-curl http://localhost:4000/api/metrics/terminals/errors
+curl http://localhost:4110/api/metrics/terminals/errors
 
 # Memory usage
-curl http://localhost:4000/api/metrics/terminals/memory
+curl http://localhost:4110/api/metrics/terminals/memory
 ```
 
 ### 📞 Emergency Contacts
+
 - On-Call: [PagerDuty](https://company.pagerduty.com)
 - Slack: #terminal-emergency
 - Phone: [Escalation List]

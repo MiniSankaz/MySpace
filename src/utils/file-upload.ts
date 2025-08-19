@@ -321,7 +321,9 @@ export async function parseFormData(request: Request): Promise<{
 
   for (const [key, value] of formData.entries()) {
     if (value instanceof File) {
-      const buffer = Buffer.from(await value.arrayBuffer());
+      // Use buffer polyfill for browser compatibility
+      const arrayBuffer = await value.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
       files.push({
         name: key,
         filename: value.name,

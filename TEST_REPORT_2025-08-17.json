@@ -1,0 +1,347 @@
+{
+  "timestamp": "2025-08-17T07:42:15.165Z",
+  "testSummary": {
+    "totalTests": 11,
+    "passedTests": 6,
+    "failedTests": 3,
+    "errorTests": 2
+  },
+  "services": {
+    "gateway": {
+      "status": "OK",
+      "responseTime": 48.464584,
+      "data": {
+        "gateway": {
+          "service": "gateway",
+          "status": "OK",
+          "timestamp": "2025-08-17T07:42:11.630Z",
+          "uptime": 5413.086662334,
+          "memory": {
+            "rss": 158908416,
+            "heapTotal": 27475968,
+            "heapUsed": 24580168,
+            "external": 4691092,
+            "arrayBuffers": 380349
+          },
+          "version": "3.0.0",
+          "environment": "development",
+          "metrics": {
+            "requestsPerMinute": 0,
+            "averageResponseTime": 0,
+            "errorRate": 0,
+            "activeConnections": 0
+          }
+        },
+        "services": {
+          "user": {
+            "service": "user",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:42:11.672Z",
+            "uptime": 188226.391647375,
+            "memory": {
+              "rss": 115671040,
+              "heapTotal": 30179328,
+              "heapUsed": 25262840,
+              "external": 2332852,
+              "arrayBuffers": 141820
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 42,
+              "lastChecked": "2025-08-17T07:42:11.672Z"
+            }
+          },
+          "ai": {
+            "service": "ai",
+            "status": "ERROR",
+            "timestamp": "2025-08-17T07:42:11.632Z",
+            "uptime": 0,
+            "memory": {
+              "rss": 0,
+              "heapTotal": 0,
+              "heapUsed": 0,
+              "external": 0,
+              "arrayBuffers": 0
+            },
+            "version": "unknown",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": -1,
+              "lastChecked": "2025-08-17T07:42:11.632Z",
+              "errorMessage": ""
+            }
+          },
+          "terminal": {
+            "service": "terminal",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:42:11.632Z",
+            "uptime": 5412.449672458,
+            "memory": {
+              "rss": 134316032,
+              "heapTotal": 23199744,
+              "heapUsed": 20895400,
+              "external": 4935612,
+              "arrayBuffers": 125667
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 1,
+              "lastChecked": "2025-08-17T07:42:11.632Z"
+            }
+          },
+          "workspace": {
+            "service": "workspace",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:42:11.632Z",
+            "uptime": 5412.266382583,
+            "memory": {
+              "rss": 126615552,
+              "heapTotal": 15826944,
+              "heapUsed": 14340016,
+              "external": 2703636,
+              "arrayBuffers": 92643
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 1,
+              "lastChecked": "2025-08-17T07:42:11.632Z"
+            }
+          },
+          "portfolio": {
+            "service": "portfolio",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:42:11.632Z",
+            "uptime": 5412.686263833,
+            "memory": {
+              "rss": 154599424,
+              "heapTotal": 23363584,
+              "heapUsed": 21501840,
+              "external": 4742237,
+              "arrayBuffers": 59875
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 1,
+              "lastChecked": "2025-08-17T07:42:11.632Z"
+            }
+          }
+        },
+        "overall": {
+          "status": "WARNING",
+          "servicesUp": 4,
+          "servicesTotal": 5,
+          "timestamp": "2025-08-17T07:42:11.672Z"
+        }
+      }
+    },
+    "user-management": {
+      "status": "OK",
+      "responseTime": 42.645042000000004,
+      "port": 4100
+    },
+    "portfolio": {
+      "status": "OK",
+      "responseTime": 1.1831669999999974,
+      "port": 4500
+    },
+    "terminal": {
+      "status": "OK",
+      "responseTime": 1.0234999999999985,
+      "port": 4300
+    },
+    "workspace": {
+      "status": "OK",
+      "responseTime": 1.0676250000000067,
+      "port": 4400
+    },
+    "discovery": {
+      "status": "OK",
+      "responseTime": 0.9742080000000044,
+      "data": {
+        "success": true,
+        "data": {
+          "user-management": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "user-management-1",
+                "url": "http://localhost:4100",
+                "healthy": true
+              }
+            ]
+          },
+          "ai-assistant": {
+            "instances": 1,
+            "healthy": 0,
+            "endpoints": [
+              {
+                "id": "ai-assistant-1",
+                "url": "http://localhost:4210",
+                "healthy": false
+              }
+            ]
+          },
+          "terminal": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "terminal-1",
+                "url": "http://localhost:4300",
+                "healthy": true
+              }
+            ]
+          },
+          "workspace": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "workspace-1",
+                "url": "http://localhost:4400",
+                "healthy": true
+              }
+            ]
+          },
+          "portfolio": {
+            "instances": 1,
+            "healthy": 1,
+            "endpoints": [
+              {
+                "id": "portfolio-1",
+                "url": "http://localhost:4500",
+                "healthy": true
+              }
+            ]
+          }
+        },
+        "timestamp": "2025-08-17T07:42:11.721Z"
+      }
+    }
+  },
+  "authentication": {
+    "portfolio@user.com": {
+      "status": "FAILED",
+      "responseTime": 9.811042,
+      "statusCode": 404,
+      "message": "Unknown error"
+    },
+    "admin@portfolio.com": {
+      "status": "FAILED",
+      "responseTime": 3.005624999999995,
+      "statusCode": 404,
+      "message": "Unknown error"
+    },
+    "demo@portfolio.com": {
+      "status": "FAILED",
+      "responseTime": 2.434459000000018,
+      "statusCode": 404,
+      "message": "Unknown error"
+    }
+  },
+  "portfolio": {},
+  "websocket": {
+    "terminal": {
+      "status": "ERROR",
+      "error": "socket hang up"
+    },
+    "portfolio": {
+      "status": "ERROR",
+      "error": "Unexpected server response: 400"
+    }
+  },
+  "performance": {
+    "Health Check": {
+      "iterations": 5,
+      "avgResponseTime": 2,
+      "minResponseTime": 2,
+      "maxResponseTime": 3,
+      "responseTimes": [
+        2.764875000000302,
+        2.276292000000012,
+        2.1462499999997817,
+        1.9195419999996375,
+        2.004707999999937
+      ]
+    },
+    "Service Discovery": {
+      "iterations": 5,
+      "avgResponseTime": 1,
+      "minResponseTime": 1,
+      "maxResponseTime": 1,
+      "responseTimes": [
+        0.7253340000002026,
+        0.6835410000003321,
+        0.7105830000000424,
+        0.8195839999998498,
+        0.5632919999998194
+      ]
+    },
+    "Portfolio API": {
+      "iterations": 5,
+      "avgResponseTime": 42,
+      "minResponseTime": 41,
+      "maxResponseTime": 44,
+      "responseTimes": [
+        41.09470800000008,
+        40.74800000000005,
+        43.92254099999991,
+        43.10470899999973,
+        41.64633399999957
+      ]
+    },
+    "Stocks API": {
+      "iterations": 5,
+      "avgResponseTime": 3,
+      "minResponseTime": 2,
+      "maxResponseTime": 4,
+      "responseTimes": [
+        2.8241659999998774,
+        2.1867080000001806,
+        2.096541999999772,
+        2.6808750000000146,
+        4.204583000000184
+      ]
+    }
+  },
+  "errors": [
+    {
+      "test": "Invalid Login",
+      "status": "FAIL",
+      "expected": 401,
+      "actual": 404,
+      "responseTime": 4.23633400000017
+    },
+    {
+      "test": "Unauthorized API Access",
+      "status": "FAIL",
+      "expected": 401,
+      "actual": 200,
+      "responseTime": 2163.780208
+    },
+    {
+      "test": "Invalid Portfolio Creation",
+      "status": "PASS",
+      "expected": 400,
+      "actual": 400,
+      "responseTime": 4.3333339999999225
+    },
+    {
+      "test": "Non-existent Endpoint",
+      "status": "PASS",
+      "expected": 404,
+      "actual": 404,
+      "responseTime": 1.80987499999992
+    }
+  ]
+}

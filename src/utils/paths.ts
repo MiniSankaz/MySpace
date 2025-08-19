@@ -1,13 +1,13 @@
-import path from 'path';
-import os from 'os';
-import { config } from '@/config/app.config';
+import path from "path";
+import os from "os";
+import { config } from "@/config/app.config";
 
 /**
  * Get storage paths for the application
  */
 export const getStoragePaths = () => {
   const cfg = config();
-  
+
   return {
     terminal: cfg.storage.basePath,
     temp: cfg.storage.tempPath,
@@ -21,27 +21,30 @@ export const getStoragePaths = () => {
  */
 export const getSystemPaths = () => {
   const platform = os.platform();
-  
-  if (platform === 'win32') {
+
+  if (platform === "win32") {
     return {
-      shell: process.env.COMSPEC || 'cmd.exe',
-      powershell: process.env.POWERSHELL_PATH || 'powershell.exe',
-      git: process.env.GIT_PATH || 'git.exe',
+      shell: process.env.COMSPEC || "cmd.exe",
+      powershell: process.env.POWERSHELL_PATH || "powershell.exe",
+      git: process.env.GIT_PATH || "git.exe",
     };
   }
-  
+
   return {
-    shell: process.env.SHELL || '/bin/bash',
-    zsh: '/bin/zsh',
-    bash: '/bin/bash',
-    git: '/usr/bin/git',
+    shell: process.env.SHELL || "/bin/bash",
+    zsh: "/bin/zsh",
+    bash: "/bin/bash",
+    git: "/usr/bin/git",
   };
 };
 
 /**
  * Generate a temporary file path with unique name
  */
-export const getTempFile = (prefix: string = 'temp', suffix: string = '.tmp'): string => {
+export const getTempFile = (
+  prefix: string = "temp",
+  suffix: string = ".tmp",
+): string => {
   const tempDir = config().storage.tempPath;
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(7);
@@ -53,12 +56,12 @@ export const getTempFile = (prefix: string = 'temp', suffix: string = '.tmp'): s
  */
 export const getProjectPaths = (projectId: string) => {
   const basePath = config().storage.basePath;
-  
+
   return {
-    root: path.join(basePath, 'projects', projectId),
-    sessions: path.join(basePath, 'projects', projectId, 'sessions'),
-    logs: path.join(basePath, 'projects', projectId, 'logs'),
-    config: path.join(basePath, 'projects', projectId, 'config'),
+    root: path.join(basePath, "projects", projectId),
+    sessions: path.join(basePath, "projects", projectId, "sessions"),
+    logs: path.join(basePath, "projects", projectId, "logs"),
+    config: path.join(basePath, "projects", projectId, "config"),
   };
 };
 
@@ -67,16 +70,16 @@ export const getProjectPaths = (projectId: string) => {
  */
 export const normalizePath = (inputPath: string): string => {
   // Convert Windows backslashes to forward slashes
-  let normalized = inputPath.replace(/\\/g, '/');
-  
+  let normalized = inputPath.replace(/\\/g, "/");
+
   // Remove duplicate slashes
-  normalized = normalized.replace(/\/+/g, '/');
-  
+  normalized = normalized.replace(/\/+/g, "/");
+
   // Resolve relative paths
   if (!path.isAbsolute(normalized)) {
     normalized = path.resolve(normalized);
   }
-  
+
   return normalized;
 };
 
@@ -86,31 +89,31 @@ export const normalizePath = (inputPath: string): string => {
 export const isSafePath = (inputPath: string): boolean => {
   const normalized = normalizePath(inputPath);
   const resolved = path.resolve(normalized);
-  
+
   // Dangerous system paths to block
   const dangerousPaths = [
-    '/etc',
-    '/sys',
-    '/proc',
-    '/dev',
-    '/boot',
-    '/root',
-    'C:\\Windows',
-    'C:\\Program Files',
-    'C:\\Program Files (x86)',
+    "/etc",
+    "/sys",
+    "/proc",
+    "/dev",
+    "/boot",
+    "/root",
+    "C:\\Windows",
+    "C:\\Program Files",
+    "C:\\Program Files (x86)",
   ];
-  
+
   for (const dangerous of dangerousPaths) {
     if (resolved.startsWith(dangerous)) {
       return false;
     }
   }
-  
+
   // Check if path contains traversal attempts
-  if (resolved.includes('..')) {
+  if (resolved.includes("..")) {
     return false;
   }
-  
+
   return true;
 };
 
@@ -124,13 +127,13 @@ export const getUserHome = (): string => {
 /**
  * Get application data directory
  */
-export const getAppDataDir = (appName: string = 'portfolio'): string => {
+export const getAppDataDir = (appName: string = "portfolio"): string => {
   const platform = os.platform();
-  
-  if (platform === 'win32') {
+
+  if (platform === "win32") {
     return path.join(process.env.APPDATA || getUserHome(), appName);
-  } else if (platform === 'darwin') {
-    return path.join(getUserHome(), 'Library', 'Application Support', appName);
+  } else if (platform === "darwin") {
+    return path.join(getUserHome(), "Library", "Application Support", appName);
   } else {
     return path.join(getUserHome(), `.${appName}`);
   }

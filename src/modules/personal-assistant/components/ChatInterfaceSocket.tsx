@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Message } from '../types';
-import { useSocket } from '../hooks/useSocket';
+import React, { useState, useEffect, useRef } from "react";
+import { Message } from "../types";
+import { useSocket } from "../hooks/useSocket";
 
 interface ChatInterfaceSocketProps {
   userId?: string;
@@ -11,13 +11,15 @@ interface ChatInterfaceSocketProps {
 }
 
 export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
-  userId = 'user-123',
+  userId = "user-123",
   sessionId: initialSessionId,
-  onSessionIdChange
+  onSessionIdChange,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [sessionId, setSessionId] = useState(initialSessionId || `session-${Date.now()}`);
+  const [input, setInput] = useState("");
+  const [sessionId, setSessionId] = useState(
+    initialSessionId || `session-${Date.now()}`,
+  );
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -26,13 +28,13 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
     userId,
     sessionId,
     onMessage: (message) => {
-      setMessages(prev => [...prev, message]);
+      setMessages((prev) => [...prev, message]);
       if (message.metadata?.suggestions) {
         setSuggestions(message.metadata.suggestions);
       }
     },
     onTyping: () => setOtherUserTyping(true),
-    onStopTyping: () => setOtherUserTyping(false)
+    onStopTyping: () => setOtherUserTyping(false),
   });
 
   useEffect(() => {
@@ -50,21 +52,24 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
       setInput(event.detail.command);
     };
 
-    window.addEventListener('assistant-command' as any, handleQuickCommand);
+    window.addEventListener("assistant-command" as any, handleQuickCommand);
     return () => {
-      window.removeEventListener('assistant-command' as any, handleQuickCommand);
+      window.removeEventListener(
+        "assistant-command" as any,
+        handleQuickCommand,
+      );
     };
   }, []);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleSendMessage = () => {
     if (!input.trim() || !connected) return;
 
     sendMessage(input);
-    setInput('');
+    setInput("");
     setSuggestions([]);
     stopTyping();
   };
@@ -79,23 +84,23 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    const command = suggestion.split(' - ')[0];
+    const command = suggestion.split(" - ")[0];
     setInput(command);
   };
 
   const formatMessage = (content: string) => {
     return content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code>$1</code>')
-      .replace(/\n/g, '<br />');
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(/`(.*?)`/g, "<code>$1</code>")
+      .replace(/\n/g, "<br />");
   };
 
   return (
@@ -114,9 +119,11 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <div
+              className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
+            />
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              {connected ? 'Connected' : 'Disconnected'}
+              {connected ? "Connected" : "Disconnected"}
             </span>
           </div>
         </div>
@@ -139,21 +146,21 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
             <div
               key={message.id}
               className={`flex ${
-                message.type === 'user' ? 'justify-end' : 'justify-start'
+                message.type === "user" ? "justify-end" : "justify-start"
               }`}
             >
               <div
                 className={`max-w-[70%] px-4 py-3 rounded-lg ${
-                  message.type === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : message.type === 'assistant'
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-                    : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                  message.type === "user"
+                    ? "bg-blue-500 text-white"
+                    : message.type === "assistant"
+                      ? "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                      : "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
                 }`}
               >
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: formatMessage(message.content)
+                    __html: formatMessage(message.content),
                   }}
                 />
                 <div className="text-xs mt-1 opacity-70">
@@ -163,7 +170,7 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
             </div>
           ))
         )}
-        
+
         {otherUserTyping && (
           <div className="flex justify-start">
             <div className="bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-lg">
@@ -175,7 +182,7 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -207,7 +214,9 @@ export const ChatInterfaceSocket: React.FC<ChatInterfaceSocketProps> = ({
             value={input}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
-            placeholder={connected ? "พิมพ์ข้อความหรือคำสั่ง..." : "รอการเชื่อมต่อ..."}
+            placeholder={
+              connected ? "พิมพ์ข้อความหรือคำสั่ง..." : "รอการเชื่อมต่อ..."
+            }
             className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={!connected}
           />

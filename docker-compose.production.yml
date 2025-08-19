@@ -9,7 +9,7 @@ services:
     container_name: personal-assistant-app
     restart: unless-stopped
     ports:
-      - "4000:4000"
+      - "${PORT_GATEWAY_MAIN:-4110}:4000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}

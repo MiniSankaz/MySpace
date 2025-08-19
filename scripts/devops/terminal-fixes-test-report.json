@@ -1,0 +1,81 @@
+{
+  "timestamp": "2025-08-11T07:34:03.530Z",
+  "duration": 60055,
+  "testSuite": "Terminal Fixes Comprehensive Test",
+  "summary": {
+    "totalTests": 8,
+    "passed": 5,
+    "failed": 1,
+    "partial": 2,
+    "pending": 0,
+    "timeout": 0
+  },
+  "results": {
+    "databaseForeignKeyFix": {
+      "status": "failed",
+      "details": [
+        "❌ Error: Failed to create terminal session: 401 {\"error\":\"Authentication required\"}"
+      ]
+    },
+    "apiRoute405Fix": {
+      "status": "passed",
+      "details": [
+        "✓ GET request to /api/ums/auth/login successful",
+        "✓ Response: Login required",
+        "✓ Authenticated: false"
+      ]
+    },
+    "claudeCliIntegration": {
+      "status": "partial",
+      "details": [
+        "✓ WebSocket connection established",
+        "✓ Terminal session connected",
+        "❌ Test timed out after 15 seconds",
+        "⚠️ Command fragmentation still detected",
+        "⚠️ Stable prompt state not reached"
+      ]
+    },
+    "errorHandling": {
+      "status": "passed",
+      "details": [
+        "✓ Invalid project ID handled gracefully",
+        "✓ Missing authentication handled correctly",
+        "✓ WebSocket graceful handling of invalid params"
+      ]
+    },
+    "systemTerminalTest": {
+      "status": "passed",
+      "details": [
+        "✓ WebSocket connection established",
+        "✓ Terminal session connected",
+        "✓ Test command sent",
+        "✓ Command output received correctly",
+        "✓ Command output received correctly"
+      ]
+    },
+    "claudeTerminalTest": {
+      "status": "partial",
+      "details": [
+        "✓ WebSocket connection established",
+        "✓ Terminal session connected",
+        "⚠️ Command fragmentation detected",
+        "⚠️ Command fragmentation detected"
+      ]
+    },
+    "parallelTerminalTest": {
+      "status": "passed",
+      "details": ["✓ 4/4 terminals connected"]
+    },
+    "performanceTest": {
+      "status": "passed",
+      "details": [
+        "✓ Average connection time: 2.3333333333333335ms",
+        "✓ No connection errors"
+      ]
+    }
+  },
+  "recommendations": [
+    "Fix database foreign key constraints for TerminalSession",
+    "Improve Claude CLI startup sequence and command fragmentation handling"
+  ]
+}

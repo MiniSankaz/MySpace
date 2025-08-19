@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { 
-  FileText, 
-  FilePlus, 
-  FileX, 
-  GitMerge, 
-  AlertTriangle, 
+import React from "react";
+import {
+  FileText,
+  FilePlus,
+  FileX,
+  GitMerge,
+  AlertTriangle,
   Clock,
   CheckCircle,
   Loader2,
   Upload,
-  Download
-} from 'lucide-react';
-import { GitStatus } from '@/types/git';
+  Download,
+} from "lucide-react";
+import { GitStatus } from "@/types/git";
 
 interface VisualStatusIndicatorsProps {
   status: GitStatus | null;
   loading?: boolean;
 }
 
-const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({ 
+const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({
   status,
-  loading = false 
+  loading = false,
 }) => {
   if (loading) {
     return (
@@ -32,30 +32,31 @@ const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({
       </div>
     );
   }
-  
+
   if (!status) {
     return null;
   }
-  
-  const hasChanges = status.modified.length > 0 || 
-                     status.staged.length > 0 || 
-                     status.untracked.length > 0;
-  
+
+  const hasChanges =
+    status.modified.length > 0 ||
+    status.staged.length > 0 ||
+    status.untracked.length > 0;
+
   const getStatusColor = () => {
-    if (status.conflicts.length > 0) return 'text-red-400';
-    if (status.staged.length > 0) return 'text-green-400';
-    if (status.modified.length > 0) return 'text-yellow-400';
-    return 'text-gray-400';
+    if (status.conflicts.length > 0) return "text-red-400";
+    if (status.staged.length > 0) return "text-green-400";
+    if (status.modified.length > 0) return "text-yellow-400";
+    return "text-gray-400";
   };
-  
+
   const getStatusText = () => {
-    if (status.conflicts.length > 0) return 'Conflicts';
-    if (status.staged.length > 0) return 'Ready to commit';
-    if (status.modified.length > 0) return 'Changes';
-    if (status.untracked.length > 0) return 'Untracked files';
-    return 'Clean';
+    if (status.conflicts.length > 0) return "Conflicts";
+    if (status.staged.length > 0) return "Ready to commit";
+    if (status.modified.length > 0) return "Changes";
+    if (status.untracked.length > 0) return "Untracked files";
+    return "Clean";
   };
-  
+
   return (
     <div className="flex items-center space-x-4">
       {/* Main status indicator */}
@@ -69,7 +70,7 @@ const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({
         )}
         <span className="text-sm font-medium">{getStatusText()}</span>
       </div>
-      
+
       {/* File counts */}
       <div className="flex items-center space-x-3 text-xs">
         {status.modified.length > 0 && (
@@ -78,21 +79,21 @@ const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({
             <span>{status.modified.length}</span>
           </div>
         )}
-        
+
         {status.staged.length > 0 && (
           <div className="flex items-center space-x-1 text-green-400">
             <FilePlus className="w-3 h-3" />
             <span>{status.staged.length}</span>
           </div>
         )}
-        
+
         {status.untracked.length > 0 && (
           <div className="flex items-center space-x-1 text-gray-400">
             <FileX className="w-3 h-3" />
             <span>{status.untracked.length}</span>
           </div>
         )}
-        
+
         {status.conflicts.length > 0 && (
           <div className="flex items-center space-x-1 text-red-400">
             <AlertTriangle className="w-3 h-3" />
@@ -100,7 +101,7 @@ const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({
           </div>
         )}
       </div>
-      
+
       {/* Sync status */}
       {(status.ahead > 0 || status.behind > 0) && (
         <div className="flex items-center space-x-2 text-xs">
@@ -110,7 +111,7 @@ const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({
               <span>{status.ahead}</span>
             </div>
           )}
-          
+
           {status.behind > 0 && (
             <div className="flex items-center space-x-1 text-blue-400">
               <Download className="w-3 h-3" />
@@ -119,7 +120,7 @@ const VisualStatusIndicators: React.FC<VisualStatusIndicatorsProps> = ({
           )}
         </div>
       )}
-      
+
       {/* Last fetch time */}
       {status.lastFetch && (
         <div className="flex items-center space-x-1 text-xs text-gray-500">
@@ -135,8 +136,8 @@ function formatTimeSince(date: Date | string): string {
   const now = new Date();
   const then = new Date(date);
   const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
-  
-  if (seconds < 60) return 'just now';
+
+  if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;

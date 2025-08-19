@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-08-17T07:47:59.972Z",
+  "testSummary": {
+    "totalTests": 11,
+    "passedTests": 3,
+    "failedTests": 0,
+    "errorTests": 8
+  },
+  "recommendations": [
+    "แก้ไข Frontend errors และ configuration issues"
+  ],
+  "frontend": {
+    "health": {
+      "status": "ERROR"
+    },
+    "static_favicon": {
+      "status": "ERROR"
+    },
+    "static_next_js_bundle": {
+      "status": "ERROR"
+    },
+    "static_css_styles": {
+      "status": "ERROR"
+    }
+  },
+  "api_integration": {
+    "frontend_to_gateway_connection": {
+      "status": "OK",
+      "responseTime": 1.8023330000000009,
+      "statusCode": 404,
+      "corsHeaders": {
+        "accessControlAllowOrigin": "http://localhost:3000"
+      }
+    },
+    "client_side_api_call": {
+      "status": "OK",
+      "responseTime": 381.67674999999997,
+      "statusCode": 200,
+      "corsHeaders": {
+        "accessControlAllowOrigin": "http://localhost:3000"
+      }
+    },
+    "cors_configuration": {
+      "status": "OK",
+      "responseTime": 3.01891599999999,
+      "statusCode": 204,
+      "corsHeaders": {
+        "accessControlAllowOrigin": "http://localhost:3000",
+        "accessControlAllowMethods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+        "accessControlAllowHeaders": "Content-Type,Authorization"
+      }
+    }
+  },
+  "pages": {
+    "homepage": {
+      "status": "ERROR"
+    },
+    "login_page": {
+      "status": "ERROR"
+    },
+    "dashboard": {
+      "status": "ERROR"
+    },
+    "portfolio": {
+      "status": "ERROR"
+    }
+  },
+  "performance": {},
+  "errors": []
+}

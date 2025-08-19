@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ChartBarIcon, 
-  CommandLineIcon, 
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ChartBarIcon,
+  CommandLineIcon,
   LightBulbIcon,
   ClockIcon,
   ExclamationTriangleIcon,
   TrendingUpIcon,
   DocumentTextIcon,
   CogIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
 
 interface TerminalAnalyticsPanelProps {
   userId?: string;
@@ -48,10 +48,16 @@ interface Recommendations {
   }>;
 }
 
-const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId, projectId }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'commands' | 'workflows' | 'insights'>('overview');
+const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({
+  userId,
+  projectId,
+}) => {
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "commands" | "workflows" | "insights"
+  >("overview");
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [recommendations, setRecommendations] = useState<Recommendations | null>(null);
+  const [recommendations, setRecommendations] =
+    useState<Recommendations | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState(30); // days
 
@@ -61,12 +67,14 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
 
   const fetchAnalytics = async () => {
     if (!userId) return;
-    
+
     setLoading(true);
     try {
-      const response = await fetch(`/api/terminal/logs?userId=${userId}&days=${timeRange}`);
+      const response = await fetch(
+        `/api/terminal/logs?userId=${userId}&days=${timeRange}`,
+      );
       const data = await response.json();
-      
+
       if (data.analytics && data.analytics.length > 0) {
         // Aggregate analytics data
         const aggregated = aggregateAnalytics(data.analytics);
@@ -74,14 +82,16 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
       }
 
       // Fetch recommendations
-      const patternsResponse = await fetch(`/api/terminal/patterns?userId=${userId}`);
+      const patternsResponse = await fetch(
+        `/api/terminal/patterns?userId=${userId}`,
+      );
       const patternsData = await patternsResponse.json();
-      
+
       // Generate recommendations from patterns
       const recs = generateRecommendations(patternsData.patterns);
       setRecommendations(recs);
     } catch (error) {
-      console.error('Failed to fetch analytics:', error);
+      console.error("Failed to fetch analytics:", error);
     } finally {
       setLoading(false);
     }
@@ -103,17 +113,21 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
       aggregated.totalCommands += day.commandCount;
       aggregated.errorRate += day.errorCount;
       aggregated.avgSessionDuration += day.totalDuration;
-      
+
       // Merge unique commands
       if (day.uniqueCommands) {
-        day.uniqueCommands.forEach((cmd: string) => aggregated.uniqueCommands.add(cmd));
+        day.uniqueCommands.forEach((cmd: string) =>
+          aggregated.uniqueCommands.add(cmd),
+        );
       }
     }
 
     // Calculate averages
     if (analyticsData.length > 0) {
-      aggregated.errorRate = (aggregated.errorRate / aggregated.totalCommands) * 100;
-      aggregated.avgSessionDuration = aggregated.avgSessionDuration / analyticsData.length;
+      aggregated.errorRate =
+        (aggregated.errorRate / aggregated.totalCommands) * 100;
+      aggregated.avgSessionDuration =
+        aggregated.avgSessionDuration / analyticsData.length;
     }
 
     return {
@@ -128,9 +142,9 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
 
     // Generate shortcuts from frequent patterns
     if (patterns && patterns.length > 0) {
-      patterns.slice(0, 5).forEach(p => {
+      patterns.slice(0, 5).forEach((p) => {
         if (p.pattern && p.count > 5) {
-          const commands = p.pattern.split(' -> ');
+          const commands = p.pattern.split(" -> ");
           if (commands.length === 1) {
             shortcuts.push({
               alias: commands[0].substring(0, 3),
@@ -184,22 +198,22 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
             <option value={90}>Last 90 days</option>
           </select>
         </div>
-        
+
         {/* Tabs */}
         <div className="flex gap-4 mt-4">
           {[
-            { id: 'overview', label: 'Overview', icon: ChartBarIcon },
-            { id: 'commands', label: 'Commands', icon: CommandLineIcon },
-            { id: 'workflows', label: 'Workflows', icon: DocumentTextIcon },
-            { id: 'insights', label: 'Insights', icon: LightBulbIcon },
-          ].map(tab => (
+            { id: "overview", label: "Overview", icon: ChartBarIcon },
+            { id: "commands", label: "Commands", icon: CommandLineIcon },
+            { id: "workflows", label: "Workflows", icon: DocumentTextIcon },
+            { id: "insights", label: "Insights", icon: LightBulbIcon },
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-gray-800"
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -212,7 +226,7 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
       {/* Content */}
       <div className="flex-1 overflow-auto p-4">
         <AnimatePresence mode="wait">
-          {activeTab === 'overview' && analytics && (
+          {activeTab === "overview" && analytics && (
             <motion.div
               key="overview"
               initial={{ opacity: 0, y: 10 }}
@@ -250,20 +264,28 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
 
               {/* Most Used Commands */}
               <div className="bg-gray-800 rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-3">Most Used Commands</h3>
+                <h3 className="text-lg font-semibold mb-3">
+                  Most Used Commands
+                </h3>
                 <div className="space-y-2">
                   {analytics.mostUsedCommands?.slice(0, 5).map((cmd, idx) => (
-                    <div key={idx} className="flex items-center justify-between">
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between"
+                    >
                       <span className="font-mono text-sm">{cmd.command}</span>
                       <div className="flex items-center gap-4">
                         <span className="text-sm text-gray-400">
                           {cmd.frequency} uses
                         </span>
                         <div className="w-20 bg-gray-700 rounded-full h-2">
-                          <div 
+                          <div
                             className={`h-2 rounded-full ${
-                              cmd.successRate > 90 ? 'bg-green-500' :
-                              cmd.successRate > 70 ? 'bg-yellow-500' : 'bg-red-500'
+                              cmd.successRate > 90
+                                ? "bg-green-500"
+                                : cmd.successRate > 70
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
                             }`}
                             style={{ width: `${cmd.successRate}%` }}
                           />
@@ -276,7 +298,7 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
             </motion.div>
           )}
 
-          {activeTab === 'commands' && analytics && (
+          {activeTab === "commands" && analytics && (
             <motion.div
               key="commands"
               initial={{ opacity: 0, y: 10 }}
@@ -299,14 +321,20 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
                     <tbody>
                       {analytics.mostUsedCommands?.map((cmd, idx) => (
                         <tr key={idx} className="border-b border-gray-700/50">
-                          <td className="py-2 font-mono text-sm">{cmd.command}</td>
+                          <td className="py-2 font-mono text-sm">
+                            {cmd.command}
+                          </td>
                           <td className="py-2">{cmd.frequency}</td>
                           <td className="py-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              cmd.successRate > 90 ? 'bg-green-900 text-green-300' :
-                              cmd.successRate > 70 ? 'bg-yellow-900 text-yellow-300' :
-                              'bg-red-900 text-red-300'
-                            }`}>
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                cmd.successRate > 90
+                                  ? "bg-green-900 text-green-300"
+                                  : cmd.successRate > 70
+                                    ? "bg-yellow-900 text-yellow-300"
+                                    : "bg-red-900 text-red-300"
+                              }`}
+                            >
                               {cmd.successRate.toFixed(0)}%
                             </span>
                           </td>
@@ -324,7 +352,7 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
             </motion.div>
           )}
 
-          {activeTab === 'workflows' && analytics && (
+          {activeTab === "workflows" && analytics && (
             <motion.div
               key="workflows"
               initial={{ opacity: 0, y: 10 }}
@@ -333,10 +361,15 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
               className="space-y-4"
             >
               <div className="bg-gray-800 rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-3">Detected Workflows</h3>
+                <h3 className="text-lg font-semibold mb-3">
+                  Detected Workflows
+                </h3>
                 <div className="space-y-3">
                   {analytics.workflowPatterns?.map((workflow, idx) => (
-                    <div key={idx} className="border border-gray-700 rounded-lg p-3">
+                    <div
+                      key={idx}
+                      className="border border-gray-700 rounded-lg p-3"
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm text-gray-400">
                           Frequency: {workflow.frequency}
@@ -362,7 +395,7 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
             </motion.div>
           )}
 
-          {activeTab === 'insights' && recommendations && (
+          {activeTab === "insights" && recommendations && (
             <motion.div
               key="insights"
               initial={{ opacity: 0, y: 10 }}
@@ -378,13 +411,20 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
                 </h3>
                 <div className="space-y-2">
                   {recommendations.shortcuts.map((shortcut, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-gray-900 rounded">
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2 bg-gray-900 rounded"
+                    >
                       <div>
                         <code className="text-blue-400">{shortcut.alias}</code>
                         <span className="mx-2 text-gray-500">→</span>
-                        <code className="text-gray-300">{shortcut.command}</code>
+                        <code className="text-gray-300">
+                          {shortcut.command}
+                        </code>
                       </div>
-                      <span className="text-xs text-gray-500">{shortcut.reason}</span>
+                      <span className="text-xs text-gray-500">
+                        {shortcut.reason}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -398,13 +438,20 @@ const TerminalAnalyticsPanel: React.FC<TerminalAnalyticsPanelProps> = ({ userId,
                 </h3>
                 <div className="space-y-3">
                   {recommendations.sops.map((sop, idx) => (
-                    <div key={idx} className="border border-gray-700 rounded-lg p-3">
+                    <div
+                      key={idx}
+                      className="border border-gray-700 rounded-lg p-3"
+                    >
                       <div className="font-semibold mb-1">{sop.title}</div>
-                      <div className="text-xs text-gray-400 mb-2">{sop.benefit}</div>
+                      <div className="text-xs text-gray-400 mb-2">
+                        {sop.benefit}
+                      </div>
                       <div className="space-y-1">
                         {sop.workflow.map((step, stepIdx) => (
                           <div key={stepIdx} className="text-sm">
-                            <span className="text-gray-500">{stepIdx + 1}.</span>
+                            <span className="text-gray-500">
+                              {stepIdx + 1}.
+                            </span>
                             <code className="ml-2 text-gray-300">{step}</code>
                           </div>
                         ))}

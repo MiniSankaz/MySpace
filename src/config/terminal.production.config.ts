@@ -5,8 +5,8 @@
 
 export const terminalProductionConfig = {
   // Mode
-  mode: 'new' as const, // Use new system in production
-  
+  mode: "new" as const, // Use new system in production
+
   // Performance
   memory: {
     maxTotalSessions: 200,
@@ -17,7 +17,7 @@ export const terminalProductionConfig = {
     poolSize: 50,
     gcThreshold: 4 * 1024 * 1024 * 1024, // 4GB
   },
-  
+
   // WebSocket
   websocket: {
     timeout: 10000,
@@ -27,7 +27,7 @@ export const terminalProductionConfig = {
     maxMessageSize: 10 * 1024 * 1024, // 10MB
     compression: true,
   },
-  
+
   // Monitoring
   monitoring: {
     enabled: true,
@@ -40,18 +40,18 @@ export const terminalProductionConfig = {
       responseTime: 2000,
     },
     exportMetrics: true,
-    metricsPath: '/metrics',
+    metricsPath: "/metrics",
   },
-  
+
   // Security
   security: {
     enableAuth: true,
     sessionExpiry: 86400000, // 24 hours
     maxFailedAttempts: 5,
     lockoutDuration: 900000, // 15 minutes
-    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || ['*'],
+    allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",") || ["*"],
   },
-  
+
   // Suspension
   suspension: {
     enabled: true,
@@ -59,7 +59,7 @@ export const terminalProductionConfig = {
     bufferedOutputLimit: 5000,
     cleanupInterval: 600000, // 10 minutes
   },
-  
+
   // Database
   database: {
     enabled: true,
@@ -68,7 +68,7 @@ export const terminalProductionConfig = {
     cacheEnabled: true,
     cacheTTL: 600000, // 10 minutes
   },
-  
+
   // Resilience
   resilience: {
     circuitBreaker: {
@@ -83,12 +83,12 @@ export const terminalProductionConfig = {
       maxBackoff: 10000,
     },
   },
-  
+
   // Logging
   logging: {
-    level: 'warn',
+    level: "warn",
     enableFileLogging: true,
-    logPath: '/var/log/terminal',
+    logPath: "/var/log/terminal",
     maxFileSize: 50 * 1024 * 1024, // 50MB
     maxFiles: 10,
   },
@@ -96,7 +96,7 @@ export const terminalProductionConfig = {
 
 // Export function to merge with base config
 export function getProductionConfig() {
-  const baseConfig = require('./terminal.config').terminalConfig;
+  const baseConfig = require("./terminal.config").terminalConfig;
   return {
     ...baseConfig,
     ...terminalProductionConfig,

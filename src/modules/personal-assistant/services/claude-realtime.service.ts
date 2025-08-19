@@ -3,9 +3,9 @@
  * Manages real-time communication with Claude running in background
  */
 
-import { ClaudeBackgroundService } from '@/services/claude-background.service';
-import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
-import { EventEmitter } from 'events';
+import { ClaudeBackgroundService } from "@/services/claude-background.service";
+import { terminalConfig, getWebSocketUrl } from "@/config/terminal.config";
+import { EventEmitter } from "events";
 
 interface ClaudeSession {
   id: string;
@@ -34,7 +34,7 @@ export class ClaudeRealtimeService extends EventEmitter {
 
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log('Claude Realtime Service already initialized');
+      console.log("Claude Realtime Service already initialized");
       return;
     }
 
@@ -43,50 +43,49 @@ export class ClaudeRealtimeService extends EventEmitter {
       await this.claudeBackground.start();
 
       // Setup event listeners
-      this.claudeBackground.on('ready', () => {
-        console.log('✅ Claude Realtime Service ready');
+      this.claudeBackground.on("ready", () => {
+        console.log("✅ Claude Realtime Service ready");
         this.isInitialized = true;
-        this.emit('ready');
+        this.emit("ready");
       });
 
-      this.claudeBackground.on('response', (data) => {
-        this.emit('claude-response', data);
+      this.claudeBackground.on("response", (data) => {
+        this.emit("claude-response", data);
       });
 
-      this.claudeBackground.on('error', (error) => {
-        console.error('Claude background error:', error);
-        this.emit('error', error);
+      this.claudeBackground.on("error", (error) => {
+        console.error("Claude background error:", error);
+        this.emit("error", error);
       });
 
-      this.claudeBackground.on('exit', (code) => {
+      this.claudeBackground.on("exit", (code) => {
         console.log(`Claude background exited with code ${code}`);
         this.isInitialized = false;
-        
+
         // Auto-restart if unexpected exit
         if (code !== 0) {
-          console.log('Attempting to restart Claude background service...');
+          console.log("Attempting to restart Claude background service...");
           setTimeout(() => this.initialize(), terminalConfig.websocket.timeout);
         }
       });
-
     } catch (error) {
-      console.error('Failed to initialize Claude Realtime Service:', error);
+      console.error("Failed to initialize Claude Realtime Service:", error);
       throw error;
     }
   }
 
   async sendMessage(sessionId: string, message: string): Promise<string> {
     if (!this.isInitialized) {
-      throw new Error('Claude Realtime Service not initialized');
+      throw new Error("Claude Realtime Service not initialized");
     }
 
     // Track session
     if (!this.sessions.has(sessionId)) {
       this.sessions.set(sessionId, {
         id: sessionId,
-        userId: sessionId.split('-')[0] || 'anonymous',
+        userId: sessionId.split("-")[0] || "anonymous",
         startTime: new Date(),
-        messageCount: 0
+        messageCount: 0,
       });
     }
 
@@ -96,17 +95,17 @@ export class ClaudeRealtimeService extends EventEmitter {
     try {
       // Send message to Claude background
       const response = await this.claudeBackground.sendMessage(message);
-      
+
       // Emit analytics event
-      this.emit('message-processed', {
+      this.emit("message-processed", {
         sessionId,
         messageCount: session.messageCount,
-        processingTime: Date.now() - session.startTime.getTime()
+        processingTime: Date.now() - session.startTime.getTime(),
       });
 
       return response;
     } catch (error) {
-      console.error('Error sending message to Claude:', error);
+      console.error("Error sending message to Claude:", error);
       throw error;
     }
   }

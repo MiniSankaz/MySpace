@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useRef, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import React, { useRef, useEffect } from "react";
+import { Search, X } from "lucide-react";
 
 interface SearchFilterProps {
   value: string;
@@ -15,11 +15,11 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
   onClose,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
-  
+
   return (
     <div className="relative p-3">
       <div className="relative">
@@ -30,7 +30,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') {
+            if (e.key === "Escape") {
               onClose();
             }
           }}

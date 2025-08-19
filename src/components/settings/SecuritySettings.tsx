@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { authClient } from '@/core/auth/auth-client';
-import { 
+import { useState, useEffect } from "react";
+import { authClient } from "@/core/auth/auth-client";
+import {
   ShieldCheckIcon,
   KeyIcon,
   DevicePhoneMobileIcon,
   ComputerDesktopIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  XCircleIcon
-} from '@heroicons/react/24/outline';
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 
 interface SecuritySettingsProps {
   user: any;
@@ -29,47 +29,52 @@ interface ActiveSession {
   current: boolean;
 }
 
-export default function SecuritySettings({ user, tabId, onSave, saving }: SecuritySettingsProps) {
+export default function SecuritySettings({
+  user,
+  tabId,
+  onSave,
+  saving,
+}: SecuritySettingsProps) {
   const [formData, setFormData] = useState({
     // Password Settings
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-    
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+
     // Two-Factor Authentication
     twoFactorEnabled: false,
-    twoFactorMethod: 'app',
-    twoFactorPhone: '',
-    twoFactorEmail: '',
-    
+    twoFactorMethod: "app",
+    twoFactorPhone: "",
+    twoFactorEmail: "",
+
     // Session Security
     rememberDevice: true,
     sessionTimeout: 24,
     logoutAllDevices: false,
-    
+
     // Security Preferences
     emailLoginAlerts: true,
     suspiciousActivityAlerts: true,
     monthlySecurityReport: false,
     requirePasswordChange: false,
     passwordChangeFrequency: 90,
-    
+
     // Account Recovery
-    recoveryEmail: '',
-    recoveryPhone: '',
+    recoveryEmail: "",
+    recoveryPhone: "",
     securityQuestions: [],
-    
+
     // Advanced Security
     ipRestriction: false,
     allowedIPs: [],
     blockTorAccess: false,
     blockVPNAccess: false,
     enableGeoBlocking: false,
-    blockedCountries: []
+    blockedCountries: [],
   });
 
   const [showQRCode, setShowQRCode] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationCode, setVerificationCode] = useState("");
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
@@ -86,44 +91,46 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
 
   const loadSettings = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/security');
+      const response = await authClient.fetch("/api/settings/security");
       if (response.ok) {
         const data = await response.json();
-        setFormData(prev => ({ ...prev, ...data.settings }));
+        setFormData((prev) => ({ ...prev, ...data.settings }));
       }
     } catch (error) {
-      console.error('Failed to load security settings:', error);
+      console.error("Failed to load security settings:", error);
     }
   };
 
   const loadActiveSessions = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/sessions');
+      const response = await authClient.fetch("/api/settings/sessions");
       if (response.ok) {
         const data = await response.json();
-        setActiveSessions(data.sessions || [
-          {
-            id: '1',
-            device: 'MacBook Pro',
-            browser: 'Chrome 120',
-            ip: '192.168.1.1',
-            location: 'Bangkok, Thailand',
-            lastActive: '2 minutes ago',
-            current: true
-          },
-          {
-            id: '2',
-            device: 'iPhone 14',
-            browser: 'Safari',
-            ip: '192.168.1.2',
-            location: 'Bangkok, Thailand',
-            lastActive: '1 hour ago',
-            current: false
-          }
-        ]);
+        setActiveSessions(
+          data.sessions || [
+            {
+              id: "1",
+              device: "MacBook Pro",
+              browser: "Chrome 120",
+              ip: "192.168.1.1",
+              location: "Bangkok, Thailand",
+              lastActive: "2 minutes ago",
+              current: true,
+            },
+            {
+              id: "2",
+              device: "iPhone 14",
+              browser: "Safari",
+              ip: "192.168.1.2",
+              location: "Bangkok, Thailand",
+              lastActive: "1 hour ago",
+              current: false,
+            },
+          ],
+        );
       }
     } catch (error) {
-      console.error('Failed to load sessions:', error);
+      console.error("Failed to load sessions:", error);
     }
   };
 
@@ -139,99 +146,114 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-      alert('Passwords do not match');
+
+    if (
+      formData.newPassword &&
+      formData.newPassword !== formData.confirmPassword
+    ) {
+      alert("Passwords do not match");
       return;
     }
-    
+
     onSave(formData);
   };
 
   const enableTwoFactor = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/2fa/enable', {
-        method: 'POST'
+      const response = await authClient.fetch("/api/settings/2fa/enable", {
+        method: "POST",
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setShowQRCode(true);
       }
     } catch (error) {
-      console.error('Failed to enable 2FA:', error);
+      console.error("Failed to enable 2FA:", error);
     }
   };
 
   const verifyTwoFactor = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/2fa/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: verificationCode })
+      const response = await authClient.fetch("/api/settings/2fa/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: verificationCode }),
       });
-      
+
       if (response.ok) {
         setFormData({ ...formData, twoFactorEnabled: true });
         setShowQRCode(false);
-        setVerificationCode('');
+        setVerificationCode("");
       }
     } catch (error) {
-      console.error('Failed to verify 2FA:', error);
+      console.error("Failed to verify 2FA:", error);
     }
   };
 
   const revokeSession = async (sessionId: string) => {
     try {
-      const response = await authClient.fetch(`/api/settings/sessions/${sessionId}`, {
-        method: 'DELETE'
-      });
-      
+      const response = await authClient.fetch(
+        `/api/settings/sessions/${sessionId}`,
+        {
+          method: "DELETE",
+        },
+      );
+
       if (response.ok) {
-        setActiveSessions(activeSessions.filter(s => s.id !== sessionId));
+        setActiveSessions(activeSessions.filter((s) => s.id !== sessionId));
       }
     } catch (error) {
-      console.error('Failed to revoke session:', error);
+      console.error("Failed to revoke session:", error);
     }
   };
 
   const revokeAllSessions = async () => {
-    if (!confirm('This will log you out of all devices except this one. Continue?')) {
+    if (
+      !confirm(
+        "This will log you out of all devices except this one. Continue?",
+      )
+    ) {
       return;
     }
-    
+
     try {
-      const response = await authClient.fetch('/api/settings/sessions/revoke-all', {
-        method: 'POST'
-      });
-      
+      const response = await authClient.fetch(
+        "/api/settings/sessions/revoke-all",
+        {
+          method: "POST",
+        },
+      );
+
       if (response.ok) {
-        setActiveSessions(activeSessions.filter(s => s.current));
+        setActiveSessions(activeSessions.filter((s) => s.current));
       }
     } catch (error) {
-      console.error('Failed to revoke all sessions:', error);
+      console.error("Failed to revoke all sessions:", error);
     }
   };
 
   const getPasswordStrengthColor = () => {
-    if (passwordStrength < 25) return 'bg-red-500';
-    if (passwordStrength < 50) return 'bg-orange-500';
-    if (passwordStrength < 75) return 'bg-yellow-500';
-    return 'bg-green-500';
+    if (passwordStrength < 25) return "bg-red-500";
+    if (passwordStrength < 50) return "bg-orange-500";
+    if (passwordStrength < 75) return "bg-yellow-500";
+    return "bg-green-500";
   };
 
   const getPasswordStrengthText = () => {
-    if (passwordStrength < 25) return 'Weak';
-    if (passwordStrength < 50) return 'Fair';
-    if (passwordStrength < 75) return 'Good';
-    return 'Strong';
+    if (passwordStrength < 25) return "Weak";
+    if (passwordStrength < 50) return "Fair";
+    if (passwordStrength < 75) return "Good";
+    return "Strong";
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Change Password */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Change Password
+        </h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -240,7 +262,9 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
             <input
               type="password"
               value={formData.currentPassword}
-              onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, currentPassword: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
@@ -252,22 +276,29 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
             <input
               type="password"
               value={formData.newPassword}
-              onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, newPassword: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
             {formData.newPassword && (
               <div className="mt-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Password strength:</span>
-                  <span className={`font-medium ${
-                    passwordStrength >= 75 ? 'text-green-600' : 
-                    passwordStrength >= 50 ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
+                  <span
+                    className={`font-medium ${
+                      passwordStrength >= 75
+                        ? "text-green-600"
+                        : passwordStrength >= 50
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                    }`}
+                  >
                     {getPasswordStrengthText()}
                   </span>
                 </div>
                 <div className="mt-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className={`h-full transition-all duration-300 ${getPasswordStrengthColor()}`}
                     style={{ width: `${passwordStrength}%` }}
                   />
@@ -283,28 +314,38 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
             <input
               type="password"
               value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, confirmPassword: e.target.value })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
-            {formData.confirmPassword && formData.newPassword !== formData.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600">Passwords do not match</p>
-            )}
+            {formData.confirmPassword &&
+              formData.newPassword !== formData.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  Passwords do not match
+                </p>
+              )}
           </div>
         </div>
       </div>
 
       {/* Two-Factor Authentication */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Two-Factor Authentication</h3>
-        
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Two-Factor Authentication
+        </h3>
+
         {!formData.twoFactorEnabled ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex">
               <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 mr-2 flex-shrink-0" />
               <div>
-                <h4 className="text-sm font-medium text-yellow-800">Enhance your account security</h4>
+                <h4 className="text-sm font-medium text-yellow-800">
+                  Enhance your account security
+                </h4>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Two-factor authentication adds an extra layer of security to your account.
+                  Two-factor authentication adds an extra layer of security to
+                  your account.
                 </p>
                 <button
                   type="button"
@@ -322,7 +363,9 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
             <div className="flex">
               <CheckCircleIcon className="h-5 w-5 text-green-400 mr-2" />
               <div>
-                <h4 className="text-sm font-medium text-green-800">Two-factor authentication is enabled</h4>
+                <h4 className="text-sm font-medium text-green-800">
+                  Two-factor authentication is enabled
+                </h4>
                 <p className="text-sm text-green-700 mt-1">
                   Your account is protected with two-factor authentication.
                 </p>
@@ -385,20 +428,25 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
             Revoke all other sessions
           </button>
         </div>
-        
+
         <div className="space-y-3">
           {activeSessions.map((session) => (
-            <div key={session.id} className="bg-white border border-gray-200 rounded-lg p-4">
+            <div
+              key={session.id}
+              className="bg-white border border-gray-200 rounded-lg p-4"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-3">
-                  {session.device.includes('Phone') ? (
+                  {session.device.includes("Phone") ? (
                     <DevicePhoneMobileIcon className="h-8 w-8 text-gray-400" />
                   ) : (
                     <ComputerDesktopIcon className="h-8 w-8 text-gray-400" />
                   )}
                   <div>
                     <div className="flex items-center">
-                      <p className="text-sm font-medium text-gray-900">{session.device}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {session.device}
+                      </p>
                       {session.current && (
                         <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                           Current
@@ -428,13 +476,17 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
 
       {/* Security Alerts */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Security Alerts</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Security Alerts
+        </h3>
         <div className="space-y-3">
           <label className="flex items-center">
             <input
               type="checkbox"
               checked={formData.emailLoginAlerts}
-              onChange={(e) => setFormData({ ...formData, emailLoginAlerts: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, emailLoginAlerts: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">
@@ -446,7 +498,12 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
             <input
               type="checkbox"
               checked={formData.suspiciousActivityAlerts}
-              onChange={(e) => setFormData({ ...formData, suspiciousActivityAlerts: e.target.checked })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  suspiciousActivityAlerts: e.target.checked,
+                })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">
@@ -458,7 +515,12 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
             <input
               type="checkbox"
               checked={formData.monthlySecurityReport}
-              onChange={(e) => setFormData({ ...formData, monthlySecurityReport: e.target.checked })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  monthlySecurityReport: e.target.checked,
+                })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
             <span className="ml-2 text-sm text-gray-700">
@@ -475,7 +537,7 @@ export default function SecuritySettings({ user, tabId, onSave, saving }: Securi
           disabled={saving}
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? 'Saving...' : 'Save Security Settings'}
+          {saving ? "Saving..." : "Save Security Settings"}
         </button>
       </div>
     </form>

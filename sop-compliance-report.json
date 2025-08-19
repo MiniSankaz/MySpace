@@ -14,7 +14,7 @@
       "severity": "critical",
       "file": "./.claude/settings.local.json",
       "line": 34,
-      "content": "\"Bash(do sed -i '' 's/localhost:4000/127.0.0.1:4000/g' \\\"$file\\\")\",",
+      "content": "\"Bash(do sed -i '' 's/localhost:${getGatewayPort()}/127.0.0.1:${getGatewayPort()}/g' \\\"$file\\\")\",",
       "description": "Hardcoded localhost references: localhost",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
@@ -23,7 +23,7 @@
       "severity": "critical",
       "file": "./.claude/settings.local.json",
       "line": 34,
-      "content": "\"Bash(do sed -i '' 's/localhost:4000/127.0.0.1:4000/g' \\\"$file\\\")\",",
+      "content": "\"Bash(do sed -i '' 's/localhost:${getGatewayPort()}/127.0.0.1:${getGatewayPort()}/g' \\\"$file\\\")\",",
       "description": "Hardcoded IP addresses: 127.0.0.1",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
@@ -41,7 +41,7 @@
       "severity": "critical",
       "file": "./.claude/settings.local.json",
       "line": 99,
-      "content": "\"Bash(open http://127.0.0.1:4000/workspace)\",",
+      "content": "\"Bash(open http://127.0.0.1:${getGatewayPort()}/workspace)\",",
       "description": "Hardcoded IP addresses: 127.0.0.1",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
@@ -50,8 +50,8 @@
       "severity": "high",
       "file": "./.claude/settings.local.json",
       "line": 99,
-      "content": "\"Bash(open http://127.0.0.1:4000/workspace)\",",
-      "description": "Hardcoded HTTP URLs: http://127.0.0.1:4000/workspace)\",",
+      "content": "\"Bash(open http://127.0.0.1:${getGatewayPort()}/workspace)\",",
+      "description": "Hardcoded HTTP URLs: http://127.0.0.1:${getGatewayPort()}/workspace)\",",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
     {
@@ -32819,7 +32819,7 @@
       "severity": "critical",
       "file": "./package.json",
       "line": 60,
-      "content": "\"storage:info\": \"curl http://localhost:4000/api/terminal/storage-info\",",
+      "content": "\"storage:info\": \"curl http://localhost:${getGatewayPort()}/api/terminal/storage-info\",",
       "description": "Hardcoded localhost references: localhost",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
@@ -32828,8 +32828,8 @@
       "severity": "high",
       "file": "./package.json",
       "line": 60,
-      "content": "\"storage:info\": \"curl http://localhost:4000/api/terminal/storage-info\",",
-      "description": "Hardcoded HTTP URLs: http://localhost:4000/api/terminal/storage-info\",",
+      "content": "\"storage:info\": \"curl http://localhost:${getGatewayPort()}/api/terminal/storage-info\",",
+      "description": "Hardcoded HTTP URLs: http://localhost:${getGatewayPort()}/api/terminal/storage-info\",",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
     {
@@ -32837,7 +32837,7 @@
       "severity": "critical",
       "file": "./package.json",
       "line": 61,
-      "content": "\"storage:health\": \"curl http://localhost:4000/api/terminal/health\",",
+      "content": "\"storage:health\": \"curl http://localhost:${getGatewayPort()}/api/terminal/health\",",
       "description": "Hardcoded localhost references: localhost",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
@@ -32846,8 +32846,8 @@
       "severity": "high",
       "file": "./package.json",
       "line": 61,
-      "content": "\"storage:health\": \"curl http://localhost:4000/api/terminal/health\",",
-      "description": "Hardcoded HTTP URLs: http://localhost:4000/api/terminal/health\",",
+      "content": "\"storage:health\": \"curl http://localhost:${getGatewayPort()}/api/terminal/health\",",
+      "description": "Hardcoded HTTP URLs: http://localhost:${getGatewayPort()}/api/terminal/health\",",
       "fix": "Use process.env.HOST or process.env.WS_HOST"
     },
     {

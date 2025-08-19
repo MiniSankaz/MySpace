@@ -4,7 +4,7 @@ This document explains how the CMS application handles port configuration and ho
 
 ## Default Port Configuration
 
-The CMS application now uses **port 3100** by default instead of the typical Next.js port 3000.
+The CMS application now uses **port 3100** by default instead of the typical Next.js port 4100.
 
 ## Environment Variables
 

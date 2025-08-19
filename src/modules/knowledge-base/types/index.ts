@@ -1,6 +1,16 @@
-export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
-export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'reopened';
-export type RelationshipType = 'duplicate' | 'related' | 'depends_on' | 'blocks' | 'caused_by';
+export type IssueSeverity = "critical" | "high" | "medium" | "low" | "info";
+export type IssueStatus =
+  | "open"
+  | "in_progress"
+  | "resolved"
+  | "closed"
+  | "reopened";
+export type RelationshipType =
+  | "duplicate"
+  | "related"
+  | "depends_on"
+  | "blocks"
+  | "caused_by";
 
 export interface CreateIssueDto {
   title: string;
@@ -30,7 +40,8 @@ export interface CreateSolutionDto {
   preventionSteps?: string;
 }
 
-export interface UpdateSolutionDto extends Partial<Omit<CreateSolutionDto, 'issueId'>> {
+export interface UpdateSolutionDto
+  extends Partial<Omit<CreateSolutionDto, "issueId">> {
   verified?: boolean;
 }
 
@@ -54,8 +65,8 @@ export interface SearchParams {
   toDate?: Date;
   limit?: number;
   offset?: number;
-  sortBy?: 'createdAt' | 'updatedAt' | 'severity' | 'status';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "createdAt" | "updatedAt" | "severity" | "status";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface IssueWithRelations {

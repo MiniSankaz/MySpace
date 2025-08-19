@@ -1,0 +1,167 @@
+// Portfolio Service Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Portfolio model
+model Portfolio {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  currency    String   @default("USD")
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  holdings     Holding[]
+  transactions Transaction[]
+  watchlists   Watchlist[]
+  snapshots    PortfolioSnapshot[]
+  
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// Stock holdings in portfolio
+model Holding {
+  id           String   @id @default(uuid())
+  portfolioId  String
+  symbol       String
+  quantity     Decimal
+  averagePrice Decimal
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  portfolio    Portfolio     @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  
+  @@unique([portfolioId, symbol])
+  @@index([portfolioId])
+  @@index([symbol])
+  @@map("holdings")
+}
+
+// Transaction history
+model Transaction {
+  id          String          @id @default(uuid())
+  portfolioId String
+  holdingId   String?
+  type        TransactionType
+  symbol      String
+  quantity    Decimal
+  price       Decimal
+  fees        Decimal         @default(0)
+  total       Decimal
+  notes       String?
+  executedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  
+  // Relations
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  holding   Holding?  @relation(fields: [holdingId], references: [id], onDelete: SetNull)
+  
+  @@index([portfolioId])
+  @@index([symbol])
+  @@index([executedAt])
+  @@map("transactions")
+}
+
+// Stock information cache
+model Stock {
+  id           String   @id @default(uuid())
+  symbol       String   @unique
+  name         String
+  exchange     String?
+  sector       String?
+  industry     String?
+  marketCap    Decimal?
+  description  String?
+  website      String?
+  lastUpdated  DateTime @default(now())
+  
+  // Relations
+  priceHistory StockPrice[]
+  
+  @@index([symbol])
+  @@map("stocks")
+}
+
+// Stock price history
+model StockPrice {
+  id           String   @id @default(uuid())
+  stockId      String
+  symbol       String
+  price        Decimal
+  open         Decimal?
+  high         Decimal?
+  low          Decimal?
+  close        Decimal?
+  volume       BigInt?
+  change       Decimal?
+  changePercent Decimal?
+  timestamp    DateTime @default(now())
+  
+  // Relations
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  
+  @@index([stockId])
+  @@index([symbol])
+  @@index([timestamp])
+  @@map("stock_prices")
+}
+
+// User watchlist
+model Watchlist {
+  id          String   @id @default(uuid())
+  portfolioId String
+  userId      String
+  name        String
+  symbols     String[] // Array of stock symbols
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  
+  @@index([portfolioId])
+  @@index([userId])
+  @@map("watchlists")
+}
+
+// Portfolio performance snapshot
+model PortfolioSnapshot {
+  id              String   @id @default(uuid())
+  portfolioId     String
+  totalValue      Decimal
+  totalCost       Decimal
+  dayChange       Decimal
+  dayChangePercent Decimal
+  totalReturn     Decimal
+  totalReturnPercent Decimal
+  timestamp       DateTime @default(now())
+  
+  // Relations
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+  
+  @@index([portfolioId])
+  @@index([timestamp])
+  @@map("portfolio_snapshots")
+}
+
+// Enums
+enum TransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  SPLIT
+  TRANSFER_IN
+  TRANSFER_OUT
+}

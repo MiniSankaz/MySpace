@@ -14,10 +14,10 @@ sequenceDiagram
     API->>Memory: Create session (status: connecting)
     Memory-->>API: Return session object
     API-->>Frontend: Return session immediately
-    
+
     Note over Frontend: Renders XTermViewV2 immediately
     Frontend->>XTerm: Render with sessionId
-    
+
     par Parallel Execution
         XTerm->>WS: Attempt WebSocket connection
         WS->>Memory: Register WebSocket (FAILS - session not ready)
@@ -26,7 +26,7 @@ sequenceDiagram
         Memory->>Memory: Continue session initialization
         Memory->>Memory: Status: connecting → active (too late)
     end
-    
+
     Note over XTerm: Terminal appears in UI but not functional
     Note over XTerm: User must refresh page to fix
 ```
@@ -36,7 +36,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Frontend as TerminalContainerV3
-    participant API as /api/terminal/create  
+    participant API as /api/terminal/create
     participant Memory as InMemoryService
     participant WS as WebSocket Server
     participant XTerm as XTermViewV2
@@ -44,21 +44,21 @@ sequenceDiagram
     Frontend->>API: Create session request
     API->>Memory: Create session (status: connecting)
     Memory->>Memory: Initialize session
-    
+
     Note over Memory: Wait for WebSocket server readiness
     Memory->>WS: Prepare session slot
     WS-->>Memory: Confirm readiness
     Memory->>Memory: Status: connecting → ready
-    
+
     Memory-->>API: Return session with websocketReady: true
     API-->>Frontend: Return session + readiness status
-    
+
     Note over Frontend: Only renders when WebSocket is ready
     Frontend->>XTerm: Render with confirmed ready session
     XTerm->>WS: Connect (guaranteed to succeed)
     WS->>Memory: Register WebSocket (SUCCESS)
     Memory-->>XTerm: Session active, begin streaming
-    
+
     Note over XTerm: Terminal immediately functional
 ```
 
@@ -77,14 +77,14 @@ sequenceDiagram
     WS->>Server: Connect attempt
     Server-->>WS: Connection failed
     WS-->>Git: onerror event
-    
+
     Git->>CB: Record failure
     Note over Git: Immediate retry without delay
-    
+
     Git->>CB: Can attempt connection? (no cooldown)
     CB-->>Git: Yes (circuit still allows)
     Git->>WS: new WebSocket(url) (LOOP)
-    
+
     Note over Git: Infinite reconnection loop
     Note over Server: Resource exhaustion
 ```
@@ -102,12 +102,12 @@ sequenceDiagram
     Git->>ECB: Can attempt connection?
     ECB->>ECB: Check cooldown period (5 seconds)
     ECB-->>Git: Yes/No based on cooldown + circuit state
-    
+
     alt Connection allowed
         Git->>Pool: Get/create connection for project
         Pool->>WS: Create new WebSocket
         WS->>Server: Connect attempt
-        
+
         alt Connection successful
             Server-->>WS: Connected
             WS-->>Pool: Store healthy connection
@@ -140,21 +140,21 @@ sequenceDiagram
     Memory->>Memory: Update focus state locally
     Memory-->>API: Return success
     API-->>UI: Focus updated
-    
+
     Note over Memory: Emits focusChanged event
     Memory->>WS1: Focus event (may not reach)
     Note over WS2: Never receives focus event
-    
+
     par Different States
         Note over UI: Shows session as focused
     and
         Note over WS1: May have stale focus state
-    and 
+    and
         Note over WS2: Definitely has stale focus state
     and
         Note over Memory: Has correct focus state
     end
-    
+
     Note over UI,WS2: State inconsistency across components
 ```
 
@@ -171,23 +171,23 @@ sequenceDiagram
     UI->>API: Set focus(sessionId, true)
     API->>Memory: setSessionFocus(sessionId, true)
     Memory->>Memory: Update focus state + increment version
-    
+
     Note over Memory: Version-controlled state update
     Memory->>Memory: Create FocusState{version: n+1, focused: [...]}
     Memory-->>API: Return FocusState with version
     API-->>UI: Focus updated with version
-    
+
     Note over Memory: Broadcast versioned event
     par Synchronized Updates
         Memory->>WS1: focusChanged event with version
         WS1->>WS1: Update local cache with version check
     and
-        Memory->>WS2: focusChanged event with version  
+        Memory->>WS2: focusChanged event with version
         WS2->>WS2: Update local cache with version check
     and
         UI->>UI: Update local state with version
     end
-    
+
     Note over UI,WS2: All components have consistent versioned state
 ```
 
@@ -203,13 +203,13 @@ sequenceDiagram
     loop Every 30 seconds
         Monitor->>Memory: Get session health metrics
         Memory-->>Monitor: Active/Failed/Connecting counts
-        
+
         Monitor->>WS: Get WebSocket connection stats
         WS-->>Monitor: Connection/Reconnection/Error counts
-        
+
         Monitor->>Monitor: Calculate health scores
         Monitor->>Metrics: Store health metrics
-        
+
         alt Health degraded
             Monitor->>Monitor: Trigger alert
             Note over Monitor: Notify operations team
@@ -232,12 +232,12 @@ sequenceDiagram
     WS->>Memory: Connection lost event
     Memory->>Memory: Mark session as disconnected
     Memory->>UI: Emit connection lost event
-    
+
     UI->>UI: Show reconnecting indicator
-    
+
     Recovery->>Recovery: Start recovery process
     Recovery->>WS: Attempt reconnection with backoff
-    
+
     alt Reconnection successful
         WS->>Memory: Connection restored
         Memory->>Memory: Mark session as active

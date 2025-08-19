@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Market Data Service (port 4600) is configured with Polygon.io API keys but has TypeScript compilation errors preventing it from running. However, Portfolio Service currently uses mock price data successfully.
+Market Data Service (port 4170) is configured with Polygon.io API keys but has TypeScript compilation errors preventing it from running. However, Portfolio Service currently uses mock price data successfully.
 
 ## 1. Market Data Service Configuration
 
@@ -14,7 +14,7 @@ Market Data Service (port 4600) is configured with Polygon.io API keys but has T
 - **API Key**: ✅ Configured (454aeb0d-cdaf-4b25-838e-28d8cce05484)
 - **Secret Key**: ✅ Configured  
 - **Base URL**: https://api.polygon.io
-- **Service Port**: 4600 (configured but not running)
+- **Service Port**: 4170 (configured but not running)
 
 ### Service Structure
 ```
@@ -84,7 +84,7 @@ getCurrentPrice(symbol: string): number {
 ### To Enable Real-Time Prices
 1. Fix TypeScript compilation errors in Market Data Service
 2. Update Prisma schema to match expected types
-3. Start Market Data Service on port 4600
+3. Start Market Data Service on port 4170
 4. Test Polygon.io API connectivity
 5. Integrate with Portfolio Service
 
@@ -98,8 +98,8 @@ npm run build
 npm run dev
 
 # Test API
-curl http://localhost:4600/health
-curl http://localhost:4600/api/v1/market/quote/AAPL
+curl http://localhost:4170/health
+curl http://localhost:4170/api/v1/market/quote/AAPL
 ```
 
 ## 6. Current Workaround
@@ -115,7 +115,7 @@ Portfolio currently shows:
 ### How to Test Current System
 ```bash
 # Get portfolio with mock prices
-curl http://localhost:4000/api/v1/portfolios \
+curl http://localhost:4110/api/v1/portfolios \
   -H "x-user-id: test-user"
 
 # Response includes calculated values with mock prices

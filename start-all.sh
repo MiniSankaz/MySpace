@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# Source port configuration
+if [ -f "$(dirname "$0")/shared/config/ports.sh" ]; then
+    source "$(dirname "$0")/shared/config/ports.sh"
+else
+    # Fallback to default ports if config not found
+    PORT_FRONTEND_MAIN=4100
+    PORT_FRONTEND_WS=4101
+    PORT_GATEWAY_MAIN=4110
+    PORT_GATEWAY_WS=4111
+    PORT_SERVICE_USER=4120
+    PORT_SERVICE_AI=4130
+    PORT_SERVICE_TERMINAL=4140
+    PORT_SERVICE_WORKSPACE=4150
+    PORT_SERVICE_PORTFOLIO=4160
+    PORT_SERVICE_MARKET=4170
+fi
+
 # =============================================================================
 # Portfolio Management System - Complete Startup Script
 # =============================================================================
@@ -186,54 +203,54 @@ echo -e "${BLUE}═════════════════════�
 echo -e "${BLUE}🚀 Starting Backend Microservices${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
 
-# Start API Gateway (Port 4000)
-start_service "API Gateway" 4000 \
+# Start API Gateway
+start_service "API Gateway" $PORT_GATEWAY_MAIN \
     "$PWD/services/gateway" \
-    "npm run dev > /tmp/gateway.log 2>&1"
+    "PORT=$PORT_GATEWAY_MAIN npm run dev > /tmp/gateway.log 2>&1"
 
-# Start User Management Service (Port 4100) with Redis handling
+# Start User Management Service with Redis handling
 if [ "$REDIS_AVAILABLE" = true ]; then
-    start_service "User Management Service" 4100 \
+    start_service "User Management Service" $PORT_SERVICE_USER \
         "$PWD/services/user-management" \
-        "npm run dev > /tmp/user-management.log 2>&1"
+        "PORT=$PORT_SERVICE_USER npm run dev > /tmp/user-management.log 2>&1"
 else
-    start_service "User Management Service" 4100 \
+    start_service "User Management Service" $PORT_SERVICE_USER \
         "$PWD/services/user-management" \
-        "SKIP_REDIS=true npm run dev > /tmp/user-management.log 2>&1"
+        "PORT=$PORT_SERVICE_USER SKIP_REDIS=true npm run dev > /tmp/user-management.log 2>&1"
 fi
 
-# Start AI Assistant Service (Port 4200)
-start_service "AI Assistant Service" 4200 \
+# Start AI Assistant Service
+start_service "AI Assistant Service" $PORT_SERVICE_AI \
     "$PWD/services/ai-assistant" \
-    "PORT=4200 npm run dev > /tmp/ai-assistant.log 2>&1"
+    "PORT=$PORT_SERVICE_AI npm run dev > /tmp/ai-assistant.log 2>&1"
 
-# Start Terminal Service (Port 4300)
-start_service "Terminal Service" 4300 \
+# Start Terminal Service
+start_service "Terminal Service" $PORT_SERVICE_TERMINAL \
     "$PWD/services/terminal" \
-    "npm run dev > /tmp/terminal.log 2>&1"
+    "PORT=$PORT_SERVICE_TERMINAL npm run dev > /tmp/terminal.log 2>&1"
 
-# Start Workspace Service (Port 4400)
-start_service "Workspace Service" 4400 \
+# Start Workspace Service
+start_service "Workspace Service" $PORT_SERVICE_WORKSPACE \
     "$PWD/services/workspace" \
-    "npm run dev > /tmp/workspace.log 2>&1"
+    "PORT=$PORT_SERVICE_WORKSPACE npm run dev > /tmp/workspace.log 2>&1"
 
-# Start Portfolio Service (Port 4500)
-start_service "Portfolio Service" 4500 \
+# Start Portfolio Service
+start_service "Portfolio Service" $PORT_SERVICE_PORTFOLIO \
     "$PWD/services/portfolio" \
-    "npm run dev > /tmp/portfolio.log 2>&1"
+    "PORT=$PORT_SERVICE_PORTFOLIO npm run dev > /tmp/portfolio.log 2>&1"
 
-# Start Market Data Service (Port 4600)
-echo -e "${CYAN}⏳ Starting Market Data Service (Port 4600)...${NC}"
+# Start Market Data Service
+echo -e "${CYAN}⏳ Starting Market Data Service (Port $PORT_SERVICE_MARKET)...${NC}"
 if [ -f "$PWD/services/simple-price-api.js" ]; then
     # Use simple price API if available
-    start_service "Market Data Service" 4600 \
+    start_service "Market Data Service" $PORT_SERVICE_MARKET \
         "$PWD/services" \
-        "node simple-price-api.js > /tmp/market-data.log 2>&1"
+        "PORT=$PORT_SERVICE_MARKET node simple-price-api.js > /tmp/market-data.log 2>&1"
 elif [ -d "$PWD/services/market-data" ]; then
     # Use full market data service if available
-    start_service "Market Data Service" 4600 \
+    start_service "Market Data Service" $PORT_SERVICE_MARKET \
         "$PWD/services/market-data" \
-        "npm run dev > /tmp/market-data.log 2>&1"
+        "PORT=$PORT_SERVICE_MARKET npm run dev > /tmp/market-data.log 2>&1"
 else
     echo -e "${YELLOW}⚠️  Market Data Service not found - Portfolio will use mock prices${NC}"
 fi
@@ -248,11 +265,11 @@ echo -e "${BLUE}═════════════════════�
 echo -e "${BLUE}🎨 Starting Frontend Application${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
 
-# Start Next.js Frontend (Port 3000)
+# Start Next.js Frontend
 # Note: Using npm run dev which uses server.js with proper WebSocket support
-start_service "Next.js Frontend" 3000 \
+start_service "Next.js Frontend" $PORT_FRONTEND_MAIN \
     "$PWD" \
-    "PORT=3000 npm run dev > /tmp/frontend.log 2>&1"
+    "PORT=$PORT_FRONTEND_MAIN npm run dev > /tmp/frontend.log 2>&1"
 
 echo ""
 
@@ -269,14 +286,14 @@ sleep 5  # Give services time to fully initialize
 
 # Run health checks without stopping on failure
 health_results=()
-check_health "API Gateway" "http://localhost:4000/health" && health_results+=("gateway:ok") || health_results+=("gateway:fail")
-check_health "User Management" "http://localhost:4100/health" && health_results+=("user:ok") || health_results+=("user:fail")
-check_health "AI Assistant" "http://localhost:4200/health" && health_results+=("ai:ok") || health_results+=("ai:fail")
-check_health "Terminal Service" "http://localhost:4300/health" && health_results+=("terminal:ok") || health_results+=("terminal:fail")
-check_health "Workspace Service" "http://localhost:4400/health" && health_results+=("workspace:ok") || health_results+=("workspace:fail")
-check_health "Portfolio Service" "http://localhost:4500/health" && health_results+=("portfolio:ok") || health_results+=("portfolio:fail")
-check_health "Market Data Service" "http://localhost:4600/health" && health_results+=("market:ok") || health_results+=("market:fail")
-check_health "Frontend" "http://localhost:3000" && health_results+=("frontend:ok") || health_results+=("frontend:fail")
+check_health "API Gateway" "http://localhost:$PORT_GATEWAY_MAIN/health" && health_results+=("gateway:ok") || health_results+=("gateway:fail")
+check_health "User Management" "http://localhost:$PORT_SERVICE_USER/health" && health_results+=("user:ok") || health_results+=("user:fail")
+check_health "AI Assistant" "http://localhost:$PORT_SERVICE_AI/health" && health_results+=("ai:ok") || health_results+=("ai:fail")
+check_health "Terminal Service" "http://localhost:$PORT_SERVICE_TERMINAL/health" && health_results+=("terminal:ok") || health_results+=("terminal:fail")
+check_health "Workspace Service" "http://localhost:$PORT_SERVICE_WORKSPACE/health" && health_results+=("workspace:ok") || health_results+=("workspace:fail")
+check_health "Portfolio Service" "http://localhost:$PORT_SERVICE_PORTFOLIO/health" && health_results+=("portfolio:ok") || health_results+=("portfolio:fail")
+check_health "Market Data Service" "http://localhost:$PORT_SERVICE_MARKET/health" && health_results+=("market:ok") || health_results+=("market:fail")
+check_health "Frontend" "http://localhost:$PORT_FRONTEND_MAIN" && health_results+=("frontend:ok") || health_results+=("frontend:fail")
 
 echo ""
 
@@ -291,7 +308,7 @@ echo -e "${BLUE}═════════════════════�
 # Count running services
 running_count=0
 failed_count=0
-for port in 3000 4000 4100 4200 4300 4400 4500; do
+for port in $PORT_FRONTEND_MAIN $PORT_GATEWAY_MAIN $PORT_SERVICE_USER $PORT_SERVICE_AI $PORT_SERVICE_TERMINAL $PORT_SERVICE_WORKSPACE $PORT_SERVICE_PORTFOLIO $PORT_SERVICE_MARKET; do
     if check_port $port; then
         running_count=$((running_count + 1))
     else
@@ -324,17 +341,17 @@ fi
 echo ""
 
 echo "🌐 Access Points:"
-echo "  • Frontend:       http://localhost:3000"
-echo "  • API Gateway:    http://localhost:4000"
-echo "  • Health Check:   http://localhost:4000/health/all"
-echo "  • Market Data API: http://localhost:4600/api/v1/market/quote/AAPL"
+echo "  • Frontend:       http://localhost:$PORT_FRONTEND_MAIN"
+echo "  • API Gateway:    http://localhost:$PORT_GATEWAY_MAIN"
+echo "  • Health Check:   http://localhost:$PORT_GATEWAY_MAIN/health/all"
+echo "  • Market Data API: http://localhost:$PORT_SERVICE_MARKET/api/v1/market/quote/AAPL"
 echo "  • Prisma Studio:  http://localhost:5555 (run: npx prisma studio)"
 echo ""
 
 echo "📈 Real-Time Price API Endpoints:"
-echo "  • Single Quote:   GET http://localhost:4600/api/v1/market/quote/:symbol"
-echo "  • Multiple Quotes: GET http://localhost:4600/api/v1/market/quotes?symbols=AAPL,GOOGL"
-echo "  • Portfolio Value: GET http://localhost:4000/api/v1/portfolios/:id/value"
+echo "  • Single Quote:   GET http://localhost:$PORT_SERVICE_MARKET/api/v1/market/quote/:symbol"
+echo "  • Multiple Quotes: GET http://localhost:$PORT_SERVICE_MARKET/api/v1/market/quotes?symbols=AAPL,GOOGL"
+echo "  • Portfolio Value: GET http://localhost:$PORT_GATEWAY_MAIN/api/v1/portfolios/:id/value"
 echo "  • Available Symbols: AAPL, GOOGL, MSFT, TSLA, AMZN, META, NVDA, JPM, V, JNJ"
 echo ""
 
@@ -357,15 +374,15 @@ echo ""
 
 echo "⚙️  Useful Commands:"
 echo "  • Stop all:       pkill -f 'node|npm'"
-echo "  • Check ports:    lsof -i :3000,4000,4100,4200,4300,4400,4500"
-echo "  • Health check:   curl http://localhost:4000/health/all | jq"
+echo "  • Check ports:    lsof -i :$PORT_FRONTEND_MAIN,$PORT_GATEWAY_MAIN,$PORT_SERVICE_USER,$PORT_SERVICE_AI,$PORT_SERVICE_TERMINAL,$PORT_SERVICE_WORKSPACE,$PORT_SERVICE_PORTFOLIO"
+echo "  • Health check:   curl http://localhost:$PORT_GATEWAY_MAIN/health/all | jq"
 echo "  • Install Redis:  brew install redis (macOS) or apt install redis (Linux)"
 echo ""
 
 # Show troubleshooting tips if services failed
 if [ $failed_count -gt 0 ]; then
     echo -e "${PURPLE}🔍 Troubleshooting Tips:${NC}"
-    echo "  • Check if ports are already in use: lsof -i :4100,4200,4300,4400,4500"
+    echo "  • Check if ports are already in use: lsof -i :$PORT_SERVICE_USER,$PORT_SERVICE_AI,$PORT_SERVICE_TERMINAL,$PORT_SERVICE_WORKSPACE,$PORT_SERVICE_PORTFOLIO"
     echo "  • View service logs: tail -f /tmp/*.log"
     echo "  • Kill stuck processes: pkill -f 'node|npm'"
     echo "  • Restart script after fixing issues"
@@ -378,7 +395,7 @@ echo ""
 
 if [ $running_count -ge 5 ]; then
     echo -e "${GREEN}🎉 Portfolio Management System is ready!${NC}"
-    echo -e "${GREEN}   Open http://localhost:3000 in your browser to get started${NC}"
+    echo -e "${GREEN}   Open http://localhost:$PORT_FRONTEND_MAIN in your browser to get started${NC}"
 else
     echo -e "${YELLOW}⚠️  Some services failed to start. Check the logs above for details.${NC}"
 fi

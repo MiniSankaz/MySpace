@@ -358,7 +358,7 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
 
 Select.displayName = "Select";
 
-export default Select;
+export { Select };
 
 // Multi-Select Component
 interface MultiSelectProps
@@ -420,3 +420,6 @@ export function AsyncSelect({
     />
   );
 }
+
+// Export as default for backward compatibility
+export default Select;

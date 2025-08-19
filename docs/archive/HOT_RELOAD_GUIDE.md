@@ -3,6 +3,7 @@
 ## Quick Start
 
 ### 🚀 Option 1: Full Auto-Reload Development
+
 ```bash
 # รันทุกอย่างพร้อม auto-reload
 npm run dev:all
@@ -12,6 +13,7 @@ npm run dev:all
 ```
 
 ### ⚡ Option 2: Quick Restart (เมื่อแก้ code)
+
 ```bash
 # Restart ด่วน (auto-detect การเปลี่ยนแปลง)
 npm run restart
@@ -21,6 +23,7 @@ npm run restart
 ```
 
 ### 🔨 Option 3: Full Rebuild (เมื่อมีปัญหา)
+
 ```bash
 # Rebuild ทั้งหมด
 npm run rebuild
@@ -31,22 +34,22 @@ npm run rebuild
 
 ## File Types & Reload Behavior
 
-| File Type | Auto Reload? | Action Required |
-|-----------|-------------|-----------------|
-| ✅ React Components (`.tsx`) | Yes | ไม่ต้องทำอะไร |
-| ✅ API Routes (`/api/`) | Yes | ไม่ต้องทำอะไร |
-| ✅ Styles (`.css`) | Yes | ไม่ต้องทำอะไร |
-| ⚠️ WebSocket (`socket-server.ts`) | No | รัน `npm run build:server` |
-| ⚠️ Services (`/services/`) | No | รัน `npm run build:server` |
-| ⚠️ Database Schema | No | รัน `npx prisma generate` |
-| 🔴 Dependencies | No | รัน `npm install` + restart |
-| 🔴 Environment Variables | No | Restart server |
+| File Type                         | Auto Reload? | Action Required             |
+| --------------------------------- | ------------ | --------------------------- |
+| ✅ React Components (`.tsx`)      | Yes          | ไม่ต้องทำอะไร               |
+| ✅ API Routes (`/api/`)           | Yes          | ไม่ต้องทำอะไร               |
+| ✅ Styles (`.css`)                | Yes          | ไม่ต้องทำอะไร               |
+| ⚠️ WebSocket (`socket-server.ts`) | No           | รัน `npm run build:server`  |
+| ⚠️ Services (`/services/`)        | No           | รัน `npm run build:server`  |
+| ⚠️ Database Schema                | No           | รัน `npx prisma generate`   |
+| 🔴 Dependencies                   | No           | รัน `npm install` + restart |
+| 🔴 Environment Variables          | No           | Restart server              |
 
 ## Commands Summary
 
 ```bash
 # Development Commands
-npm run dev          # Next.js dev server (port 4000)
+npm run dev          # Next.js dev server (port 4110)
 npm run dev:server   # Server with nodemon (auto-restart)
 npm run dev:all      # ทุกอย่าง + auto-reload
 npm run watch:server # TypeScript watch mode
@@ -64,6 +67,7 @@ npm run format       # Auto-format code
 ## Workflow Examples
 
 ### 1️⃣ แก้ไข React Component
+
 ```bash
 # ไม่ต้องทำอะไร! Next.js hot reload อัตโนมัติ
 # แก้ไขไฟล์ใน src/app/ หรือ src/components/
@@ -71,6 +75,7 @@ npm run format       # Auto-format code
 ```
 
 ### 2️⃣ แก้ไข WebSocket/Server Code
+
 ```bash
 # Terminal 1: Watch TypeScript
 npm run watch:server
@@ -82,6 +87,7 @@ npm run dev:server
 ```
 
 ### 3️⃣ แก้ไข Database Schema
+
 ```bash
 # 1. แก้ไข prisma/schema.prisma
 # 2. Generate Prisma Client
@@ -95,6 +101,7 @@ npm run restart
 ```
 
 ### 4️⃣ เพิ่ม Dependencies ใหม่
+
 ```bash
 # 1. Install package
 npm install package-name
@@ -105,13 +112,15 @@ npm run rebuild
 
 ## Troubleshooting
 
-### ❌ Port 4000 Already in Use
+### ❌ Port 4110 Already in Use
+
 ```bash
-npx kill-port 4000
+npx kill-port 4110
 npm run dev:all
 ```
 
 ### ❌ TypeScript Errors
+
 ```bash
 # Check types
 npm run type-check
@@ -122,6 +131,7 @@ npm run rebuild
 ```
 
 ### ❌ Database Connection Failed
+
 ```bash
 # Test connection
 npx tsx test-db-connection.ts
@@ -131,6 +141,7 @@ npx prisma generate
 ```
 
 ### ❌ WebSocket Not Working
+
 ```bash
 # Rebuild server files
 npm run build:server
@@ -142,6 +153,7 @@ npm run restart
 ## VS Code Integration
 
 VS Code จะ:
+
 - ✅ Auto-format on save
 - ✅ Show TypeScript errors real-time
 - ✅ Auto-fix ESLint issues

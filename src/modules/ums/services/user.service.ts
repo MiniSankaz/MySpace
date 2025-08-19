@@ -1,6 +1,6 @@
-import { prisma } from '@/core/database/prisma';
-import { randomBytes } from 'crypto';
-import bcrypt from 'bcryptjs';
+import { prisma } from "@/core/database/prisma";
+import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 
 interface UserUpdateData {
   firstName?: string;
@@ -52,29 +52,29 @@ export class UserService {
           UserProfile: true,
           UserRole: {
             include: {
-              Role: true
-            }
+              Role: true,
+            },
           },
           UserDepartment: {
             include: {
-              Department: true
-            }
+              Department: true,
+            },
           },
           TeamMember: {
             include: {
-              Team: true
-            }
-          }
-        }
+              Team: true,
+            },
+          },
+        },
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       return this.formatUserResponse(user);
     } catch (error) {
-      console.error('Get user error:', error);
+      console.error("Get user error:", error);
       throw error;
     }
   }
@@ -87,19 +87,19 @@ export class UserService {
           UserProfile: true,
           UserRole: {
             include: {
-              Role: true
-            }
-          }
-        }
+              Role: true,
+            },
+          },
+        },
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
       return this.formatUserResponse(user);
     } catch (error) {
-      console.error('Get user by email error:', error);
+      console.error("Get user by email error:", error);
       throw error;
     }
   }
@@ -108,7 +108,7 @@ export class UserService {
     try {
       const skip = (page - 1) * limit;
       const where: any = {
-        deletedAt: null
+        deletedAt: null,
       };
 
       // Apply filters
@@ -118,10 +118,10 @@ export class UserService {
 
       if (filters.search) {
         where.OR = [
-          { email: { contains: filters.search, mode: 'insensitive' } },
-          { username: { contains: filters.search, mode: 'insensitive' } },
-          { firstName: { contains: filters.search, mode: 'insensitive' } },
-          { lastName: { contains: filters.search, mode: 'insensitive' } }
+          { email: { contains: filters.search, mode: "insensitive" } },
+          { username: { contains: filters.search, mode: "insensitive" } },
+          { firstName: { contains: filters.search, mode: "insensitive" } },
+          { lastName: { contains: filters.search, mode: "insensitive" } },
         ];
       }
 
@@ -129,9 +129,9 @@ export class UserService {
         where.UserRole = {
           some: {
             Role: {
-              code: filters.role
-            }
-          }
+              code: filters.role,
+            },
+          },
         };
       }
 
@@ -139,9 +139,9 @@ export class UserService {
         where.UserDepartment = {
           some: {
             Department: {
-              code: filters.department
-            }
-          }
+              code: filters.department,
+            },
+          },
         };
       }
 
@@ -149,9 +149,9 @@ export class UserService {
         where.TeamMember = {
           some: {
             Team: {
-              code: filters.team
-            }
-          }
+              code: filters.team,
+            },
+          },
         };
       }
 
@@ -174,38 +174,38 @@ export class UserService {
             UserProfile: true,
             UserRole: {
               include: {
-                Role: true
-              }
+                Role: true,
+              },
             },
             UserDepartment: {
               include: {
-                Department: true
-              }
+                Department: true,
+              },
             },
             TeamMember: {
               include: {
-                Team: true
-              }
-            }
+                Team: true,
+              },
+            },
           },
           orderBy: {
-            createdAt: 'desc'
-          }
+            createdAt: "desc",
+          },
         }),
-        prisma.user.count({ where })
+        prisma.user.count({ where }),
       ]);
 
       return {
-        users: users.map(user => this.formatUserResponse(user)),
+        users: users.map((user) => this.formatUserResponse(user)),
         pagination: {
           page,
           limit,
           total,
-          totalPages: Math.ceil(total / limit)
-        }
+          totalPages: Math.ceil(total / limit),
+        },
       };
     } catch (error) {
-      console.error('List users error:', error);
+      console.error("List users error:", error);
       throw error;
     }
   }
@@ -216,34 +216,34 @@ export class UserService {
         where: { id: userId },
         data: {
           ...data,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         include: {
           UserProfile: true,
           UserRole: {
             include: {
-              Role: true
-            }
-          }
-        }
+              Role: true,
+            },
+          },
+        },
       });
 
       // Log update
       await prisma.auditLog.create({
         data: {
-          id: `audit_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `audit_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId,
-          action: 'user_update',
-          resource: 'user',
+          action: "user_update",
+          resource: "user",
           resourceId: userId,
           changes: data,
-          severity: 'info'
-        }
+          severity: "info",
+        },
       });
 
       return this.formatUserResponse(user);
     } catch (error) {
-      console.error('Update user error:', error);
+      console.error("Update user error:", error);
       throw error;
     }
   }
@@ -251,30 +251,30 @@ export class UserService {
   async updateUserProfile(userId: string, data: UserProfileData) {
     try {
       let profile = await prisma.userProfile.findUnique({
-        where: { userId }
+        where: { userId },
       });
 
       if (!profile) {
         profile = await prisma.userProfile.create({
           data: {
-            id: `profile_${Date.now()}_${randomBytes(8).toString('hex')}`,
+            id: `profile_${Date.now()}_${randomBytes(8).toString("hex")}`,
             userId,
-            ...data
-          }
+            ...data,
+          },
         });
       } else {
         profile = await prisma.userProfile.update({
           where: { id: profile.id },
           data: {
             ...data,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
       }
 
       return profile;
     } catch (error) {
-      console.error('Update user profile error:', error);
+      console.error("Update user profile error:", error);
       throw error;
     }
   }
@@ -287,25 +287,25 @@ export class UserService {
         data: {
           isActive: false,
           deletedAt: new Date(),
-          deletedBy
-        }
+          deletedBy,
+        },
       });
 
       // Log deletion
       await prisma.auditLog.create({
         data: {
-          id: `audit_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `audit_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId: deletedBy || userId,
-          action: 'user_delete',
-          resource: 'user',
+          action: "user_delete",
+          resource: "user",
           resourceId: userId,
-          severity: 'warning'
-        }
+          severity: "warning",
+        },
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Delete user error:', error);
+      console.error("Delete user error:", error);
       throw error;
     }
   }
@@ -316,8 +316,8 @@ export class UserService {
       const existing = await prisma.userRole.findFirst({
         where: {
           userId,
-          roleId
-        }
+          roleId,
+        },
       });
 
       if (existing) {
@@ -325,7 +325,7 @@ export class UserService {
         if (!existing.isActive) {
           await prisma.userRole.update({
             where: { id: existing.id },
-            data: { isActive: true }
+            data: { isActive: true },
           });
         }
         return existing;
@@ -334,30 +334,30 @@ export class UserService {
       // Create new role assignment
       const userRole = await prisma.userRole.create({
         data: {
-          id: `userrole_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `userrole_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId,
           roleId,
           assignedBy,
-          isActive: true
-        }
+          isActive: true,
+        },
       });
 
       // Log role assignment
       await prisma.auditLog.create({
         data: {
-          id: `audit_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `audit_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId: assignedBy || userId,
-          action: 'role_assign',
-          resource: 'user_role',
+          action: "role_assign",
+          resource: "user_role",
           resourceId: userRole.id,
           metadata: { userId, roleId },
-          severity: 'info'
-        }
+          severity: "info",
+        },
       });
 
       return userRole;
     } catch (error) {
-      console.error('Assign role error:', error);
+      console.error("Assign role error:", error);
       throw error;
     }
   }
@@ -367,47 +367,52 @@ export class UserService {
       const userRole = await prisma.userRole.findFirst({
         where: {
           userId,
-          roleId
-        }
+          roleId,
+        },
       });
 
       if (!userRole) {
-        throw new Error('Role assignment not found');
+        throw new Error("Role assignment not found");
       }
 
       // Deactivate role assignment
       await prisma.userRole.update({
         where: { id: userRole.id },
-        data: { isActive: false }
+        data: { isActive: false },
       });
 
       // Log role removal
       await prisma.auditLog.create({
         data: {
-          id: `audit_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `audit_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId: removedBy || userId,
-          action: 'role_remove',
-          resource: 'user_role',
+          action: "role_remove",
+          resource: "user_role",
           resourceId: userRole.id,
           metadata: { userId, roleId },
-          severity: 'info'
-        }
+          severity: "info",
+        },
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Remove role error:', error);
+      console.error("Remove role error:", error);
       throw error;
     }
   }
 
-  async assignToDepartment(userId: string, departmentId: string, position?: string, isPrimary = false) {
+  async assignToDepartment(
+    userId: string,
+    departmentId: string,
+    position?: string,
+    isPrimary = false,
+  ) {
     try {
       const existing = await prisma.userDepartment.findFirst({
         where: {
           userId,
-          departmentId
-        }
+          departmentId,
+        },
       });
 
       if (existing) {
@@ -415,8 +420,8 @@ export class UserService {
           where: { id: existing.id },
           data: {
             position,
-            isPrimary
-          }
+            isPrimary,
+          },
         });
       }
 
@@ -425,55 +430,55 @@ export class UserService {
         await prisma.userDepartment.updateMany({
           where: {
             userId,
-            isPrimary: true
+            isPrimary: true,
           },
           data: {
-            isPrimary: false
-          }
+            isPrimary: false,
+          },
         });
       }
 
       return await prisma.userDepartment.create({
         data: {
-          id: `userdept_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `userdept_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId,
           departmentId,
           position,
-          isPrimary
-        }
+          isPrimary,
+        },
       });
     } catch (error) {
-      console.error('Assign to department error:', error);
+      console.error("Assign to department error:", error);
       throw error;
     }
   }
 
-  async addToTeam(userId: string, teamId: string, role = 'member') {
+  async addToTeam(userId: string, teamId: string, role = "member") {
     try {
       const existing = await prisma.teamMember.findFirst({
         where: {
           userId,
-          teamId
-        }
+          teamId,
+        },
       });
 
       if (existing) {
         return await prisma.teamMember.update({
           where: { id: existing.id },
-          data: { role }
+          data: { role },
         });
       }
 
       return await prisma.teamMember.create({
         data: {
-          id: `teammember_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `teammember_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId,
           teamId,
-          role
-        }
+          role,
+        },
       });
     } catch (error) {
-      console.error('Add to team error:', error);
+      console.error("Add to team error:", error);
       throw error;
     }
   }
@@ -482,13 +487,13 @@ export class UserService {
     try {
       const activities = await prisma.userActivity.findMany({
         where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: limit
+        orderBy: { createdAt: "desc" },
+        take: limit,
       });
 
       return activities;
     } catch (error) {
-      console.error('Get user activity error:', error);
+      console.error("Get user activity error:", error);
       throw error;
     }
   }
@@ -502,12 +507,12 @@ export class UserService {
 
       const notifications = await prisma.userNotification.findMany({
         where,
-        orderBy: { sentAt: 'desc' }
+        orderBy: { sentAt: "desc" },
       });
 
       return notifications;
     } catch (error) {
-      console.error('Get user notifications error:', error);
+      console.error("Get user notifications error:", error);
       throw error;
     }
   }
@@ -517,57 +522,63 @@ export class UserService {
       await prisma.userNotification.update({
         where: {
           id: notificationId,
-          userId // Ensure user owns the notification
+          userId, // Ensure user owns the notification
         },
         data: {
           isRead: true,
-          readAt: new Date()
-        }
+          readAt: new Date(),
+        },
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Mark notification as read error:', error);
+      console.error("Mark notification as read error:", error);
       throw error;
     }
   }
 
-  async sendNotification(userId: string, title: string, message: string, type = 'in-app', data?: any) {
+  async sendNotification(
+    userId: string,
+    title: string,
+    message: string,
+    type = "in-app",
+    data?: any,
+  ) {
     try {
       const notification = await prisma.userNotification.create({
         data: {
-          id: `notif_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `notif_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId,
           type,
           title,
           message,
-          data
-        }
+          data,
+        },
       });
 
       // TODO: Implement push/email notification based on type
 
       return notification;
     } catch (error) {
-      console.error('Send notification error:', error);
+      console.error("Send notification error:", error);
       throw error;
     }
   }
 
   async createApiKey(userId: string, name: string, scopes: string[] = []) {
     try {
-      const apiKey = randomBytes(32).toString('hex');
+      const apiKey = randomBytes(32).toString("hex");
       const hashedKey = await bcrypt.hash(apiKey, 10);
 
       const key = await prisma.userApiKey.create({
         data: {
-          id: `apikey_${Date.now()}_${randomBytes(8).toString('hex')}`,
+          id: `apikey_${Date.now()}_${randomBytes(8).toString("hex")}`,
           userId,
           name,
           key: hashedKey,
           scopes,
-          isActive: true
-        }
+          isActive: true,
+        },
       });
 
       return {
@@ -575,10 +586,10 @@ export class UserService {
         name: key.name,
         key: apiKey, // Return the unhashed key only once
         scopes: key.scopes,
-        createdAt: key.createdAt
+        createdAt: key.createdAt,
       };
     } catch (error) {
-      console.error('Create API key error:', error);
+      console.error("Create API key error:", error);
       throw error;
     }
   }
@@ -588,16 +599,16 @@ export class UserService {
       await prisma.userApiKey.update({
         where: {
           id: keyId,
-          userId // Ensure user owns the key
+          userId, // Ensure user owns the key
         },
         data: {
-          isActive: false
-        }
+          isActive: false,
+        },
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Revoke API key error:', error);
+      console.error("Revoke API key error:", error);
       throw error;
     }
   }
@@ -620,24 +631,27 @@ export class UserService {
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       profile: user.UserProfile,
-      roles: user.UserRole?.map((ur: any) => ({
-        id: ur.Role.id,
-        name: ur.Role.name,
-        code: ur.Role.code
-      })) || [],
-      departments: user.UserDepartment?.map((ud: any) => ({
-        id: ud.Department.id,
-        name: ud.Department.name,
-        code: ud.Department.code,
-        position: ud.position,
-        isPrimary: ud.isPrimary
-      })) || [],
-      teams: user.TeamMember?.map((tm: any) => ({
-        id: tm.Team.id,
-        name: tm.Team.name,
-        code: tm.Team.code,
-        role: tm.role
-      })) || []
+      roles:
+        user.UserRole?.map((ur: any) => ({
+          id: ur.Role.id,
+          name: ur.Role.name,
+          code: ur.Role.code,
+        })) || [],
+      departments:
+        user.UserDepartment?.map((ud: any) => ({
+          id: ud.Department.id,
+          name: ud.Department.name,
+          code: ud.Department.code,
+          position: ud.position,
+          isPrimary: ud.isPrimary,
+        })) || [],
+      teams:
+        user.TeamMember?.map((tm: any) => ({
+          id: tm.Team.id,
+          name: tm.Team.name,
+          code: tm.Team.code,
+          role: tm.role,
+        })) || [],
     };
   }
 }

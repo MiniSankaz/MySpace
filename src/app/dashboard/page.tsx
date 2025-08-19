@@ -1,515 +1,372 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  ChatBubbleLeftRightIcon,
-  CommandLineIcon,
-  ChartBarIcon,
-  ClockIcon,
-  SparklesIcon,
-  BoltIcon,
-  CalendarDaysIcon,
-  CpuChipIcon,
-  CircleStackIcon,
-  LanguageIcon,
-  WifiIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline';
-import AppLayout from '@/components/layout/AppLayout';
-import DashboardKPICard from '@/components/dashboard/DashboardKPICard';
-import RealTimeActivityFeed from '@/components/dashboard/RealTimeActivityFeed';
-import { useThaiLanguage } from '@/hooks/useThaiLanguage';
+import React from "react";
+import { ModernLayout } from "@/components/layout/modern-layout";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Activity,
+  PieChart,
+  BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
+  Calendar,
+  Clock,
+  AlertCircle,
+  ChevronRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  displayName?: string;
-  roles?: string[];
-}
+// Mock data for demonstration
+const portfolioStats = {
+  totalValue: 157842.35,
+  dayChange: 2847.12,
+  dayChangePercent: 1.84,
+  totalGain: 23456.78,
+  totalGainPercent: 17.42,
+  positions: 12,
+  cash: 15234.5,
+};
 
-interface DashboardData {
-  user: {
-    totalSessions: number;
-    todayActivity: number;
-    lastLogin: Date | null;
-    activeProjects: number;
-  };
-  aiAssistant: {
-    totalConversations: number;
-    activeConversations: number;
-    tokensUsed: number;
-    totalCost: number;
-    averageResponseTime: number;
-    popularCommands: Array<{command: string; count: number}>;
-  };
-  terminal: {
-    totalSessions: number;
-    commandsExecuted: number;
-    errorRate: number;
-    averageExecutionTime: number;
-  };
-  system: {
-    uptime: number;
-    databaseHealth: 'healthy' | 'warning' | 'critical';
-    memoryUsage: number;
-    activeConnections: number;
-    lastBackup: Date | null;
-  };
-  recentActivity: Array<{
-    id: string;
-    type: string;
-    description: string;
-    timestamp: Date;
-    status: string;
-  }>;
-}
+const topMovers = [
+  {
+    symbol: "AAPL",
+    name: "Apple Inc.",
+    price: 178.23,
+    change: 3.45,
+    changePercent: 1.97,
+    isUp: true,
+  },
+  {
+    symbol: "MSFT",
+    name: "Microsoft",
+    price: 412.56,
+    change: -2.34,
+    changePercent: -0.56,
+    isUp: false,
+  },
+  {
+    symbol: "GOOGL",
+    name: "Alphabet",
+    price: 142.78,
+    change: 5.67,
+    changePercent: 4.13,
+    isUp: true,
+  },
+  {
+    symbol: "TSLA",
+    name: "Tesla",
+    price: 234.56,
+    change: 12.34,
+    changePercent: 5.56,
+    isUp: true,
+  },
+  {
+    symbol: "NVDA",
+    name: "NVIDIA",
+    price: 456.78,
+    change: -8.9,
+    changePercent: -1.91,
+    isUp: false,
+  },
+];
 
-export default function Dashboard() {
-  const router = useRouter();
-  const { t, lang, switchLanguage, formatNumber, formatCurrency, formatDate } = useThaiLanguage();
-  const [user, setUser] = useState<User | null>(null);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isOffline, setIsOffline] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'connecting'>('online');
+const recentActivity = [
+  {
+    type: "buy",
+    symbol: "AAPL",
+    quantity: 10,
+    price: 175.5,
+    time: "2 hours ago",
+  },
+  {
+    type: "sell",
+    symbol: "GOOGL",
+    quantity: 5,
+    price: 140.25,
+    time: "5 hours ago",
+  },
+  { type: "dividend", symbol: "MSFT", amount: 125.5, time: "1 day ago" },
+  {
+    type: "buy",
+    symbol: "NVDA",
+    quantity: 8,
+    price: 450.0,
+    time: "2 days ago",
+  },
+];
 
-  useEffect(() => {
-    fetchUserData();
-    fetchDashboardData();
-    
-    // Set up auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchDashboardData();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
+const StatCard = ({
+  title,
+  value,
+  change,
+  changePercent,
+  icon: Icon,
+  isPositive,
+}: any) => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{title}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          {value}
+        </p>
+        {change && (
+          <div
+            className={cn(
+              "flex items-center mt-2 text-sm font-medium",
+              isPositive
+                ? "text-green-600 dark:text-green-400"
+                : "text-red-600 dark:text-red-400",
+            )}
+          >
+            {isPositive ? (
+              <ArrowUpRight className="w-4 h-4 mr-1" />
+            ) : (
+              <ArrowDownRight className="w-4 h-4 mr-1" />
+            )}
+            <span>
+              {change} ({changePercent}%)
+            </span>
+          </div>
+        )}
+      </div>
+      <div
+        className={cn(
+          "p-3 rounded-lg",
+          isPositive
+            ? "bg-green-50 dark:bg-green-900/20"
+            : "bg-blue-50 dark:bg-blue-900/20",
+        )}
+      >
+        <Icon
+          className={cn(
+            "w-6 h-6",
+            isPositive
+              ? "text-green-600 dark:text-green-400"
+              : "text-blue-600 dark:text-blue-400",
+          )}
+        />
+      </div>
+    </div>
+  </div>
+);
 
-  const fetchUserData = async () => {
-    try {
-      setConnectionStatus('connecting');
-      const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      
-      const response = await fetch('/api/ums/users/me', {
-        headers: {
-          'Authorization': accessToken ? `Bearer ${accessToken}` : '',
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && data.user) {
-        setUser(data.user);
-        // Store in localStorage for offline use
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify(data.user));
-        }
-        
-        // Check if we're in offline mode
-        if (data.offline) {
-          setIsOffline(true);
-          setConnectionStatus('offline');
-        } else {
-          setIsOffline(false);
-          setConnectionStatus('online');
-        }
-      } else if (response.status === 401) {
-        // Not authenticated - try localStorage
-        handleOfflineUser();
-      }
-    } catch (error) {
-      console.error('Failed to fetch user data:', error);
-      handleOfflineUser();
-    }
-  };
-  
-  const handleOfflineUser = () => {
-    // Try to get user from localStorage as fallback
-    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setIsOffline(true);
-        setConnectionStatus('offline');
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-        // Use default development user
-        setUser({
-          id: 'dev_user',
-          email: 'dev@localhost.com',
-          username: 'dev_user',
-          displayName: 'Development User',
-          roles: ['user']
-        });
-        setIsOffline(true);
-        setConnectionStatus('offline');
-      }
-    } else if (process.env.NODE_ENV === 'development') {
-      // Development fallback
-      setUser({
-        id: 'dev_user',
-        email: 'dev@localhost.com',
-        username: 'dev_user',
-        displayName: 'Development User',
-        roles: ['user']
-      });
-      setIsOffline(true);
-      setConnectionStatus('offline');
-    }
-  };
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/dashboard/stats');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setDashboardData(result.data);
-        setError(null);
-      } else {
-        throw new Error(result.error || 'Invalid response format');
-      }
-    } catch (error) {
-      console.error('Dashboard data error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
-      
-      // Set default data on error
-      setDashboardData({
-        user: {
-          totalSessions: 0,
-          todayActivity: 0,
-          lastLogin: null,
-          activeProjects: 0
-        },
-        aiAssistant: {
-          totalConversations: 0,
-          activeConversations: 0,
-          tokensUsed: 0,
-          totalCost: 0,
-          averageResponseTime: 0,
-          popularCommands: []
-        },
-        terminal: {
-          totalSessions: 0,
-          commandsExecuted: 0,
-          errorRate: 0,
-          averageExecutionTime: 0
-        },
-        system: {
-          uptime: 0,
-          databaseHealth: 'healthy',
-          memoryUsage: 0,
-          activeConnections: 0,
-          lastBackup: null
-        },
-        recentActivity: []
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatUptime = (seconds: number): string => {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (days > 0) return `${days} ${t('time.days')} ${hours} ${t('time.hours')}`;
-    if (hours > 0) return `${hours} ${t('time.hours')} ${minutes} ${t('time.minutes')}`;
-    return `${minutes} ${t('time.minutes')}`;
-  };
-
-  const getSystemHealthColor = (health: string) => {
-    switch (health) {
-      case 'healthy': return 'green';
-      case 'warning': return 'orange';
-      case 'critical': return 'red';
-      default: return 'blue';
-    }
-  };
-
-  const getHealthText = (health: string): string => {
-    switch (health) {
-      case 'healthy': return t('status.healthy');
-      case 'warning': return t('status.warning');
-      case 'critical': return t('status.critical');
-      default: return 'Unknown';
-    }
-  };
-
-  const getCurrentDate = (): string => {
-    const now = new Date();
-    const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
-    const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 
-                   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-    
-    return `วัน${days[now.getDay()]}ที่ ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear() + 543}`;
-  };
-
+export default function DashboardPage() {
   return (
-    <AppLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <div className="p-6 space-y-6">
-          {/* Offline/Connection Status Banner */}
-          {isOffline && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex items-center gap-3">
-              <WifiIcon className="w-5 h-5 text-yellow-500" />
-              <div className="flex-1">
-                <p className="text-yellow-500 text-sm font-medium">Running in Offline Mode</p>
-                <p className="text-yellow-400/70 text-xs mt-1">
-                  Database connection unavailable. Using cached data.
-                </p>
-              </div>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-3 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 
-                         rounded text-yellow-400 text-sm transition-colors"
-              >
-                Retry Connection
-              </button>
-            </div>
-          )}
-          
-          {/* Welcome Section */}
-          <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-sm rounded-2xl p-8 border border-gray-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">
-                  {t('welcome.greeting')}, {user?.displayName || user?.username || 'User'} 👋
-                </h1>
-                <p className="text-gray-300">
-                  {t('welcome.description')}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                {/* Connection Status Indicator */}
-                <div className="flex items-center gap-2 px-2 py-1 bg-gray-800/50 rounded-lg">
-                  <div className={`w-2 h-2 rounded-full ${
-                    connectionStatus === 'online' ? 'bg-green-500' : 
-                    connectionStatus === 'offline' ? 'bg-red-500' : 
-                    'bg-yellow-500 animate-pulse'
-                  }`} />
-                  <span className="text-xs text-gray-400">
-                    {connectionStatus === 'online' ? 'Online' : 
-                     connectionStatus === 'offline' ? 'Offline' : 
-                     'Connecting...'}
-                  </span>
+    <ModernLayout>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Dashboard
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">
+              Welcome back! Here's your portfolio overview.
+            </p>
+          </div>
+          <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+            <button className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <Calendar className="w-4 h-4 inline-block mr-2" />
+              Last 30 Days
+            </button>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              Add Position
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Portfolio Value"
+            value={`$${portfolioStats.totalValue.toLocaleString()}`}
+            change={`+$${portfolioStats.dayChange.toLocaleString()}`}
+            changePercent={portfolioStats.dayChangePercent}
+            icon={DollarSign}
+            isPositive={true}
+          />
+          <StatCard
+            title="Total Gain/Loss"
+            value={`$${portfolioStats.totalGain.toLocaleString()}`}
+            changePercent={portfolioStats.totalGainPercent}
+            icon={TrendingUp}
+            isPositive={true}
+          />
+          <StatCard
+            title="Positions"
+            value={portfolioStats.positions}
+            icon={PieChart}
+            isPositive={false}
+          />
+          <StatCard
+            title="Cash Balance"
+            value={`$${portfolioStats.cash.toLocaleString()}`}
+            icon={Activity}
+            isPositive={false}
+          />
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Portfolio Chart */}
+          <div className="lg:col-span-2">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Portfolio Performance
+                </h2>
+                <div className="flex space-x-2">
+                  <button className="px-3 py-1 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg font-medium">
+                    1D
+                  </button>
+                  <button className="px-3 py-1 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    1W
+                  </button>
+                  <button className="px-3 py-1 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    1M
+                  </button>
+                  <button className="px-3 py-1 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    1Y
+                  </button>
+                  <button className="px-3 py-1 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    ALL
+                  </button>
                 </div>
-                <button
-                  onClick={() => switchLanguage(lang === 'th' ? 'en' : 'th')}
-                  className="flex items-center gap-2 px-3 py-1 bg-gray-700/50 hover:bg-gray-700 
-                           rounded-lg text-gray-300 text-sm transition-colors"
+              </div>
+              {/* Placeholder for chart */}
+              <div className="h-64 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-12 h-12 text-gray-400" />
+                <span className="ml-3 text-gray-500 dark:text-gray-400">
+                  Chart will be implemented
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Top Movers */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Top Movers
+              </h2>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+            <div className="space-y-3">
+              {topMovers.map((stock) => (
+                <div
+                  key={stock.symbol}
+                  className="flex items-center justify-between py-2"
                 >
-                  <LanguageIcon className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'EN' : 'TH'}</span>
-                </button>
-                <div className="flex items-center gap-2 text-gray-400">
-                  <CalendarDaysIcon className="w-5 h-5" />
-                  <span>{getCurrentDate()}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {stock.symbol}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {stock.name}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      ${stock.price}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-xs font-medium",
+                        stock.isUp
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400",
+                      )}
+                    >
+                      {stock.isUp ? "+" : ""}
+                      {stock.changePercent}%
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Recent Activity
+            </h2>
+            <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              View All
+            </button>
+          </div>
+          <div className="space-y-3">
+            {recentActivity.map((activity, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700 last:border-0"
+              >
+                <div className="flex items-center space-x-3">
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center",
+                      activity.type === "buy"
+                        ? "bg-green-50 dark:bg-green-900/20"
+                        : activity.type === "sell"
+                          ? "bg-red-50 dark:bg-red-900/20"
+                          : "bg-blue-50 dark:bg-blue-900/20",
+                    )}
+                  >
+                    {activity.type === "buy" ? (
+                      <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : activity.type === "sell" ? (
+                      <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    ) : (
+                      <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {activity.type === "buy" &&
+                        `Bought ${activity.quantity} ${activity.symbol}`}
+                      {activity.type === "sell" &&
+                        `Sold ${activity.quantity} ${activity.symbol}`}
+                      {activity.type === "dividend" &&
+                        `Dividend from ${activity.symbol}`}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {activity.type === "dividend"
+                        ? `$${activity.amount}`
+                        : `$${activity.price} per share`}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <Clock className="w-3 h-3 inline-block mr-1" />
+                    {activity.time}
+                  </p>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
+        </div>
 
-          {/* Error Alert */}
-          {error && !isOffline && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-start gap-3">
-              <ExclamationTriangleIcon className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-red-400 text-sm">{error}</p>
-                <p className="text-red-400/70 text-xs mt-1">
-                  Some features may be limited. The app will continue to work with cached data.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* KPI Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <DashboardKPICard
-              title={t('kpi.aiConversations')}
-              value={dashboardData?.aiAssistant.totalConversations || 0}
-              icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />}
-              color="blue"
-              trend={dashboardData?.aiAssistant.activeConversations ? 'up' : 'neutral'}
-              trendValue={`${formatNumber(dashboardData?.aiAssistant.activeConversations || 0)} ${t('status.active')}`}
-              description={t('kpi.aiConversationsDesc')}
-              loading={loading}
-              onClick={() => router.push('/assistant')}
-            />
-
-            <DashboardKPICard
-              title={t('kpi.tokensUsed')}
-              value={formatNumber(dashboardData?.aiAssistant.tokensUsed || 0)}
-              icon={<SparklesIcon className="w-6 h-6" />}
-              color="purple"
-              description={`${t('status.cost')}: ${formatCurrency(dashboardData?.aiAssistant.totalCost || 0)}`}
-              loading={loading}
-            />
-
-            <DashboardKPICard
-              title={t('kpi.terminalSessions')}
-              value={dashboardData?.terminal.totalSessions || 0}
-              icon={<CommandLineIcon className="w-6 h-6" />}
-              color="green"
-              trend={dashboardData?.terminal.errorRate > 5 ? 'down' : 'up'}
-              trendValue={`${dashboardData?.terminal.errorRate?.toFixed(1) || 0}% ${t('status.errors')}`}
-              description={`${formatNumber(dashboardData?.terminal.commandsExecuted || 0)} ${t('status.commands')}`}
-              loading={loading}
-            />
-
-            <DashboardKPICard
-              title={t('kpi.todayActivity')}
-              value={dashboardData?.user.todayActivity || 0}
-              icon={<BoltIcon className="w-6 h-6" />}
-              color="orange"
-              trend="up"
-              description={t('kpi.todayActivityDesc')}
-              loading={loading}
-            />
-          </div>
-
-          {/* System Health Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <DashboardKPICard
-              title={t('kpi.systemUptime')}
-              value={formatUptime(dashboardData?.system.uptime || 0)}
-              icon={<ClockIcon className="w-6 h-6" />}
-              color="green"
-              description={t('kpi.systemUptimeDesc')}
-              loading={loading}
-            />
-
-            <DashboardKPICard
-              title={t('kpi.databaseHealth')}
-              value={getHealthText(dashboardData?.system.databaseHealth || 'healthy')}
-              icon={<CircleStackIcon className="w-6 h-6" />}
-              color={getSystemHealthColor(dashboardData?.system.databaseHealth || 'healthy')}
-              description={`${formatNumber(dashboardData?.system.activeConnections || 0)} ${t('status.connections')}`}
-              loading={loading}
-            />
-
-            <DashboardKPICard
-              title={t('kpi.memoryUsage')}
-              value={dashboardData?.system.memoryUsage || 0}
-              icon={<CpuChipIcon className="w-6 h-6" />}
-              color={dashboardData?.system.memoryUsage > 80 ? 'red' : 'blue'}
-              format="percentage"
-              description={t('kpi.memoryUsageDesc')}
-              loading={loading}
-            />
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Activity Feed - Takes 2 columns */}
-            <div className="lg:col-span-2">
-              <RealTimeActivityFeed
-                initialActivities={dashboardData?.recentActivity || []}
-                maxItems={15}
-                autoRefresh={true}
-                refreshInterval={30000}
-              />
-            </div>
-
-            {/* AI Popular Commands */}
-            <div className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-800 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ChartBarIcon className="w-5 h-5 text-gray-400" />
-                <h3 className="text-lg font-semibold text-gray-200">{t('commands.title')}</h3>
-              </div>
-              
-              <div className="space-y-3">
-                {dashboardData?.aiAssistant.popularCommands?.length ? (
-                  dashboardData.aiAssistant.popularCommands.map((cmd, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400 font-mono">{cmd.command}</span>
-                      <span className="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">
-                        {formatNumber(cmd.count)} {t('commands.uses')}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">{t('commands.noCommands')}</p>
-                )}
-              </div>
-
-              {/* Quick Actions */}
-              <div className="mt-6 pt-6 border-t border-gray-800">
-                <h4 className="text-sm font-medium text-gray-400 mb-3">{t('quickActions.title')}</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => router.push('/assistant')}
-                    className="p-3 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 
-                             rounded-lg text-blue-400 text-sm transition-colors"
-                  >
-                    {t('quickActions.newChat')}
-                  </button>
-                  <button
-                    onClick={() => router.push('/terminal')}
-                    className="p-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 
-                             rounded-lg text-green-400 text-sm transition-colors"
-                  >
-                    {t('quickActions.terminal')}
-                  </button>
-                  <button
-                    onClick={() => router.push('/settings')}
-                    className="p-3 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 
-                             rounded-lg text-purple-400 text-sm transition-colors"
-                  >
-                    {t('quickActions.settings')}
-                  </button>
-                  <button
-                    onClick={() => fetchDashboardData()}
-                    className="p-3 bg-gray-500/10 hover:bg-gray-500/20 border border-gray-500/20 
-                             rounded-lg text-gray-400 text-sm transition-colors"
-                  >
-                    {t('quickActions.refresh')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-800">
-              <div className="text-2xl font-bold text-white">
-                {formatNumber(dashboardData?.user.activeProjects || 0)}
-              </div>
-              <div className="text-sm text-gray-400">{t('kpi.activeProjects')}</div>
-            </div>
-            <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-800">
-              <div className="text-2xl font-bold text-white">
-                {formatNumber(dashboardData?.aiAssistant.averageResponseTime || 0)} ms
-              </div>
-              <div className="text-sm text-gray-400">{t('kpi.avgResponseTime')}</div>
-            </div>
-            <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-800">
-              <div className="text-2xl font-bold text-white">
-                {formatNumber(dashboardData?.terminal.averageExecutionTime || 0)} ms
-              </div>
-              <div className="text-sm text-gray-400">{t('kpi.avgExecutionTime')}</div>
-            </div>
-            <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-800">
-              <div className="text-2xl font-bold text-white">
-                {formatCurrency(dashboardData?.aiAssistant.totalCost || 0)}
-              </div>
-              <div className="text-sm text-gray-400">{t('kpi.totalCost')}</div>
+        {/* Alert Banner */}
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                Market closes in 2 hours
+              </p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                Review your pending orders before market close at 4:00 PM EST.
+              </p>
             </div>
           </div>
         </div>
       </div>
-    </AppLayout>
+    </ModernLayout>
   );
 }

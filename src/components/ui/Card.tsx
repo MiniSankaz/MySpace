@@ -11,7 +11,7 @@ interface CardProps {
   hover?: boolean;
 }
 
-export default function Card({
+function Card({
   children,
   className = "",
   padding = "medium",
@@ -138,3 +138,7 @@ export function CardFooter({ children, className = "" }: CardFooterProps) {
     </div>
   );
 }
+
+// Named exports
+export { Card };
+export default Card;

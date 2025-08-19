@@ -854,7 +854,7 @@ async function main() {
         status: template.isPublished ? "published" : "draft",
         publishedAt: template.isPublished ? new Date() : null,
         createdById: faker.helpers.arrayElement([adminUser.id, editorUser.id]),
-        updatedById: faker.helpers.arrayElement([adminUser.id, editorUser.id]),
+        updatedBy: faker.helpers.arrayElement([adminUser.id, editorUser.id]),
         language: "en",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -922,7 +922,6 @@ async function main() {
   const footerNav = await prisma.menu.create({
     data: {
       name: "Footer Navigation",
-      position: "footer",
       items: [
         {
           label: { en: "Privacy Policy", th: "นโยบายความเป็นส่วนตัว" },

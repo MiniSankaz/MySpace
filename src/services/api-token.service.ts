@@ -1,6 +1,6 @@
-import { prisma } from '@/core/database/prisma';
-import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import { prisma } from "@/core/database/prisma";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 interface CreateTokenParams {
   userId: string;
@@ -19,7 +19,7 @@ interface ValidateTokenResult {
 }
 
 export class ApiTokenService {
-  private readonly TOKEN_PREFIX = 'sk-live-';
+  private readonly TOKEN_PREFIX = "sk-live-";
   private readonly TOKEN_LENGTH = 48;
 
   /**
@@ -27,10 +27,11 @@ export class ApiTokenService {
    */
   private generateToken(): string {
     const randomBytes = crypto.randomBytes(this.TOKEN_LENGTH);
-    const token = randomBytes.toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '');
+    const token = randomBytes
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
     return `${this.TOKEN_PREFIX}${token}`;
   }
 
@@ -38,7 +39,14 @@ export class ApiTokenService {
    * Create a new API token
    */
   async createToken(params: CreateTokenParams) {
-    const { userId, name, scopes, expiresAt, rateLimit = 1000, metadata } = params;
+    const {
+      userId,
+      name,
+      scopes,
+      expiresAt,
+      rateLimit = 1000,
+      metadata,
+    } = params;
 
     // Generate token
     const plainToken = this.generateToken();
@@ -56,8 +64,8 @@ export class ApiTokenService {
         expiresAt,
         rateLimit,
         metadata,
-        isActive: true
-      }
+        isActive: true,
+      },
     });
 
     // Return plain token (only shown once)
@@ -67,7 +75,7 @@ export class ApiTokenService {
       name: apiToken.name,
       scopes: apiToken.scopes,
       expiresAt: apiToken.expiresAt,
-      createdAt: apiToken.createdAt
+      createdAt: apiToken.createdAt,
     };
   }
 
@@ -84,10 +92,7 @@ export class ApiTokenService {
         where: {
           tokenPrefix,
           isActive: true,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } }
-          ]
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         include: {
           User: {
@@ -96,10 +101,10 @@ export class ApiTokenService {
               email: true,
               username: true,
               displayName: true,
-              isActive: true
-            }
-          }
-        }
+              isActive: true,
+            },
+          },
+        },
       });
 
       // Check each token
@@ -108,7 +113,7 @@ export class ApiTokenService {
         if (isValid) {
           // Check if user is active
           if (!token.User.isActive) {
-            return { valid: false, error: 'User account is inactive' };
+            return { valid: false, error: "User account is inactive" };
           }
 
           // Update last used
@@ -116,22 +121,22 @@ export class ApiTokenService {
             where: { id: token.id },
             data: {
               lastUsedAt: new Date(),
-              usageCount: { increment: 1 }
-            }
+              usageCount: { increment: 1 },
+            },
           });
 
           return {
             valid: true,
             token,
-            user: token.User
+            user: token.User,
           };
         }
       }
 
-      return { valid: false, error: 'Invalid token' };
+      return { valid: false, error: "Invalid token" };
     } catch (error) {
-      console.error('Token validation error:', error);
-      return { valid: false, error: 'Token validation failed' };
+      console.error("Token validation error:", error);
+      return { valid: false, error: "Token validation failed" };
     }
   }
 
@@ -143,7 +148,7 @@ export class ApiTokenService {
 
     // Get or create rate limit record
     let rateLimit = await prisma.apiRateLimit.findUnique({
-      where: { tokenId }
+      where: { tokenId },
     });
 
     if (!rateLimit || rateLimit.windowStart < windowStart) {
@@ -153,12 +158,12 @@ export class ApiTokenService {
         create: {
           tokenId,
           windowStart: new Date(),
-          requestCount: 1
+          requestCount: 1,
         },
         update: {
           windowStart: new Date(),
-          requestCount: 1
-        }
+          requestCount: 1,
+        },
       });
       return true;
     }
@@ -171,7 +176,7 @@ export class ApiTokenService {
     // Increment counter
     await prisma.apiRateLimit.update({
       where: { tokenId },
-      data: { requestCount: { increment: 1 } }
+      data: { requestCount: { increment: 1 } },
     });
 
     return true;
@@ -196,16 +201,16 @@ export class ApiTokenService {
         createdAt: true,
         _count: {
           select: {
-            ApiUsageLog: true
-          }
-        }
+            ApiUsageLog: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
 
-    return tokens.map(token => ({
+    return tokens.map((token) => ({
       ...token,
-      totalRequests: token._count.ApiUsageLog
+      totalRequests: token._count.ApiUsageLog,
     }));
   }
 
@@ -214,11 +219,11 @@ export class ApiTokenService {
    */
   async revokeToken(tokenId: string, userId: string, reason?: string) {
     const token = await prisma.apiToken.findFirst({
-      where: { id: tokenId, userId }
+      where: { id: tokenId, userId },
     });
 
     if (!token) {
-      throw new Error('Token not found');
+      throw new Error("Token not found");
     }
 
     return await prisma.apiToken.update({
@@ -226,8 +231,8 @@ export class ApiTokenService {
       data: {
         isActive: false,
         revokedAt: new Date(),
-        revokedReason: reason
-      }
+        revokedReason: reason,
+      },
     });
   }
 
@@ -236,15 +241,15 @@ export class ApiTokenService {
    */
   async deleteToken(tokenId: string, userId: string) {
     const token = await prisma.apiToken.findFirst({
-      where: { id: tokenId, userId }
+      where: { id: tokenId, userId },
     });
 
     if (!token) {
-      throw new Error('Token not found');
+      throw new Error("Token not found");
     }
 
     return await prisma.apiToken.delete({
-      where: { id: tokenId }
+      where: { id: tokenId },
     });
   }
 
@@ -253,31 +258,36 @@ export class ApiTokenService {
    */
   async getTokenStats(tokenId: string, userId: string) {
     const token = await prisma.apiToken.findFirst({
-      where: { id: tokenId, userId }
+      where: { id: tokenId, userId },
     });
 
     if (!token) {
-      throw new Error('Token not found');
+      throw new Error("Token not found");
     }
 
     // Get usage stats
-    const [totalRequests, successfulRequests, failedRequests, avgResponseTime] = await Promise.all([
-      prisma.apiUsageLog.count({ where: { tokenId } }),
-      prisma.apiUsageLog.count({ where: { tokenId, statusCode: { gte: 200, lt: 300 } } }),
-      prisma.apiUsageLog.count({ where: { tokenId, statusCode: { gte: 400 } } }),
-      prisma.apiUsageLog.aggregate({
-        where: { tokenId },
-        _avg: { responseTime: true }
-      })
-    ]);
+    const [totalRequests, successfulRequests, failedRequests, avgResponseTime] =
+      await Promise.all([
+        prisma.apiUsageLog.count({ where: { tokenId } }),
+        prisma.apiUsageLog.count({
+          where: { tokenId, statusCode: { gte: 200, lt: 300 } },
+        }),
+        prisma.apiUsageLog.count({
+          where: { tokenId, statusCode: { gte: 400 } },
+        }),
+        prisma.apiUsageLog.aggregate({
+          where: { tokenId },
+          _avg: { responseTime: true },
+        }),
+      ]);
 
     // Get endpoint usage
     const endpointUsage = await prisma.apiUsageLog.groupBy({
-      by: ['endpoint', 'method'],
+      by: ["endpoint", "method"],
       where: { tokenId },
       _count: true,
-      orderBy: { _count: { endpoint: 'desc' } },
-      take: 10
+      orderBy: { _count: { endpoint: "desc" } },
+      take: 10,
     });
 
     // Get recent logs
@@ -289,10 +299,10 @@ export class ApiTokenService {
         method: true,
         statusCode: true,
         responseTime: true,
-        createdAt: true
+        createdAt: true,
       },
-      orderBy: { createdAt: 'desc' },
-      take: 20
+      orderBy: { createdAt: "desc" },
+      take: 20,
     });
 
     return {
@@ -302,17 +312,18 @@ export class ApiTokenService {
         scopes: token.scopes,
         createdAt: token.createdAt,
         lastUsedAt: token.lastUsedAt,
-        expiresAt: token.expiresAt
+        expiresAt: token.expiresAt,
       },
       stats: {
         totalRequests,
         successfulRequests,
         failedRequests,
-        successRate: totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 0,
-        avgResponseTime: avgResponseTime._avg.responseTime || 0
+        successRate:
+          totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 0,
+        avgResponseTime: avgResponseTime._avg.responseTime || 0,
       },
       endpointUsage,
-      recentLogs
+      recentLogs,
     };
   }
 
@@ -321,16 +332,16 @@ export class ApiTokenService {
    */
   async updateTokenScopes(tokenId: string, userId: string, scopes: string[]) {
     const token = await prisma.apiToken.findFirst({
-      where: { id: tokenId, userId }
+      where: { id: tokenId, userId },
     });
 
     if (!token) {
-      throw new Error('Token not found');
+      throw new Error("Token not found");
     }
 
     return await prisma.apiToken.update({
       where: { id: tokenId },
-      data: { scopes }
+      data: { scopes },
     });
   }
 }

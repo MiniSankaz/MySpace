@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GitConfigService } from '@/services/git-config.service';
-import { prisma } from '@/core/database/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import { GitConfigService } from "@/services/git-config.service";
+import { prisma } from "@/core/database/prisma";
 
 // GET /api/git/config - Get Git configuration
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const projectPath = searchParams.get('path') || process.cwd();
-    const projectId = searchParams.get('projectId');
-    const useCache = searchParams.get('cache') !== 'false';
+    const projectPath = searchParams.get("path") || process.cwd();
+    const projectId = searchParams.get("projectId");
+    const useCache = searchParams.get("cache") !== "false";
 
     // Check cache if projectId provided
     if (projectId && useCache) {
@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
           Project: {
             select: {
               name: true,
-              path: true
-            }
-          }
-        }
+              path: true,
+            },
+          },
+        },
       });
 
       // Return cached if less than 5 minutes old
@@ -29,20 +29,20 @@ export async function GET(request: NextRequest) {
         const cacheAge = Date.now() - cachedConfig.syncedAt.getTime();
         if (cacheAge < 5 * 60 * 1000) {
           return NextResponse.json({
-            source: 'cache',
+            source: "cache",
             data: {
               repository: {
                 path: cachedConfig.projectPath,
                 name: cachedConfig.repoName,
                 isGitRepo: cachedConfig.isGitRepo,
                 isBare: cachedConfig.isBare,
-                workingDirectory: cachedConfig.workingDir
+                workingDirectory: cachedConfig.workingDir,
               },
               remotes: cachedConfig.remotes,
               branches: cachedConfig.branches,
               user: {
-                name: cachedConfig.userName || '',
-                email: cachedConfig.userEmail || ''
+                name: cachedConfig.userName || "",
+                email: cachedConfig.userEmail || "",
               },
               status: {
                 clean: cachedConfig.isClean,
@@ -50,15 +50,15 @@ export async function GET(request: NextRequest) {
                 behind: cachedConfig.behind,
                 staged: cachedConfig.staged,
                 modified: cachedConfig.modified,
-                untracked: cachedConfig.untracked
+                untracked: cachedConfig.untracked,
               },
               config: cachedConfig.config,
               metadata: {
                 lastFetch: cachedConfig.lastFetch,
                 gitVersion: cachedConfig.gitVersion,
-                syncedAt: cachedConfig.syncedAt
-              }
-            }
+                syncedAt: cachedConfig.syncedAt,
+              },
+            },
           });
         }
       }
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
           branches: gitConfig.branches.all,
           config: gitConfig.config,
           gitVersion: gitConfig.metadata.gitVersion,
-          lastFetch: gitConfig.metadata.lastFetch
+          lastFetch: gitConfig.metadata.lastFetch,
         },
         update: {
           projectPath: gitConfig.repository.path,
@@ -116,23 +116,23 @@ export async function GET(request: NextRequest) {
           config: gitConfig.config,
           gitVersion: gitConfig.metadata.gitVersion,
           lastFetch: gitConfig.metadata.lastFetch,
-          syncedAt: new Date()
-        }
+          syncedAt: new Date(),
+        },
       });
     }
 
     return NextResponse.json({
-      source: 'git',
-      data: gitConfig
+      source: "git",
+      data: gitConfig,
     });
   } catch (error: any) {
-    console.error('Git config error:', error);
+    console.error("Git config error:", error);
     return NextResponse.json(
-      { 
-        error: 'Failed to get Git configuration',
-        message: error.message 
+      {
+        error: "Failed to get Git configuration",
+        message: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -145,13 +145,13 @@ export async function POST(request: NextRequest) {
 
     if (!command) {
       return NextResponse.json(
-        { error: 'Command is required' },
-        { status: 400 }
+        { error: "Command is required" },
+        { status: 400 },
       );
     }
 
     const gitService = new GitConfigService(projectPath || process.cwd());
-    
+
     // Track the change if projectId is provided
     let previousState: any = null;
     if (projectId) {
@@ -160,10 +160,10 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           currentBranch: true,
-          remotes: true
-        }
+          remotes: true,
+        },
       });
-      
+
       if (currentConfig) {
         previousState = currentConfig;
       }
@@ -171,37 +171,37 @@ export async function POST(request: NextRequest) {
 
     // Execute the command
     let result;
-    let changeType = 'command';
-    let toValue = '';
+    let changeType = "command";
+    let toValue = "";
 
     // Handle specific commands
-    if (command.startsWith('checkout ')) {
-      const branch = command.replace('checkout ', '');
+    if (command.startsWith("checkout ")) {
+      const branch = command.replace("checkout ", "");
       result = await gitService.checkout(branch);
-      changeType = 'branch_switch';
+      changeType = "branch_switch";
       toValue = branch;
-    } else if (command === 'fetch' || command.startsWith('fetch ')) {
-      const remote = command.replace('fetch ', '') || 'origin';
+    } else if (command === "fetch" || command.startsWith("fetch ")) {
+      const remote = command.replace("fetch ", "") || "origin";
       result = await gitService.fetch(remote);
-      changeType = 'fetch';
+      changeType = "fetch";
       toValue = remote;
-    } else if (command === 'pull' || command.startsWith('pull ')) {
-      const branch = command.replace('pull ', '') || undefined;
+    } else if (command === "pull" || command.startsWith("pull ")) {
+      const branch = command.replace("pull ", "") || undefined;
       result = await gitService.pull(branch);
-      changeType = 'pull';
-      toValue = branch || 'current';
+      changeType = "pull";
+      toValue = branch || "current";
     } else {
       // Execute custom command
       const execResult = await gitService.executeCommand(command);
       result = execResult.success;
-      
+
       // Try to determine change type
-      if (command.includes('remote add')) changeType = 'remote_add';
-      else if (command.includes('remote remove')) changeType = 'remote_remove';
-      else if (command.includes('commit')) changeType = 'commit';
-      else if (command.includes('push')) changeType = 'push';
-      else if (command.includes('merge')) changeType = 'merge';
-      else if (command.includes('rebase')) changeType = 'rebase';
+      if (command.includes("remote add")) changeType = "remote_add";
+      else if (command.includes("remote remove")) changeType = "remote_remove";
+      else if (command.includes("commit")) changeType = "commit";
+      else if (command.includes("push")) changeType = "push";
+      else if (command.includes("merge")) changeType = "merge";
+      else if (command.includes("rebase")) changeType = "rebase";
     }
 
     // Log the change to history
@@ -211,14 +211,14 @@ export async function POST(request: NextRequest) {
           configId: previousState.id,
           projectId,
           changeType,
-          fromValue: previousState.currentBranch || '',
+          fromValue: previousState.currentBranch || "",
           toValue,
           details: {
             command,
-            success: result
+            success: result,
           },
-          userId: userId || null
-        }
+          userId: userId || null,
+        },
       });
     }
 
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
           branches: updatedConfig.branches.all,
           config: updatedConfig.config,
           gitVersion: updatedConfig.metadata.gitVersion,
-          lastFetch: updatedConfig.metadata.lastFetch
+          lastFetch: updatedConfig.metadata.lastFetch,
         },
         update: {
           currentBranch: updatedConfig.branches.current,
@@ -264,24 +264,24 @@ export async function POST(request: NextRequest) {
           branches: updatedConfig.branches.all,
           config: updatedConfig.config,
           lastFetch: updatedConfig.metadata.lastFetch,
-          syncedAt: new Date()
-        }
+          syncedAt: new Date(),
+        },
       });
     }
 
     return NextResponse.json({
       success: result,
       command,
-      config: updatedConfig
+      config: updatedConfig,
     });
   } catch (error: any) {
-    console.error('Git command error:', error);
+    console.error("Git command error:", error);
     return NextResponse.json(
-      { 
-        error: 'Failed to execute Git command',
-        message: error.message 
+      {
+        error: "Failed to execute Git command",
+        message: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -290,40 +290,40 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get('projectId');
+    const projectId = searchParams.get("projectId");
 
     if (!projectId) {
       return NextResponse.json(
-        { error: 'Project ID is required' },
-        { status: 400 }
+        { error: "Project ID is required" },
+        { status: 400 },
       );
     }
 
     // Delete cache
     await prisma.gitConfig.delete({
-      where: { projectId }
+      where: { projectId },
     });
 
     // Optionally delete history
-    const clearHistory = searchParams.get('clearHistory') === 'true';
+    const clearHistory = searchParams.get("clearHistory") === "true";
     if (clearHistory) {
       await prisma.gitConfigHistory.deleteMany({
-        where: { projectId }
+        where: { projectId },
       });
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Git config cache cleared'
+      message: "Git config cache cleared",
     });
   } catch (error: any) {
-    console.error('Clear cache error:', error);
+    console.error("Clear cache error:", error);
     return NextResponse.json(
-      { 
-        error: 'Failed to clear cache',
-        message: error.message 
+      {
+        error: "Failed to clear cache",
+        message: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

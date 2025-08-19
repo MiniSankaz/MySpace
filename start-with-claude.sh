@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source port configuration
+source "$(dirname "$0")/../shared/config/ports.sh"
+
 echo "🤖 Starting Personal Assistant with Claude Background Service"
 echo "============================================================"
 echo ""
@@ -89,7 +92,7 @@ echo ""
 echo -e "${GREEN}✅ Starting Personal Assistant server...${NC}"
 echo ""
 echo -e "${BLUE}📱 Access Points:${NC}"
-echo "   Local: http://localhost:4000/assistant"
+echo "   Local: http://localhost:$PORT_GATEWAY_MAIN/assistant"
 echo "   Network: http://$(ipconfig getifaddr en0 2>/dev/null || hostname -I | awk '{print $1}'):4000/assistant"
 echo ""
 

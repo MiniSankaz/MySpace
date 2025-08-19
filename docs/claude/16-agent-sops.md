@@ -31,13 +31,21 @@
 
 ```markdown
 ## [YYYY-MM-DD HH:MM] - [Agent Type]
+
 ### Task: [Task Description]
+
 ### Status: [Completed/In Progress/Failed]
+
 ### Changes Made:
+
 - [List of changes]
+
 ### Issues Found:
+
 - [List of issues]
+
 ### Recommendations:
+
 - [Next steps]
 ```
 
@@ -46,9 +54,11 @@
 ## 🔍 Code Reviewer Agent SOPs
 
 ### Purpose
+
 ตรวจสอบ code quality, security, performance และ compliance กับ standards
 
 ### Pre-Review Checklist
+
 ```yaml
 mandatory_checks:
   - Read CLAUDE.md
@@ -60,26 +70,29 @@ mandatory_checks:
 ### Review Criteria
 
 #### 1. **Hardcoded Values Check (CRITICAL)**
+
 ```typescript
 // ❌ REJECT - Hardcoded values
-const API_URL = "http://localhost:3000";
+const API_URL = "http://localhost:4100";
 const DB_PATH = "/tmp/database";
-const PORT = 4000;
+const PORT = 4110;
 
 // ✅ ACCEPT - Dynamic configuration
 const API_URL = process.env.API_URL || config.api.url;
-const DB_PATH = getStoragePath('database');
-const PORT = parseInt(process.env.PORT || '4000');
+const DB_PATH = getStoragePath("database");
+const PORT = parseInt(process.env.PORT || "4110");
 ```
 
 **Automatic Rejection Criteria:**
+
 - Hardcoded URLs (http://, https://, ws://, wss://)
-- Hardcoded ports (3000, 4000, etc.)
+- Hardcoded ports (4100, 4110, etc.)
 - Hardcoded file paths (/tmp, /var, C:\\, etc.)
 - Hardcoded credentials or API keys
 - Hardcoded database connections
 
 #### 2. **Security Check**
+
 - No exposed credentials
 - No SQL injection vulnerabilities
 - No XSS vulnerabilities
@@ -87,6 +100,7 @@ const PORT = parseInt(process.env.PORT || '4000');
 - Safe file path handling
 
 #### 3. **Performance Check**
+
 - No unnecessary re-renders
 - Proper memoization
 - Efficient algorithms
@@ -94,6 +108,7 @@ const PORT = parseInt(process.env.PORT || '4000');
 - Memory leak prevention
 
 #### 4. **Code Quality Check**
+
 - TypeScript types properly defined
 - No `any` types without justification
 - Proper error handling
@@ -101,31 +116,40 @@ const PORT = parseInt(process.env.PORT || '4000');
 - DRY (Don't Repeat Yourself)
 
 ### Review Output Format
+
 ```markdown
 ## Code Review Report
+
 **Score**: XX/100
 **Status**: [PASS/FAIL/NEEDS_IMPROVEMENT]
 
 ### Critical Issues ⚠️
+
 1. [Issue description with line numbers]
 
 ### Security Vulnerabilities 🔒
+
 1. [Vulnerability description]
 
 ### Performance Issues ⚡
+
 1. [Performance issue]
 
 ### Code Quality 📊
+
 1. [Quality issue]
 
 ### Hardcoded Values Found 🚫
+
 1. File: [path], Line: [number], Value: [hardcoded value]
 
 ### Recommendations 💡
+
 1. [Specific improvement suggestions]
 ```
 
 ### Post-Review Actions
+
 1. Log review in `/docs/claude/14-agent-worklog.md`
 2. Update known issues if new problems found
 3. Create TODO items for required fixes
@@ -135,6 +159,7 @@ const PORT = parseInt(process.env.PORT || '4000');
 ## 🏗️ Technical Architect Agent SOPs
 
 ### Pre-Work Requirements
+
 ```yaml
 mandatory_reads:
   - /CLAUDE.md
@@ -146,12 +171,14 @@ mandatory_reads:
 ### Design Principles
 
 #### 1. **No Hardcoding Policy**
+
 - ALL configuration must use environment variables
 - Create config modules for centralized management
 - Use path helpers for file system operations
 - Dynamic URL building for all endpoints
 
 #### 2. **Architecture Standards**
+
 ```typescript
 // Required structure for new modules
 /src/modules/[module-name]/
@@ -164,42 +191,50 @@ mandatory_reads:
 ```
 
 #### 3. **Configuration Management**
+
 ```typescript
 // Every module must have config.ts
 export const moduleConfig = {
   api: {
     baseUrl: process.env.MODULE_API_URL,
-    timeout: parseInt(process.env.MODULE_TIMEOUT || '5000')
+    timeout: parseInt(process.env.MODULE_TIMEOUT || "5000"),
   },
   storage: {
-    path: getStoragePath('module-name')
-  }
+    path: getStoragePath("module-name"),
+  },
 };
 ```
 
 ### Technical Documentation Format
+
 ```markdown
 ## Technical Specification: [Feature Name]
 
 ### Architecture Overview
+
 [High-level design description]
 
 ### Configuration Requirements
+
 - Environment Variables:
   - VAR_NAME: Description
 - Storage Paths:
   - Path purpose and structure
 
 ### API Specifications
+
 [Endpoint definitions]
 
 ### Database Schema
+
 [Schema definitions]
 
 ### Integration Points
+
 [How it connects with other modules]
 
 ### No-Hardcode Compliance ✅
+
 - All values externalized to config
 - Dynamic path generation implemented
 - Environment-based URL building
@@ -210,6 +245,7 @@ export const moduleConfig = {
 ## 📊 Business Analyst Agent SOPs
 
 ### Pre-Analysis Checklist
+
 ```yaml
 required_reading:
   - /CLAUDE.md
@@ -226,17 +262,22 @@ required_reading:
    - Identify integration points
 
 2. **Document Requirements**
+
    ```markdown
    ## Requirement: [Name]
+
    ### Business Value
+
    [Why this is needed]
-   
+
    ### Technical Constraints
+
    - No hardcoded values allowed
    - Must use existing config system
    - Follow project SOPs
-   
+
    ### Success Criteria
+
    - [Measurable outcomes]
    ```
 
@@ -246,6 +287,7 @@ required_reading:
    - Specify default values
 
 ### Output Deliverables
+
 1. Requirements document
 2. Configuration specification
 3. Test scenarios
@@ -256,6 +298,7 @@ required_reading:
 ## 📅 Development Planner Agent SOPs
 
 ### Planning Prerequisites
+
 ```yaml
 must_review:
   - /CLAUDE.md
@@ -270,24 +313,28 @@ must_review:
 ## Development Plan: [Feature Name]
 
 ### Phase 1: Configuration Setup
+
 - [ ] Create config module
 - [ ] Define environment variables
 - [ ] Setup path helpers
 - [ ] Add to .env.example
 
 ### Phase 2: Implementation
+
 - [ ] Core functionality
 - [ ] API endpoints
 - [ ] Database migrations
 - [ ] UI components
 
 ### Phase 3: Testing
+
 - [ ] Unit tests
 - [ ] Integration tests
 - [ ] Configuration tests
 - [ ] Security tests
 
 ### Configuration Checklist ✅
+
 - [ ] No hardcoded URLs
 - [ ] No hardcoded ports
 - [ ] No hardcoded paths
@@ -296,6 +343,7 @@ must_review:
 ```
 
 ### Task Estimation
+
 - Include configuration setup time
 - Add time for removing existing hardcoded values
 - Consider migration complexity
@@ -307,8 +355,9 @@ must_review:
 ### Enforcement Priorities
 
 #### Level 1 - CRITICAL (Auto-Reject)
+
 1. **Hardcoded Values** - ZERO TOLERANCE POLICY
-   - Scan all code for hardcoded paths, URLs, ports (4001, 4002, 3000, 5555)
+   - Scan all code for hardcoded paths, URLs, ports (4001, 4002, 4100, 5555)
    - Check for embedded credentials and API keys
    - Verify all values use environment variables or configuration helpers
    - **Automatic rejection criteria**: ANY hardcoded localhost, IP addresses, or protocol URLs
@@ -321,6 +370,7 @@ must_review:
    - Missing rate limiting or security headers
 
 #### Level 2 - HIGH
+
 1. **SOP Compliance**
    - Project structure adherence
    - Naming conventions
@@ -332,6 +382,7 @@ must_review:
    - Missing configuration docs
 
 #### Level 3 - MEDIUM
+
 1. **Code Quality**
    - TypeScript usage
    - Error handling
@@ -342,35 +393,37 @@ must_review:
 ```typescript
 // Enforcement Response
 interface EnforcementResult {
-  status: 'PASS' | 'FAIL' | 'WARNING';
+  status: "PASS" | "FAIL" | "WARNING";
   violations: Violation[];
-  blockers: string[];  // Issues that must be fixed
-  warnings: string[];  // Issues that should be fixed
+  blockers: string[]; // Issues that must be fixed
+  warnings: string[]; // Issues that should be fixed
   suggestions: string[]; // Nice to have improvements
-  score: number;       // 0-100 compliance score
+  score: number; // 0-100 compliance score
 }
 
 // Example enforcement for hardcoded values
 if (hasHardcodedValues(code)) {
   return {
-    status: 'FAIL',
+    status: "FAIL",
     score: 25, // Critical failure = 25/100
     blockers: [
-      'CRITICAL: Remove all hardcoded ports (4001, 4002, 3000)',
-      'CRITICAL: Replace hardcoded URLs with getWebSocketUrl() helper',
-      'CRITICAL: Use environment variables for all configuration'
+      "CRITICAL: Remove all hardcoded ports (4001, 4002, 4100)",
+      "CRITICAL: Replace hardcoded URLs with getWebSocketUrl() helper",
+      "CRITICAL: Use environment variables for all configuration",
     ],
-    violations: [{
-      type: 'HARDCODED_VALUE',
-      severity: 'CRITICAL',
-      location: 'file:line',
-      fix: 'Use terminalRefactorConfig.websocket.systemPort or getWebSocketUrl("system")'
-    }],
+    violations: [
+      {
+        type: "HARDCODED_VALUE",
+        severity: "CRITICAL",
+        location: "file:line",
+        fix: 'Use terminalRefactorConfig.websocket.systemPort or getWebSocketUrl("system")',
+      },
+    ],
     suggestions: [
-      'Run: node scripts/fix-hardcoded-values.js',
-      'Run: node scripts/sop-compliance-validator.js',
-      'Install pre-commit hook: ln -sf ../../scripts/pre-commit-sop-check.sh .git/hooks/pre-commit'
-    ]
+      "Run: node scripts/fix-hardcoded-values.js",
+      "Run: node scripts/sop-compliance-validator.js",
+      "Install pre-commit hook: ln -sf ../../scripts/pre-commit-sop-check.sh .git/hooks/pre-commit",
+    ],
   };
 }
 ```
@@ -380,7 +433,7 @@ if (hasHardcodedValues(code)) {
 ```bash
 # Required scripts for enforcement
 scripts/sop-compliance-validator.js     # Validate compliance (required before commits)
-scripts/fix-hardcoded-values.js        # Auto-fix common violations  
+scripts/fix-hardcoded-values.js        # Auto-fix common violations
 scripts/pre-commit-sop-check.sh         # Git pre-commit hook (mandatory)
 
 # Usage
@@ -390,23 +443,29 @@ node scripts/fix-hardcoded-values.js                 # Apply fixes
 ```
 
 ### Enforcement Report Format
+
 ```markdown
 ## SOP Enforcement Report
+
 **Date**: [YYYY-MM-DD HH:MM]
 **Status**: [PASS/FAIL]
 
 ### 🚫 Blockers (Must Fix)
+
 1. Hardcoded port found at terminal.service.ts:455
 2. Database URL embedded in code
 
 ### ⚠️ Warnings (Should Fix)
+
 1. Missing configuration documentation
 2. Work log not updated
 
 ### 💡 Suggestions
+
 1. Consider extracting magic numbers to constants
 
 ### Remediation Steps
+
 1. Create config module
 2. Move values to environment
 3. Update .env.example
@@ -425,16 +484,19 @@ All agents MUST log their work using this template:
 ### Task: Review Terminal Service Refactoring
 
 ### Pre-Work Completed ✅
+
 - [x] Read CLAUDE.md
 - [x] Checked known issues
 - [x] Reviewed recent work log
 - [x] Loaded project standards
 
 ### Review Results
+
 **Score**: 78/100
 **Status**: NEEDS_IMPROVEMENT
 
 ### Issues Found
+
 1. **CRITICAL**: Hardcoded WebSocket ports (4001, 4002)
    - Location: terminal.service.ts:543-544
    - Fix: Use config.websocket.ports
@@ -444,6 +506,7 @@ All agents MUST log their work using this template:
    - Fix: Use authClient.getAccessToken()
 
 ### Changes Recommended
+
 1. Create centralized config module
 2. Extract all hardcoded values
 3. Update environment template
@@ -451,6 +514,7 @@ All agents MUST log their work using this template:
 ### Time Spent: 45 minutes
 
 ### Next Steps
+
 - Technical Architect to create config module
 - Developer to implement fixes
 - Re-review after fixes
@@ -470,6 +534,7 @@ All agents MUST log their work using this template:
 ## 📊 Compliance Metrics
 
 Track and report monthly:
+
 - Hardcoded values found: Target 0
 - SOP violations: Target < 5
 - Work log completion: Target 100%
@@ -484,6 +549,6 @@ Track and report monthly:
 
 ---
 
-*This document is version controlled. All changes must be logged.*
-*Last reviewed by: System*
-*Next review date: 2025-02-13*
+_This document is version controlled. All changes must be logged._
+_Last reviewed by: System_
+_Next review date: 2025-02-13_

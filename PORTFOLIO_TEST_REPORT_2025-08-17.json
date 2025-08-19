@@ -1,0 +1,182 @@
+{
+  "summary": {
+    "totalTests": null,
+    "totalPassed": null,
+    "totalFailed": null,
+    "successRate": null,
+    "totalTime": 40156,
+    "timestamp": "2025-08-17T08:09:36.455Z"
+  },
+  "categories": {
+    "database": {
+      "passed": 0,
+      "failed": 4,
+      "tests": [
+        {
+          "name": "Database Health Check",
+          "passed": false,
+          "details": "HTTP 503",
+          "responseTime": 9,
+          "timestamp": "2025-08-17T08:08:56.308Z"
+        },
+        {
+          "name": "User Table Query",
+          "passed": false,
+          "details": "HTTP 404",
+          "responseTime": 3,
+          "timestamp": "2025-08-17T08:08:56.310Z"
+        },
+        {
+          "name": "admin User Exists",
+          "passed": false,
+          "details": "User not found: admin@personalai.com",
+          "responseTime": 3,
+          "timestamp": "2025-08-17T08:08:56.313Z"
+        },
+        {
+          "name": "sankaz User Exists",
+          "passed": false,
+          "details": "User not found: sankaz@example.com",
+          "responseTime": 2,
+          "timestamp": "2025-08-17T08:08:56.315Z"
+        }
+      ]
+    },
+    "authentication": {
+      "passed": 0,
+      "failed": 2,
+      "tests": [
+        {
+          "name": "admin Login",
+          "passed": false,
+          "details": "Login Error: timeout of 10000ms exceeded",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:06.319Z"
+        },
+        {
+          "name": "sankaz Login",
+          "passed": false,
+          "details": "Login Error: timeout of 10000ms exceeded",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:16.325Z"
+        }
+      ]
+    },
+    "services": {
+      "passed": 3,
+      "failed": 5,
+      "tests": [
+        {
+          "name": "Gateway Health",
+          "passed": true,
+          "details": "Gateway responding",
+          "responseTime": 7,
+          "timestamp": "2025-08-17T08:09:16.333Z"
+        },
+        {
+          "name": "All Services Health",
+          "passed": true,
+          "details": "0/5 services healthy",
+          "responseTime": 95,
+          "timestamp": "2025-08-17T08:09:16.428Z"
+        },
+        {
+          "name": "user Service",
+          "passed": false,
+          "details": "Unknown error",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:16.428Z"
+        },
+        {
+          "name": "ai Service",
+          "passed": false,
+          "details": "Unknown error",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:16.428Z"
+        },
+        {
+          "name": "terminal Service",
+          "passed": false,
+          "details": "Unknown error",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:16.428Z"
+        },
+        {
+          "name": "workspace Service",
+          "passed": false,
+          "details": "Unknown error",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:16.428Z"
+        },
+        {
+          "name": "portfolio Service",
+          "passed": false,
+          "details": "Unknown error",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:16.428Z"
+        },
+        {
+          "name": "Service Discovery",
+          "passed": true,
+          "details": "0 services registered",
+          "responseTime": 3,
+          "timestamp": "2025-08-17T08:09:16.431Z"
+        }
+      ]
+    },
+    "integration": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Authentication Setup",
+          "passed": false,
+          "details": "Cannot get auth token for integration tests",
+          "responseTime": 0,
+          "timestamp": "2025-08-17T08:09:26.434Z"
+        }
+      ]
+    },
+    "performance": {
+      "passed": 3,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Gateway Health",
+          "passed": true,
+          "details": "3.508957999998529ms (threshold: 100ms)",
+          "responseTime": 4,
+          "timestamp": "2025-08-17T08:09:26.438Z"
+        },
+        {
+          "name": "All Services Health",
+          "passed": true,
+          "details": "4.459166999997251ms (threshold: 500ms)",
+          "responseTime": 4,
+          "timestamp": "2025-08-17T08:09:26.443Z"
+        },
+        {
+          "name": "Authentication",
+          "passed": false,
+          "details": "Error: timeout of 10000ms exceeded",
+          "responseTime": 10002,
+          "timestamp": "2025-08-17T08:09:36.445Z"
+        },
+        {
+          "name": "Concurrent Requests",
+          "passed": true,
+          "details": "5/5 successful, avg: 2ms",
+          "responseTime": 9,
+          "timestamp": "2025-08-17T08:09:36.454Z"
+        }
+      ]
+    },
+    "totalTime": 40156.4455
+  },
+  "recommendations": [
+    "🔴 Database issues detected - check connection and table structure",
+    "🔴 Authentication problems - verify user credentials and JWT configuration",
+    "🔴 Service failures detected - check microservice health and connectivity",
+    "🟡 Performance issues - optimize slow endpoints and database queries"
+  ]
+}

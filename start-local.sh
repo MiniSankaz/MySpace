@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Source port configuration
+source "$(dirname "$0")/../shared/config/ports.sh"
+
 # Personal Assistant - Local Production Starter
 # ใช้งานจริงบนเครื่องตัวเอง
 
@@ -34,12 +37,12 @@ if [ ! -f ".env.local" ]; then
     cat > .env.local << 'EOF'
 # Local Production Configuration
 NODE_ENV=production
-PORT=4000
+PORT=$PORT_GATEWAY_MAIN
 
 # URLs
-NEXT_PUBLIC_APP_URL=http://localhost:4000
-NEXT_PUBLIC_API_URL=http://localhost:4000/api
-NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:4000
+NEXT_PUBLIC_APP_URL=http://localhost:$PORT_GATEWAY_MAIN
+NEXT_PUBLIC_API_URL=http://localhost:$PORT_GATEWAY_MAIN/api
+NEXT_PUBLIC_WEBSOCKET_URL=ws://localhost:$PORT_GATEWAY_MAIN
 
 # Database (SQLite for local)
 DATABASE_URL="file:./local.db"
@@ -78,9 +81,9 @@ echo -e "${GREEN}║           ✅ System Ready!                      ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BLUE}📍 Access Points:${NC}"
-echo -e "   • Web Interface: ${GREEN}http://localhost:4000/assistant${NC}"
-echo -e "   • API Endpoint:  ${GREEN}http://localhost:4000/api${NC}"
-echo -e "   • Health Check:  ${GREEN}http://localhost:4000/api/health${NC}"
+echo -e "   • Web Interface: ${GREEN}http://localhost:$PORT_GATEWAY_MAIN/assistant${NC}"
+echo -e "   • API Endpoint:  ${GREEN}http://localhost:$PORT_GATEWAY_MAIN/api${NC}"
+echo -e "   • Health Check:  ${GREEN}http://localhost:$PORT_GATEWAY_MAIN/api/health${NC}"
 echo ""
 echo -e "${BLUE}💡 Quick Commands:${NC}"
 echo -e "   • ${YELLOW}help${NC} - Show all commands"

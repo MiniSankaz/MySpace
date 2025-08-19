@@ -3,7 +3,7 @@
 **Document Version**: 1.0.0  
 **Date**: 2025-08-13  
 **Author**: Technical Architect Agent  
-**Status**: Final Specification  
+**Status**: Final Specification
 
 ## Executive Summary
 
@@ -94,16 +94,16 @@ interface ISessionManager {
   getSession(sessionId: string): Session | null;
   updateSession(sessionId: string, updates: Partial<Session>): void;
   deleteSession(sessionId: string): void;
-  
+
   // Project Operations
   listProjectSessions(projectId: string): Session[];
   suspendProject(projectId: string): void;
   resumeProject(projectId: string): void;
-  
+
   // Focus Management
   setFocus(sessionId: string, focused: boolean): void;
   getFocusedSessions(projectId: string): string[];
-  
+
   // Events
   on(event: SessionEvent, handler: EventHandler): void;
   off(event: SessionEvent, handler: EventHandler): void;
@@ -113,26 +113,27 @@ class SessionManager extends EventEmitter implements ISessionManager {
   private sessions: Map<string, Session> = new Map();
   private projectIndex: Map<string, Set<string>> = new Map();
   private focusIndex: Map<string, Set<string>> = new Map();
-  
+
   // Configuration
   private readonly config = {
     maxSessionsPerProject: 10,
     maxFocusedPerProject: 4,
     sessionTimeout: 30 * 60 * 1000, // 30 minutes
-    cleanupInterval: 60 * 1000 // 1 minute
+    cleanupInterval: 60 * 1000, // 1 minute
   };
-  
+
   // Lifecycle hooks for extensibility
   private hooks = {
     beforeCreate: [],
     afterCreate: [],
     beforeDelete: [],
-    afterDelete: []
+    afterDelete: [],
   };
 }
 ```
 
 **Responsibilities**:
+
 - Maintains the single source of truth for all session data
 - Manages session lifecycle (create, read, update, delete)
 - Handles focus state management with multi-focus support
@@ -140,6 +141,7 @@ class SessionManager extends EventEmitter implements ISessionManager {
 - Implements session timeout and cleanup logic
 
 **Key Design Decisions**:
+
 - Uses Map data structures for O(1) lookups
 - Implements indexing for efficient project-based queries
 - Event-driven architecture for loose coupling
@@ -156,11 +158,11 @@ interface IStreamManager {
   registerConnection(sessionId: string, ws: WebSocket): void;
   unregisterConnection(sessionId: string): void;
   isConnected(sessionId: string): boolean;
-  
+
   // Stream Operations
   sendToSession(sessionId: string, data: any): void;
   broadcast(projectId: string, data: any): void;
-  
+
   // Process Management
   createProcess(sessionId: string, command: string): void;
   killProcess(sessionId: string): void;
@@ -171,27 +173,27 @@ class StreamManager implements IStreamManager {
   private connections: Map<string, WebSocketConnection> = new Map();
   private processes: Map<string, ChildProcess> = new Map();
   private readonly sessionManager: ISessionManager;
-  
+
   constructor(sessionManager: ISessionManager) {
     this.sessionManager = sessionManager;
     this.setupEventListeners();
   }
-  
+
   private setupEventListeners(): void {
-    this.sessionManager.on('session:deleted', (sessionId) => {
+    this.sessionManager.on("session:deleted", (sessionId) => {
       this.cleanup(sessionId);
     });
-    
-    this.sessionManager.on('focus:changed', (data) => {
+
+    this.sessionManager.on("focus:changed", (data) => {
       this.updateStreamPriority(data);
     });
   }
-  
+
   // Intelligent streaming based on focus state
   private updateStreamPriority(focusData: FocusChangeData): void {
     const session = this.sessionManager.getSession(focusData.sessionId);
     if (!session) return;
-    
+
     const connection = this.connections.get(focusData.sessionId);
     if (connection) {
       connection.streamingEnabled = focusData.focused;
@@ -204,6 +206,7 @@ class StreamManager implements IStreamManager {
 ```
 
 **Responsibilities**:
+
 - Manages WebSocket connections lifecycle
 - Handles process creation and management
 - Implements intelligent streaming based on focus state
@@ -211,6 +214,7 @@ class StreamManager implements IStreamManager {
 - Manages process resize operations
 
 **Key Design Decisions**:
+
 - Delegates session state to SessionManager
 - Implements connection pooling for efficiency
 - Uses node-pty for reliable terminal emulation
@@ -226,12 +230,12 @@ interface IMetricsCollector {
   // Metric Recording
   recordSessionMetric(sessionId: string, metric: Metric): void;
   recordSystemMetric(metric: SystemMetric): void;
-  
+
   // Metric Queries
   getSessionMetrics(sessionId: string): SessionMetrics;
   getSystemMetrics(): SystemMetrics;
   getHealthStatus(): HealthStatus;
-  
+
   // Alerting
   setAlert(alert: AlertConfig): void;
   getActiveAlerts(): Alert[];
@@ -241,40 +245,41 @@ class MetricsCollector implements IMetricsCollector {
   private sessionMetrics: Map<string, SessionMetrics> = new Map();
   private systemMetrics: SystemMetrics;
   private alerts: Map<string, Alert> = new Map();
-  
+
   constructor(
     private sessionManager: ISessionManager,
-    private streamManager: IStreamManager
+    private streamManager: IStreamManager,
   ) {
     this.initializeCollectors();
   }
-  
+
   private initializeCollectors(): void {
     // Passive observation - no state modification
-    this.sessionManager.on('session:created', this.onSessionCreated);
-    this.sessionManager.on('session:deleted', this.onSessionDeleted);
-    this.streamManager.on('data:sent', this.onDataSent);
-    this.streamManager.on('data:received', this.onDataReceived);
-    
+    this.sessionManager.on("session:created", this.onSessionCreated);
+    this.sessionManager.on("session:deleted", this.onSessionDeleted);
+    this.streamManager.on("data:sent", this.onDataSent);
+    this.streamManager.on("data:received", this.onDataReceived);
+
     // System metrics collection
     setInterval(() => this.collectSystemMetrics(), 10000);
   }
-  
+
   private collectSystemMetrics(): void {
     this.systemMetrics = {
       timestamp: Date.now(),
       memory: process.memoryUsage(),
       cpu: process.cpuUsage(),
       sessionCount: this.sessionManager.getAllSessions().length,
-      activeConnections: this.streamManager.getActiveConnections().length
+      activeConnections: this.streamManager.getActiveConnections().length,
     };
-    
+
     this.checkAlerts();
   }
 }
 ```
 
 **Responsibilities**:
+
 - Passively observes and records metrics
 - Never modifies session or stream state
 - Provides metric aggregation and queries
@@ -282,6 +287,7 @@ class MetricsCollector implements IMetricsCollector {
 - Tracks system resource usage
 
 **Key Design Decisions**:
+
 - Pure observer pattern - no side effects
 - Efficient metric storage with automatic cleanup
 - Time-series data structure for historical metrics
@@ -298,33 +304,33 @@ interface Session {
   id: string;
   projectId: string;
   userId?: string;
-  
+
   // State
   status: SessionStatus;
   mode: SessionMode;
-  
+
   // UI Properties
   tabName: string;
   layout?: LayoutConfig;
   theme?: ThemeConfig;
-  
+
   // Focus Management
   isFocused: boolean;
   focusedAt?: Date;
   focusOrder?: number;
-  
+
   // Process Information
   processId?: number;
   shell: string;
   currentPath: string;
   environment: Record<string, string>;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
   lastActivityAt: Date;
   suspendedAt?: Date;
-  
+
   // Performance
   metrics: {
     bytesIn: number;
@@ -335,17 +341,17 @@ interface Session {
 }
 
 enum SessionStatus {
-  INITIALIZING = 'initializing',
-  ACTIVE = 'active',
-  SUSPENDED = 'suspended',
-  ERROR = 'error',
-  CLOSED = 'closed'
+  INITIALIZING = "initializing",
+  ACTIVE = "active",
+  SUSPENDED = "suspended",
+  ERROR = "error",
+  CLOSED = "closed",
 }
 
 enum SessionMode {
-  NORMAL = 'normal',
-  CLAUDE = 'claude',
-  READONLY = 'readonly'
+  NORMAL = "normal",
+  CLAUDE = "claude",
+  READONLY = "readonly",
 }
 ```
 
@@ -361,12 +367,12 @@ interface ClientMessage {
 }
 
 enum ClientMessageType {
-  CREATE_SESSION = 'create_session',
-  CLOSE_SESSION = 'close_session',
-  SEND_INPUT = 'send_input',
-  RESIZE = 'resize',
-  SET_FOCUS = 'set_focus',
-  REQUEST_HISTORY = 'request_history'
+  CREATE_SESSION = "create_session",
+  CLOSE_SESSION = "close_session",
+  SEND_INPUT = "send_input",
+  RESIZE = "resize",
+  SET_FOCUS = "set_focus",
+  REQUEST_HISTORY = "request_history",
 }
 
 // Server -> Client Messages
@@ -378,13 +384,13 @@ interface ServerMessage {
 }
 
 enum ServerMessageType {
-  SESSION_CREATED = 'session_created',
-  SESSION_CLOSED = 'session_closed',
-  OUTPUT = 'output',
-  ERROR = 'error',
-  STATUS_CHANGE = 'status_change',
-  FOCUS_CHANGED = 'focus_changed',
-  METRICS_UPDATE = 'metrics_update'
+  SESSION_CREATED = "session_created",
+  SESSION_CLOSED = "session_closed",
+  OUTPUT = "output",
+  ERROR = "error",
+  STATUS_CHANGE = "status_change",
+  FOCUS_CHANGED = "focus_changed",
+  METRICS_UPDATE = "metrics_update",
 }
 ```
 
@@ -407,7 +413,7 @@ DELETE /api/terminal/sessions/:sessionId
 GET    /api/terminal/projects/:projectId/sessions
   Response: { sessions: Session[] }
 
-# Focus Management API  
+# Focus Management API
 PUT    /api/terminal/sessions/:sessionId/focus
   Body: { focused: boolean }
   Response: { focusedSessions: string[] }
@@ -434,11 +440,11 @@ GET    /api/terminal/metrics/system
 
 ```typescript
 // WebSocket Connection URL
-ws://localhost:4001/terminal
+//localhost:4001/terminal
 
 // Connection Protocol
-interface ConnectionHandshake {
-  type: 'handshake';
+ws: interface ConnectionHandshake {
+  type: "handshake";
   auth: {
     token: string;
     userId: string;
@@ -466,23 +472,23 @@ interface MultiplexedMessage {
 class TerminalStore {
   private sessionManager: RemoteSessionManager;
   private streamClient: StreamClient;
-  
+
   constructor() {
     // Single WebSocket connection for all sessions
-    this.streamClient = new StreamClient('ws://localhost:4001/terminal');
-    this.sessionManager = new RemoteSessionManager('/api/terminal');
-    
+    this.streamClient = new StreamClient("ws://localhost:4001/terminal");
+    this.sessionManager = new RemoteSessionManager("/api/terminal");
+
     this.setupSynchronization();
   }
-  
+
   private setupSynchronization(): void {
     // Real-time updates via WebSocket
-    this.streamClient.on('session:updated', (session) => {
+    this.streamClient.on("session:updated", (session) => {
       this.updateLocalState(session);
     });
-    
+
     // Optimistic updates with rollback
-    this.sessionManager.on('error', (error) => {
+    this.sessionManager.on("error", (error) => {
       this.rollbackOptimisticUpdate(error.operationId);
     });
   }
@@ -495,11 +501,11 @@ class TerminalStore {
 // Service Registry Pattern
 class ServiceRegistry {
   private static services = new Map<string, any>();
-  
+
   static register(name: string, service: any): void {
     this.services.set(name, service);
   }
-  
+
   static get<T>(name: string): T {
     return this.services.get(name) as T;
   }
@@ -510,9 +516,9 @@ const sessionManager = new SessionManager();
 const streamManager = new StreamManager(sessionManager);
 const metricsCollector = new MetricsCollector(sessionManager, streamManager);
 
-ServiceRegistry.register('sessionManager', sessionManager);
-ServiceRegistry.register('streamManager', streamManager);
-ServiceRegistry.register('metricsCollector', metricsCollector);
+ServiceRegistry.register("sessionManager", sessionManager);
+ServiceRegistry.register("streamManager", streamManager);
+ServiceRegistry.register("metricsCollector", metricsCollector);
 ```
 
 ## Security Specifications
@@ -523,27 +529,27 @@ ServiceRegistry.register('metricsCollector', metricsCollector);
 interface SecurityConfig {
   // JWT-based authentication
   authentication: {
-    provider: 'jwt';
+    provider: "jwt";
     secret: string;
     expiresIn: string;
   };
-  
+
   // Role-based access control
   authorization: {
     roles: {
-      admin: ['*'];
-      user: ['create', 'read', 'update'];
-      viewer: ['read'];
+      admin: ["*"];
+      user: ["create", "read", "update"];
+      viewer: ["read"];
     };
   };
-  
+
   // Rate limiting
   rateLimiting: {
     windowMs: number;
     maxRequests: number;
     maxSessionsPerUser: number;
   };
-  
+
   // Input sanitization
   sanitization: {
     allowedCommands: string[];
@@ -595,14 +601,15 @@ Scalability:
 ### Optimization Strategies
 
 1. **Memory Optimization**
+
    ```typescript
    class MemoryOptimizer {
      // Object pooling for frequently created objects
      private bufferPool = new BufferPool(1000);
-     
+
      // Weak references for cache
      private cache = new WeakMap();
-     
+
      // Automatic cleanup
      private cleanupInterval = setInterval(() => {
        this.performCleanup();
@@ -611,15 +618,16 @@ Scalability:
    ```
 
 2. **CPU Optimization**
+
    ```typescript
    class CPUOptimizer {
      // Throttling for unfocused sessions
      private throttleUnfocused = true;
-     
+
      // Batch message processing
      private messageBatch: Message[] = [];
      private batchInterval = 10; // ms
-     
+
      // Worker threads for heavy operations
      private workerPool = new WorkerPool(4);
    }
@@ -631,10 +639,10 @@ Scalability:
      // Message compression
      private compressionEnabled = true;
      private compressionThreshold = 1024; // bytes
-     
+
      // Binary protocol for efficiency
      private useBinaryProtocol = true;
-     
+
      // Delta updates only
      private deltaUpdates = true;
    }
@@ -696,27 +704,27 @@ Scalability:
 ### Unit Testing
 
 ```typescript
-describe('SessionManager', () => {
-  it('should create session with unique ID', async () => {
+describe("SessionManager", () => {
+  it("should create session with unique ID", async () => {
     const session = await sessionManager.createSession({
-      projectId: 'test-project',
-      projectPath: '/test/path'
+      projectId: "test-project",
+      projectPath: "/test/path",
     });
-    
+
     expect(session.id).toBeDefined();
-    expect(session.projectId).toBe('test-project');
+    expect(session.projectId).toBe("test-project");
   });
-  
-  it('should enforce focus limits', () => {
+
+  it("should enforce focus limits", () => {
     // Create 5 sessions
-    const sessions = Array(5).fill(null).map(() => 
-      sessionManager.createSession({ projectId: 'test' })
-    );
-    
+    const sessions = Array(5)
+      .fill(null)
+      .map(() => sessionManager.createSession({ projectId: "test" }));
+
     // Try to focus all 5 (limit is 4)
-    sessions.forEach(s => sessionManager.setFocus(s.id, true));
-    
-    const focused = sessionManager.getFocusedSessions('test');
+    sessions.forEach((s) => sessionManager.setFocus(s.id, true));
+
+    const focused = sessionManager.getFocusedSessions("test");
     expect(focused.length).toBe(4);
   });
 });
@@ -725,30 +733,32 @@ describe('SessionManager', () => {
 ### Integration Testing
 
 ```typescript
-describe('Terminal System Integration', () => {
-  it('should handle complete session lifecycle', async () => {
+describe("Terminal System Integration", () => {
+  it("should handle complete session lifecycle", async () => {
     // Create session via API
-    const response = await api.post('/api/terminal/sessions', {
-      projectId: 'test-project'
+    const response = await api.post("/api/terminal/sessions", {
+      projectId: "test-project",
     });
-    
+
     const sessionId = response.data.session.id;
-    
+
     // Connect WebSocket
-    const ws = new WebSocket('ws://localhost:4001/terminal');
+    const ws = new WebSocket("ws://localhost:4001/terminal");
     await waitForConnection(ws);
-    
+
     // Send command
-    ws.send(JSON.stringify({
-      type: 'send_input',
-      sessionId,
-      payload: 'echo "test"\n'
-    }));
-    
+    ws.send(
+      JSON.stringify({
+        type: "send_input",
+        sessionId,
+        payload: 'echo "test"\n',
+      }),
+    );
+
     // Verify output
-    const output = await waitForMessage(ws, 'output');
-    expect(output.payload).toContain('test');
-    
+    const output = await waitForMessage(ws, "output");
+    expect(output.payload).toContain("test");
+
     // Close session
     await api.delete(`/api/terminal/sessions/${sessionId}`);
   });
@@ -803,7 +813,7 @@ ENV CLEANUP_INTERVAL=60000
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD node healthcheck.js || exit 1
 
-EXPOSE 4000 4001
+EXPOSE 4110 4001
 CMD ["node", "dist/server.js"]
 ```
 
@@ -825,23 +835,23 @@ spec:
         app: terminal-service
     spec:
       containers:
-      - name: terminal
-        image: terminal-service:latest
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "2000m"
-        env:
-        - name: MAX_SESSIONS
-          value: "10000"
-        - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: redis-secret
-              key: url
+        - name: terminal
+          image: terminal-service:latest
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          env:
+            - name: MAX_SESSIONS
+              value: "10000"
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: url
 ```
 
 ### Monitoring & Observability
@@ -863,39 +873,43 @@ terminal_errors_total{type="connection"}
 ## Migration Strategy
 
 ### Phase 1: Parallel Run (Week 1)
+
 1. Deploy new architecture alongside existing
 2. Route 10% of traffic to new system
 3. Monitor metrics and errors
 4. Fix any issues found
 
 ### Phase 2: Gradual Migration (Week 2)
+
 1. Increase traffic to 50%
 2. Migrate existing sessions
 3. Update frontend to use new APIs
 4. Maintain backward compatibility
 
 ### Phase 3: Complete Cutover (Week 3)
+
 1. Route 100% traffic to new system
 2. Decommission old services
 3. Clean up obsolete code
 4. Update documentation
 
 ### Rollback Plan
+
 ```typescript
 class MigrationController {
   async rollback(): Promise<void> {
     // 1. Stop new system
     await this.stopNewServices();
-    
+
     // 2. Restore traffic routing
     await this.routeToOldSystem();
-    
+
     // 3. Migrate active sessions back
     await this.migrateSessionsBack();
-    
+
     // 4. Restore configuration
     await this.restoreConfiguration();
-    
+
     // 5. Verify old system health
     await this.verifyOldSystemHealth();
   }
@@ -922,19 +936,19 @@ interface TerminalConfig {
     host: string;
     cors: CorsOptions;
   };
-  
+
   session: {
     maxPerProject: number;
     maxPerUser: number;
     timeout: number;
     cleanupInterval: number;
   };
-  
+
   focus: {
     maxPerProject: number;
     autoFocusNew: boolean;
   };
-  
+
   process: {
     shell: string;
     env: Record<string, string>;
@@ -942,19 +956,19 @@ interface TerminalConfig {
     cols: number;
     rows: number;
   };
-  
+
   streaming: {
     bufferSize: number;
     throttleMs: number;
     compression: boolean;
   };
-  
+
   security: {
     maxInputLength: number;
     allowedCommands: string[];
     blockedPatterns: string[];
   };
-  
+
   monitoring: {
     metricsInterval: number;
     healthCheckInterval: number;
@@ -972,26 +986,26 @@ enum TerminalErrorCode {
   SESSION_LIMIT_EXCEEDED = 1002,
   SESSION_ALREADY_EXISTS = 1003,
   SESSION_CREATION_FAILED = 1004,
-  
+
   // Connection Errors (2xxx)
   CONNECTION_FAILED = 2001,
   CONNECTION_TIMEOUT = 2002,
   CONNECTION_REJECTED = 2003,
-  
+
   // Process Errors (3xxx)
   PROCESS_SPAWN_FAILED = 3001,
   PROCESS_KILLED = 3002,
   PROCESS_NOT_FOUND = 3003,
-  
+
   // Authorization Errors (4xxx)
   UNAUTHORIZED = 4001,
   FORBIDDEN = 4002,
   TOKEN_EXPIRED = 4003,
-  
+
   // System Errors (5xxx)
   INTERNAL_ERROR = 5001,
   RESOURCE_EXHAUSTED = 5002,
-  SERVICE_UNAVAILABLE = 5003
+  SERVICE_UNAVAILABLE = 5003,
 }
 ```
 
@@ -1025,4 +1039,4 @@ enum TerminalErrorCode {
 
 **End of Technical Specification**
 
-*This document represents the complete technical blueprint for the Terminal WebSocket architecture refactor. Implementation should follow the phases outlined, with regular checkpoints for validation and adjustment.*
+_This document represents the complete technical blueprint for the Terminal WebSocket architecture refactor. Implementation should follow the phases outlined, with regular checkpoints for validation and adjustment._

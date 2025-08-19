@@ -1,0 +1,11 @@
+[2025-08-16T13:25:36.996Z] [INFO] ===========================================
+[2025-08-16T13:25:36.996Z] [INFO] Database Table Rename Migration
+[2025-08-16T13:25:36.996Z] [INFO] ===========================================
+[2025-08-16T13:25:36.996Z] [INFO] Step 1: Checking database state...
+[2025-08-16T13:25:37.330Z] [INFO] Found 6 PascalCase tables
+[2025-08-16T13:25:37.330Z] [INFO] Found 0 snake_case tables
+[2025-08-16T13:25:37.331Z] [INFO] Step 3: DRY RUN - Skipping migration execution
+[2025-08-16T13:25:37.331Z] [INFO] ===========================================
+[2025-08-16T13:25:37.331Z] [INFO] Migration process completed!
+[2025-08-16T13:25:37.331Z] [INFO] Log file: /Users/sem4pro/Stock/port/scripts/database/migration-log-1755350736995.txt
+[2025-08-16T13:25:37.331Z] [INFO] ===========================================

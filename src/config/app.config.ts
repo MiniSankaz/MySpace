@@ -1,6 +1,6 @@
-import path from 'path';
-import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
-import os from 'os';
+import path from "path";
+import { terminalConfig, getWebSocketUrl } from "@/config/terminal.config";
+import os from "os";
 
 interface AppConfig {
   app: {
@@ -34,8 +34,8 @@ interface AppConfig {
 
 export const getConfig = (): AppConfig => {
   const host = process.env.HOST || process.env.HOST || "127.0.0.1";
-  const port = parseInt(process.env.PORT || 'process.env.PORT || 4000');
-  
+  const port = parseInt(process.env.PORT || "process.env.PORT || 4000");
+
   return {
     app: {
       port,
@@ -43,26 +43,37 @@ export const getConfig = (): AppConfig => {
       baseUrl: process.env.NEXT_PUBLIC_APP_URL || `http://${host}:${port}`,
     },
     websocket: {
-      systemPort: parseInt(process.env.WS_SYSTEM_PORT || 'terminalConfig.websocket.port'),
-      claudePort: parseInt(process.env.WS_CLAUDE_PORT || 'terminalConfig.websocket.claudePort'),
+      systemPort: parseInt(
+        process.env.WS_SYSTEM_PORT || "terminalConfig.websocket.port",
+      ),
+      claudePort: parseInt(
+        process.env.WS_CLAUDE_PORT || "terminalConfig.websocket.claudePort",
+      ),
       host: process.env.WS_HOST || host,
     },
     storage: {
-      basePath: process.env.TERMINAL_STORAGE_PATH || path.join(process.cwd(), 'storage', 'terminal-sessions'),
-      tempPath: process.env.TEMP_PATH || path.join(os.tmpdir(), 'terminal-sessions'),
-      logsPath: process.env.LOGS_PATH || path.join(process.cwd(), 'logs'),
-      cachePath: process.env.CACHE_PATH || path.join(process.cwd(), '.cache'),
+      basePath:
+        process.env.TERMINAL_STORAGE_PATH ||
+        path.join(process.cwd(), "storage", "terminal-sessions"),
+      tempPath:
+        process.env.TEMP_PATH || path.join(os.tmpdir(), "terminal-sessions"),
+      logsPath: process.env.LOGS_PATH || path.join(process.cwd(), "logs"),
+      cachePath: process.env.CACHE_PATH || path.join(process.cwd(), ".cache"),
     },
     database: {
-      url: process.env.DATABASE_URL || '',
-      timeout: parseInt(process.env.DATABASE_TIMEOUT || '5000'),
-      poolSize: parseInt(process.env.DATABASE_CONNECTION_POOL_SIZE || '10'),
-      maxConnections: parseInt(process.env.DATABASE_MAX_CONNECTIONS || '50'),
+      url: process.env.DATABASE_URL || "",
+      timeout: parseInt(process.env.DATABASE_TIMEOUT || "5000"),
+      poolSize: parseInt(process.env.DATABASE_CONNECTION_POOL_SIZE || "10"),
+      maxConnections: parseInt(process.env.DATABASE_MAX_CONNECTIONS || "50"),
     },
     terminal: {
-      maxSessions: parseInt(process.env.MAX_TERMINAL_SESSIONS || '50'),
-      sessionTimeout: parseInt(process.env.TERMINAL_SESSION_TIMEOUT || '1800000'), // 30 minutes
-      cleanupInterval: parseInt(process.env.TERMINAL_CLEANUP_INTERVAL || '300000'), // 5 minutes
+      maxSessions: parseInt(process.env.MAX_TERMINAL_SESSIONS || "50"),
+      sessionTimeout: parseInt(
+        process.env.TERMINAL_SESSION_TIMEOUT || "1800000",
+      ), // 30 minutes
+      cleanupInterval: parseInt(
+        process.env.TERMINAL_CLEANUP_INTERVAL || "300000",
+      ), // 5 minutes
     },
   };
 };
@@ -79,15 +90,15 @@ export const config = (): AppConfig => {
 
 // Helper to check if running in production
 export const isProduction = (): boolean => {
-  return process.env.NODE_ENV === 'production';
+  return process.env.NODE_ENV === "production";
 };
 
 // Helper to check if running in development
 export const isDevelopment = (): boolean => {
-  return process.env.NODE_ENV === 'development';
+  return process.env.NODE_ENV === "development";
 };
 
 // Helper to check if running in test
 export const isTest = (): boolean => {
-  return process.env.NODE_ENV === 'test';
+  return process.env.NODE_ENV === "test";
 };

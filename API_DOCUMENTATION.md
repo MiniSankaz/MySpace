@@ -11,8 +11,9 @@ https://your-domain.com/api/v1
 ```
 
 For local development:
+
 ```
-http://localhost:4000/api/v1
+http://localhost:4110/api/v1
 ```
 
 ## Authentication
@@ -46,23 +47,24 @@ curl -X POST https://your-domain.com/api/v1/assistant/chat \
 
 API tokens can be configured with specific scopes to limit access:
 
-| Scope | Description |
-|-------|-------------|
-| `assistant:read` | Read assistant conversations and history |
-| `assistant:write` | Send messages to the assistant |
-| `assistant:delete` | Delete assistant sessions |
-| `projects:read` | View project information |
-| `projects:write` | Create and modify projects |
-| `terminal:read` | View terminal logs |
-| `terminal:execute` | Execute terminal commands |
-| `analytics:read` | View usage analytics |
-| `*` | Full access to all endpoints |
+| Scope              | Description                              |
+| ------------------ | ---------------------------------------- |
+| `assistant:read`   | Read assistant conversations and history |
+| `assistant:write`  | Send messages to the assistant           |
+| `assistant:delete` | Delete assistant sessions                |
+| `projects:read`    | View project information                 |
+| `projects:write`   | Create and modify projects               |
+| `terminal:read`    | View terminal logs                       |
+| `terminal:execute` | Execute terminal commands                |
+| `analytics:read`   | View usage analytics                     |
+| `*`                | Full access to all endpoints             |
 
 ## Rate Limiting
 
 API requests are rate-limited based on your token configuration. Default limit is 1000 requests per hour.
 
 Rate limit information is included in response headers:
+
 - `X-RateLimit-Limit`: Maximum requests per hour
 - `X-RateLimit-Remaining`: Remaining requests in current window
 - `X-RateLimit-Reset`: Unix timestamp when the rate limit resets
@@ -80,6 +82,7 @@ Send a message to the AI assistant and receive a response.
 **Required Scope:** `assistant:write`
 
 **Request Body:**
+
 ```json
 {
   "message": "Your message to the assistant",
@@ -100,13 +103,14 @@ Send a message to the AI assistant and receive a response.
   },
   "options": {
     "temperature": 0.7,
-    "maxTokens": 4000,
+    "maxTokens": 4110,
     "stream": false
   }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -133,6 +137,7 @@ Retrieve conversation history for a session.
 **Required Scope:** `assistant:read`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -169,6 +174,7 @@ Get all chat sessions for the authenticated user.
 **Required Scope:** `assistant:read`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -204,6 +210,7 @@ Delete a chat session and all its messages.
 **Required Scope:** `assistant:delete`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -218,35 +225,38 @@ Delete a chat session and all its messages.
 ```typescript
 // Using fetch
 async function sendMessage(message: string) {
-  const response = await fetch('https://your-domain.com/api/v1/assistant/chat', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer sk-live-your-api-token-here',
-      'Content-Type': 'application/json'
+  const response = await fetch(
+    "https://your-domain.com/api/v1/assistant/chat",
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer sk-live-your-api-token-here",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: message,
+        sessionId: "my-session-123",
+      }),
     },
-    body: JSON.stringify({
-      message: message,
-      sessionId: 'my-session-123'
-    })
-  });
+  );
 
   const data = await response.json();
-  console.log('Assistant:', data.response.content);
+  console.log("Assistant:", data.response.content);
 }
 
 // Using axios
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: 'https://your-domain.com/api/v1',
+  baseURL: "https://your-domain.com/api/v1",
   headers: {
-    'Authorization': 'Bearer sk-live-your-api-token-here'
-  }
+    Authorization: "Bearer sk-live-your-api-token-here",
+  },
 });
 
 async function chat(message: string) {
-  const { data } = await api.post('/assistant/chat', {
-    message: message
+  const { data } = await api.post("/assistant/chat", {
+    message: message,
   });
   return data.response.content;
 }
@@ -265,18 +275,18 @@ def send_message(message, session_id=None):
         'Authorization': f'Bearer {API_KEY}',
         'Content-Type': 'application/json'
     }
-    
+
     payload = {
         'message': message,
         'sessionId': session_id
     }
-    
+
     response = requests.post(
         f'{BASE_URL}/assistant/chat',
         json=payload,
         headers=headers
     )
-    
+
     data = response.json()
     return data['response']['content']
 
@@ -310,15 +320,15 @@ curl -X GET "https://your-domain.com/api/v1/assistant/sessions?limit=20" \
 
 The API uses standard HTTP status codes:
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 400 | Bad Request - Invalid parameters |
-| 401 | Unauthorized - Invalid or missing API token |
-| 403 | Forbidden - Insufficient permissions |
-| 404 | Not Found - Resource doesn't exist |
-| 429 | Too Many Requests - Rate limit exceeded |
-| 500 | Internal Server Error |
+| Status Code | Description                                 |
+| ----------- | ------------------------------------------- |
+| 200         | Success                                     |
+| 400         | Bad Request - Invalid parameters            |
+| 401         | Unauthorized - Invalid or missing API token |
+| 403         | Forbidden - Insufficient permissions        |
+| 404         | Not Found - Resource doesn't exist          |
+| 429         | Too Many Requests - Rate limit exceeded     |
+| 500         | Internal Server Error                       |
 
 ### Error Response Format
 
@@ -343,6 +353,7 @@ Configure webhooks to receive real-time notifications about assistant events:
 ## SDK Libraries (Coming Soon)
 
 Official SDK libraries will be available for:
+
 - JavaScript/TypeScript (npm)
 - Python (pip)
 - Go
@@ -352,6 +363,7 @@ Official SDK libraries will be available for:
 ## Support
 
 For API support and questions:
+
 - Documentation: https://your-domain.com/docs/api
 - GitHub Issues: https://github.com/your-org/api-issues
 - Email: api-support@your-domain.com
@@ -359,6 +371,7 @@ For API support and questions:
 ## Changelog
 
 ### Version 1.0.0 (Current)
+
 - Initial API release
 - Assistant chat endpoints
 - Session management

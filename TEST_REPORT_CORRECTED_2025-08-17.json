@@ -1,0 +1,265 @@
+{
+  "timestamp": "2025-08-17T07:46:49.969Z",
+  "testSummary": {
+    "totalTests": 13,
+    "passedTests": 10,
+    "failedTests": 2,
+    "errorTests": 1
+  },
+  "recommendations": [
+    "ตรวจสอบ services ที่มีข้อผิดพลาดและแก้ไข configuration",
+    "ปรับปรุง API endpoints และ error handling",
+    "สร้าง test users และแก้ไขปัญหา authentication"
+  ],
+  "services": {
+    "gateway": {
+      "status": "OK",
+      "responseTime": 88.557125,
+      "data": {
+        "gateway": {
+          "service": "gateway",
+          "status": "OK",
+          "timestamp": "2025-08-17T07:46:48.028Z",
+          "uptime": 5689.4835425,
+          "memory": {
+            "rss": 161857536,
+            "heapTotal": 29048832,
+            "heapUsed": 21598208,
+            "external": 4465116,
+            "arrayBuffers": 155749
+          },
+          "version": "3.0.0",
+          "environment": "development",
+          "metrics": {
+            "requestsPerMinute": 0,
+            "averageResponseTime": 0,
+            "errorRate": 0,
+            "activeConnections": 0
+          }
+        },
+        "services": {
+          "user": {
+            "service": "user",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:46:48.110Z",
+            "uptime": 188502.828411959,
+            "memory": {
+              "rss": 117899264,
+              "heapTotal": 31227904,
+              "heapUsed": 25819880,
+              "external": 2332845,
+              "arrayBuffers": 141813
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 82,
+              "lastChecked": "2025-08-17T07:46:48.110Z"
+            }
+          },
+          "ai": {
+            "service": "ai",
+            "status": "ERROR",
+            "timestamp": "2025-08-17T07:46:48.030Z",
+            "uptime": 0,
+            "memory": {
+              "rss": 0,
+              "heapTotal": 0,
+              "heapUsed": 0,
+              "external": 0,
+              "arrayBuffers": 0
+            },
+            "version": "unknown",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": -1,
+              "lastChecked": "2025-08-17T07:46:48.030Z",
+              "errorMessage": ""
+            }
+          },
+          "terminal": {
+            "service": "terminal",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:46:48.030Z",
+            "uptime": 5688.84672625,
+            "memory": {
+              "rss": 134512640,
+              "heapTotal": 24248320,
+              "heapUsed": 21211816,
+              "external": 4943804,
+              "arrayBuffers": 133859
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 1,
+              "lastChecked": "2025-08-17T07:46:48.030Z"
+            }
+          },
+          "workspace": {
+            "service": "workspace",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:46:48.030Z",
+            "uptime": 5688.663425083,
+            "memory": {
+              "rss": 126795776,
+              "heapTotal": 17137664,
+              "heapUsed": 14606152,
+              "external": 2711828,
+              "arrayBuffers": 100835
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 1,
+              "lastChecked": "2025-08-17T07:46:48.030Z"
+            }
+          },
+          "portfolio": {
+            "service": "portfolio",
+            "status": "OK",
+            "timestamp": "2025-08-17T07:46:48.031Z",
+            "uptime": 5689.083045167,
+            "memory": {
+              "rss": 161710080,
+              "heapTotal": 24150016,
+              "heapUsed": 21992208,
+              "external": 4742237,
+              "arrayBuffers": 59875
+            },
+            "version": "3.0.0",
+            "environment": "development",
+            "dependencies": [],
+            "metrics": {
+              "responseTime": 2,
+              "lastChecked": "2025-08-17T07:46:48.031Z"
+            }
+          }
+        },
+        "overall": {
+          "status": "WARNING",
+          "servicesUp": 4,
+          "servicesTotal": 5,
+          "timestamp": "2025-08-17T07:46:48.110Z"
+        }
+      }
+    },
+    "user-management": {
+      "status": "OK",
+      "responseTime": 37.957790999999986,
+      "port": 4100
+    },
+    "portfolio": {
+      "status": "OK",
+      "responseTime": 1.2343339999999898,
+      "port": 4500
+    },
+    "terminal": {
+      "status": "OK",
+      "responseTime": 1.2738750000000039,
+      "port": 4300
+    },
+    "workspace": {
+      "status": "OK",
+      "responseTime": 1.2323330000000112,
+      "port": 4400
+    },
+    "routing_user_service routing": {
+      "status": "OK",
+      "responseTime": 2.749333000000007,
+      "statusCode": 404
+    },
+    "routing_portfolio_service routing": {
+      "status": "OK",
+      "responseTime": 84.005833,
+      "statusCode": 200
+    },
+    "routing_terminal_service routing": {
+      "status": "OK",
+      "responseTime": 4.178583000000003,
+      "statusCode": 404
+    },
+    "routing_workspace_service routing": {
+      "status": "OK",
+      "responseTime": 2.4070409999999924,
+      "statusCode": 404
+    }
+  },
+  "authentication": {
+    "sankaz@example.com": {
+      "status": "FAILED",
+      "responseTime": 40.28725,
+      "statusCode": 401,
+      "message": "\nInvalid `this.prisma.user.findUnique()` invocation in\n/Users/sem4pro/Stock/port/services/user-management/dist/services/auth.service.js:121:49\n\n  118 async login(loginData, userAgent, ipAddress) {\n  119     try {\n  120         // Find user by email with roles\n→ 121         const user = await this.prisma.user.findUnique(\nThe table `public.User` does not exist in the current database."
+    },
+    "test@personalai.com": {
+      "status": "FAILED",
+      "responseTime": 39.82400000000001,
+      "statusCode": 401,
+      "message": "\nInvalid `this.prisma.user.findUnique()` invocation in\n/Users/sem4pro/Stock/port/services/user-management/dist/services/auth.service.js:121:49\n\n  118 async login(loginData, userAgent, ipAddress) {\n  119     try {\n  120         // Find user by email with roles\n→ 121         const user = await this.prisma.user.findUnique(\nThe table `public.User` does not exist in the current database."
+    }
+  },
+  "portfolio": {},
+  "websocket": {
+    "terminal": {
+      "status": "ERROR",
+      "error": "Connection closed: 1006 "
+    },
+    "portfolio": {
+      "status": "SUCCESS",
+      "responseTime": 2.662667000000056,
+      "connectionTime": 2.662667000000056
+    }
+  },
+  "performance": {
+    "Health Check": {
+      "iterations": 3,
+      "avgResponseTime": 3,
+      "minResponseTime": 2,
+      "maxResponseTime": 4,
+      "responseTimes": [
+        4.273458000000119,
+        2.1561659999999847,
+        2.436374999999998
+      ]
+    },
+    "Service Discovery": {
+      "iterations": 3,
+      "avgResponseTime": 1,
+      "minResponseTime": 1,
+      "maxResponseTime": 1,
+      "responseTimes": [
+        0.8662919999999303,
+        0.7978339999999662,
+        0.8240000000000691
+      ]
+    },
+    "User Service Direct": {
+      "iterations": 3,
+      "avgResponseTime": 37,
+      "minResponseTime": 36,
+      "maxResponseTime": 38,
+      "responseTimes": [
+        37.936292000000094,
+        36.23004100000003,
+        37.95133399999986
+      ]
+    },
+    "Portfolio Service Direct": {
+      "iterations": 3,
+      "avgResponseTime": 2,
+      "minResponseTime": 1,
+      "maxResponseTime": 3,
+      "responseTimes": [
+        2.678916000000072,
+        1.469583000000057,
+        1.0528749999998581
+      ]
+    }
+  },
+  "errors": []
+}

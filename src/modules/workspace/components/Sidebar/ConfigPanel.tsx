@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Project, Script } from '../../types';
-import { useWorkspace } from '../../contexts/WorkspaceContext';
-import FileTree from './FileTree';
-import GitConfig from '@/components/GitConfig';
+import React, { useState, useEffect } from "react";
+import { Project, Script } from "../../types";
+import { useWorkspace } from "../../contexts/WorkspaceContext";
+import FileTree from "./FileTree";
+import GitConfig from "@/components/GitConfig";
 
 interface ConfigPanelProps {
   project: Project;
@@ -12,7 +12,9 @@ interface ConfigPanelProps {
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
   const { updateProject, refreshProjectStructure } = useWorkspace();
-  const [activeTab, setActiveTab] = useState<'overview' | 'git' | 'scripts'>('overview');
+  const [activeTab, setActiveTab] = useState<"overview" | "git" | "scripts">(
+    "overview",
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -36,7 +38,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
     try {
       await refreshProjectStructure(project.id);
     } catch (error) {
-      console.error('Failed to refresh structure:', error);
+      console.error("Failed to refresh structure:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -47,7 +49,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
       await updateProject(project.id, editForm);
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to update project:', error);
+      console.error("Failed to update project:", error);
     }
   };
 
@@ -61,17 +63,17 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
   };
 
   const handleAddScript = () => {
-    const name = prompt('Script name:');
-    const command = prompt('Script command:');
-    
+    const name = prompt("Script name:");
+    const command = prompt("Script command:");
+
     if (name && command) {
       const newScript: Script = {
         id: `script_${Date.now()}`,
         name,
         command,
-        description: '',
+        description: "",
       };
-      
+
       updateProject(project.id, {
         scripts: [...project.scripts, newScript],
       });
@@ -80,41 +82,40 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
 
   const handleRemoveScript = (scriptId: string) => {
     updateProject(project.id, {
-      scripts: project.scripts.filter(s => s.id !== scriptId),
+      scripts: project.scripts.filter((s) => s.id !== scriptId),
     });
   };
-
 
   return (
     <div className="h-full flex flex-col">
       {/* Tabs */}
       <div className="flex border-b border-gray-700">
         <button
-          onClick={() => setActiveTab('overview')}
+          onClick={() => setActiveTab("overview")}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'overview'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-gray-300'
+            activeTab === "overview"
+              ? "text-blue-400 border-b-2 border-blue-400"
+              : "text-gray-400 hover:text-gray-300"
           }`}
         >
           Overview
         </button>
         <button
-          onClick={() => setActiveTab('git')}
+          onClick={() => setActiveTab("git")}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'git'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-gray-300'
+            activeTab === "git"
+              ? "text-blue-400 border-b-2 border-blue-400"
+              : "text-gray-400 hover:text-gray-300"
           }`}
         >
           Git Config
         </button>
         <button
-          onClick={() => setActiveTab('scripts')}
+          onClick={() => setActiveTab("scripts")}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'scripts'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-gray-300'
+            activeTab === "scripts"
+              ? "text-blue-400 border-b-2 border-blue-400"
+              : "text-gray-400 hover:text-gray-300"
           }`}
         >
           Scripts
@@ -123,15 +124,17 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {activeTab === 'overview' && (
+        {activeTab === "overview" && (
           <div>
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-400">Project Info</h3>
+                <h3 className="text-sm font-medium text-gray-400">
+                  Project Info
+                </h3>
                 <button
                   onClick={() => setIsEditing(!isEditing)}
                   className="p-1 text-gray-400 hover:text-gray-300 transition-colors"
-                  title={isEditing ? 'Cancel edit' : 'Edit project info'}
+                  title={isEditing ? "Cancel edit" : "Edit project info"}
                 >
                   <svg
                     className="w-4 h-4"
@@ -161,29 +164,44 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Name</label>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Name
+                    </label>
                     <input
                       type="text"
                       value={editForm.name}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, name: e.target.value })
+                      }
                       className="w-full bg-gray-800 text-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Description</label>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Description
+                    </label>
                     <textarea
                       value={editForm.description}
-                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          description: e.target.value,
+                        })
+                      }
                       className="w-full bg-gray-800 text-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                       rows={2}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Path</label>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Path
+                    </label>
                     <input
                       type="text"
                       value={editForm.path}
-                      onChange={(e) => setEditForm({ ...editForm, path: e.target.value })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, path: e.target.value })
+                      }
                       className="w-full bg-gray-800 text-gray-300 rounded px-2 py-1 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -205,34 +223,34 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
               ) : (
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-gray-500">Name:</span>{' '}
+                    <span className="text-gray-500">Name:</span>{" "}
                     <span className="text-gray-300">{project.name}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Path:</span>{' '}
-                    <span className="text-gray-300 font-mono text-xs">{project.path}</span>
+                    <span className="text-gray-500">Path:</span>{" "}
+                    <span className="text-gray-300 font-mono text-xs">
+                      {project.path}
+                    </span>
                   </div>
                   {project.description && (
                     <div>
-                      <span className="text-gray-500">Description:</span>{' '}
-                      <span className="text-gray-300">{project.description}</span>
+                      <span className="text-gray-500">Description:</span>{" "}
+                      <span className="text-gray-300">
+                        {project.description}
+                      </span>
                     </div>
                   )}
                 </div>
               )}
             </div>
-
           </div>
         )}
 
-        {activeTab === 'git' && (
-          <GitConfig 
-            projectPath={project.path} 
-            projectId={project.id} 
-          />
+        {activeTab === "git" && (
+          <GitConfig projectPath={project.path} projectId={project.id} />
         )}
 
-        {activeTab === 'scripts' && (
+        {activeTab === "scripts" && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-gray-400">Scripts</h3>
@@ -267,12 +285,16 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium text-gray-300">{script.name}</h4>
+                        <h4 className="text-sm font-medium text-gray-300">
+                          {script.name}
+                        </h4>
                         <code className="text-xs text-gray-400 font-mono block mt-1">
                           {script.command}
                         </code>
                         {script.description && (
-                          <p className="text-xs text-gray-500 mt-1">{script.description}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {script.description}
+                          </p>
                         )}
                       </div>
                       <div className="flex items-center space-x-2">
@@ -281,7 +303,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ project }) => {
                           title="Run script"
                           onClick={() => {
                             // TODO: Execute script in terminal
-                            console.log('Run script:', script.command);
+                            console.log("Run script:", script.command);
                           }}
                         >
                           <svg

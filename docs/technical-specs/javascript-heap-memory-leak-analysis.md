@@ -13,6 +13,7 @@
 ## 1. Critical Error Analysis
 
 ### Stack Trace Breakdown
+
 ```
 FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
 
@@ -22,11 +23,12 @@ Last few GCs:
 
 Stack trace shows failure in:
 - v8::internal::String::SlowFlatten
-- node::Buffer::(anonymous namespace)::SlowByteLengthUtf8  
+- node::Buffer::(anonymous namespace)::SlowByteLengthUtf8
 - File system operations (uv_fs_s*, node::fs::AfterStat)
 ```
 
 ### Critical Observations:
+
 1. **Heap utilization**: 973.7MB out of 1024MB (95% utilization)
 2. **Ineffective GC**: Mark-compact reducing only ~15MB indicates large objects held in memory
 3. **String operations**: `SlowFlatten` suggests massive string concatenations
@@ -42,16 +44,18 @@ Stack trace shows failure in:
 **Location**: `/src/server/websocket/terminal-ws-standalone.js`
 
 **Critical Issues**:
+
 - **Unbounded string concatenation** (Lines 516-521):
+
   ```javascript
   session.outputBuffer += data;
-  
+
   // Limit buffer size (keep last 10KB)
   if (session.outputBuffer.length > 10240) {
     session.outputBuffer = session.outputBuffer.slice(-10240);
   }
   ```
-  
+
 - **Dual buffering system** creates memory overhead:
   - `session.outputBuffer` (per WebSocket session)
   - `outputBuffers` Map (per sessionId) with 500 item arrays
@@ -64,12 +68,14 @@ Stack trace shows failure in:
 **Location**: Terminal WebSocket Server
 
 **Critical Issues**:
+
 - **Persistent WebSocket connections** never properly cleaned up
 - **Message queuing without size limits** in WebSocket servers
 - **Event listener accumulation** on EventEmitter (Lines 77-114)
 - **Retry mechanism maps** growing unbounded (Lines 59, 1003)
 
 **Memory Impact**: Each WebSocket connection holds:
+
 - Connection object (~4KB)
 - Message buffers (unlimited)
 - Event listeners (32 bytes each × multiple events)
@@ -79,9 +85,10 @@ Stack trace shows failure in:
 **Location**: `/src/services/terminal-memory.service.ts`
 
 **Critical Issues**:
+
 - **Multiple session tracking maps**:
   - `sessions` Map (Lines 54)
-  - `projectSessions` Map (Lines 55) 
+  - `projectSessions` Map (Lines 55)
   - `wsConnections` Map (Lines 56)
   - `focusedSessions` Map (Lines 59)
   - `sessionActivity` Map (Lines 61)
@@ -97,6 +104,7 @@ Stack trace shows failure in:
 **Location**: Terminal WebSocket Server Git monitoring
 
 **Critical Issues**:
+
 - **Interval-based git status polling** every 5 seconds (Lines 1150-1153)
 - **Git output caching** without size limits (Lines 1200-1205)
 - **Subscriber tracking** without cleanup on connection failure
@@ -106,12 +114,14 @@ Stack trace shows failure in:
 ## 3. String::SlowFlatten Analysis
 
 ### Why SlowFlatten is Triggered
+
 1. **Large string concatenations** in output buffers
 2. **Fragmented string memory** from frequent `+=` operations
 3. **UTF-8 encoding/decoding** of terminal output with special characters
 4. **V8 optimization failure** on large strings requiring flattening
 
 ### Buffer Length Issues
+
 - Terminal output contains ANSI escape sequences
 - UTF-8 multi-byte characters in command output
 - Large file contents streamed through terminals
@@ -140,12 +150,12 @@ if (session.outputBuffer.length > MAX_OUTPUT_BUFFER) {
 bufferOutput(sessionId, data) {
   const buffer = this.outputBuffers.get(sessionId) || [];
   buffer.push(data);
-  
+
   // Aggressive size limit
   if (buffer.length > MAX_BUFFER_CHUNKS) {
     buffer.splice(0, buffer.length - MAX_BUFFER_CHUNKS);
   }
-  
+
   this.outputBuffers.set(sessionId, buffer);
 }
 ```
@@ -158,18 +168,18 @@ bufferOutput(sessionId, data) {
 // Immediate cleanup instead of 5-second delay
 public closeSession(sessionId: string): boolean {
   // ... existing logic ...
-  
+
   // IMMEDIATE cleanup - no delay
   this.sessions.delete(sessionId);
   this.wsConnections.delete(sessionId);
   this.sessionActivity.delete(sessionId);
   this.suspendedSessions.delete(sessionId);
-  
+
   // Force garbage collection hint
   if (global.gc) {
     global.gc();
   }
-  
+
   return true;
 }
 
@@ -177,7 +187,7 @@ public closeSession(sessionId: string): boolean {
 private cleanupInactiveSessions(): void {
   const now = Date.now();
   const timeout = 5 * 60 * 1000; // Reduce to 5 minutes
-  
+
   for (const [sessionId, session] of this.sessions) {
     const timeSinceUpdate = now - session.updatedAt.getTime();
     if (timeSinceUpdate > timeout || session.status === 'closed') {
@@ -207,16 +217,16 @@ handleConnection(ws, request) {
     ws.close(1008, 'Connection limit exceeded');
     return;
   }
-  
+
   // Project-specific limits
   const projectSessions = Array.from(this.sessions.values())
     .filter(s => s.projectId === projectId).length;
-  
+
   if (projectSessions >= MAX_CONNECTIONS_PER_PROJECT) {
     // Close oldest session in project
     this.closeOldestProjectSession(projectId);
   }
-  
+
   // ... continue with existing logic
 }
 ```
@@ -238,12 +248,12 @@ class CircularBuffer {
     this.readPos = 0;
     this.full = false;
   }
-  
+
   write(data) {
-    const dataBuffer = Buffer.from(data, 'utf8');
+    const dataBuffer = Buffer.from(data, "utf8");
     // Circular write logic without string concatenation
   }
-  
+
   read() {
     // Return recent data without creating large strings
   }
@@ -280,10 +290,10 @@ class MemoryMonitor {
   constructor() {
     this.warningThreshold = 800 * 1024 * 1024; // 800MB
     this.criticalThreshold = 950 * 1024 * 1024; // 950MB
-    
+
     setInterval(() => {
       const usage = process.memoryUsage();
-      
+
       if (usage.heapUsed > this.criticalThreshold) {
         this.handleCriticalMemory(usage);
       } else if (usage.heapUsed > this.warningThreshold) {
@@ -291,19 +301,19 @@ class MemoryMonitor {
       }
     }, 10000); // Check every 10 seconds
   }
-  
+
   handleCriticalMemory(usage) {
-    console.error('[CRITICAL] Memory usage critical:', usage);
+    console.error("[CRITICAL] Memory usage critical:", usage);
     // Force cleanup of oldest sessions
     this.forceCleanupSessions();
-    
+
     // Force garbage collection if available
     if (global.gc) {
       global.gc();
     }
-    
+
     // Alert monitoring systems
-    this.alertMonitoring('CRITICAL', usage);
+    this.alertMonitoring("CRITICAL", usage);
   }
 }
 ```
@@ -315,7 +325,7 @@ calculateMaxSessions() {
   const usage = process.memoryUsage();
   const availableMemory = 950 * 1024 * 1024 - usage.heapUsed; // 950MB limit
   const memoryPerSession = 2 * 1024 * 1024; // Estimated 2MB per session
-  
+
   return Math.max(1, Math.floor(availableMemory / memoryPerSession));
 }
 ```
@@ -347,7 +357,7 @@ calculateMaxSessions() {
 ```bash
 # Create script to stress test memory usage
 for i in {1..50}; do
-  curl -X POST http://localhost:4000/api/terminal/create \
+  curl -X POST http://localhost:4110/api/terminal/create \
     -H "Content-Type: application/json" \
     -d '{"projectId": "test-project", "projectPath": "/tmp"}'
 done
@@ -365,11 +375,11 @@ done
 // Test WebSocket connection limits
 const connections = [];
 for (let i = 0; i < 100; i++) {
-  const ws = new WebSocket('ws://localhost:4001');
+  const ws = new WebSocket("ws://localhost:4001");
   connections.push(ws);
-  
+
   setTimeout(() => {
-    console.log('Memory usage:', process.memoryUsage());
+    console.log("Memory usage:", process.memoryUsage());
   }, i * 100);
 }
 ```
@@ -379,18 +389,21 @@ for (let i = 0; i < 100; i++) {
 ## 9. Deployment Plan
 
 ### Phase 0: Immediate Hotfix (2 hours)
+
 1. **Deploy buffer size limits** - MAX_OUTPUT_BUFFER = 5KB
 2. **Deploy connection limits** - 20 total, 4 per project
 3. **Deploy aggressive cleanup** - 5 minute timeout, immediate deletion
 4. **Deploy memory monitoring** - Critical threshold alerts
 
 ### Phase 1: Medium-term Fixes (Week 1)
+
 1. **Implement circular buffers** for terminal output
 2. **Add database persistence** for session metadata
 3. **Implement WebSocket connection pooling**
 4. **Add memory-based session limits**
 
 ### Phase 2: Long-term Architecture (Week 2+)
+
 1. **Microservice separation** of concerns
 2. **Alternative streaming architecture** evaluation
 3. **Performance optimization** based on monitoring data
@@ -401,18 +414,21 @@ for (let i = 0; i < 100; i++) {
 ## 10. Success Metrics
 
 ### Immediate Success Criteria (Phase 0)
+
 - **Memory usage < 800MB** during normal operation
 - **No heap out of memory crashes** for 48 hours
 - **Terminal functionality maintained** with reduced memory footprint
 - **Connection stability** with proper limits
 
 ### Medium-term Success Criteria (Phase 1)
+
 - **Memory usage < 600MB** with improved architecture
 - **Sub-second garbage collection** times
 - **99.9% uptime** over 30 days
 - **< 50MB memory per 10 terminal sessions**
 
 ### Long-term Success Criteria (Phase 2)
+
 - **Linear memory scaling** with session count
 - **Auto-scaling capability** based on memory pressure
 - **Zero memory leaks** in continuous operation
@@ -423,16 +439,19 @@ for (let i = 0; i < 100; i++) {
 ## 11. Risk Assessment
 
 ### High Risk - Memory Optimization
+
 - **Risk**: Aggressive cleanup may cause data loss
 - **Mitigation**: Gradual rollout with monitoring
 - **Fallback**: Revert to previous buffer sizes
 
 ### Medium Risk - Connection Limits
+
 - **Risk**: User experience degradation with strict limits
 - **Mitigation**: User-friendly error messages and cleanup suggestions
 - **Fallback**: Increase limits gradually based on memory capacity
 
 ### Low Risk - Monitoring Implementation
+
 - **Risk**: Performance overhead from monitoring
 - **Mitigation**: Efficient monitoring with minimal overhead
 - **Fallback**: Disable monitoring if performance impact observed

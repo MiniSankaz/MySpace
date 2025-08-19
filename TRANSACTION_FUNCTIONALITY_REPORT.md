@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Transaction functionality has been successfully enabled and tested. All CRUD operations work correctly through both direct Portfolio Service (port 4500) and API Gateway (port 4000).
+Transaction functionality has been successfully enabled and tested. All CRUD operations work correctly through both direct Portfolio Service (port 4160) and API Gateway (port 4110).
 
 ## 1. API Endpoints Status
 
@@ -68,13 +68,13 @@ Current portfolio statistics:
 
 ### Get All Transactions
 ```bash
-curl -X GET "http://localhost:4000/api/v1/portfolios/e500e140-3157-497c-9bb7-a6262aa35d3e/transactions" \
+curl -X GET "http://localhost:4110/api/v1/portfolios/e500e140-3157-497c-9bb7-a6262aa35d3e/transactions" \
   -H "x-user-id: test-user"
 ```
 
 ### Create New Transaction
 ```bash
-curl -X POST "http://localhost:4000/api/v1/portfolios/e500e140-3157-497c-9bb7-a6262aa35d3e/transactions" \
+curl -X POST "http://localhost:4110/api/v1/portfolios/e500e140-3157-497c-9bb7-a6262aa35d3e/transactions" \
   -H "Content-Type: application/json" \
   -H "x-user-id: test-user" \
   -d '{
@@ -89,7 +89,7 @@ curl -X POST "http://localhost:4000/api/v1/portfolios/e500e140-3157-497c-9bb7-a6
 
 ### Get Transaction Statistics
 ```bash
-curl -X GET "http://localhost:4000/api/v1/portfolios/e500e140-3157-497c-9bb7-a6262aa35d3e/transactions/stats" \
+curl -X GET "http://localhost:4110/api/v1/portfolios/e500e140-3157-497c-9bb7-a6262aa35d3e/transactions/stats" \
   -H "x-user-id: test-user"
 ```
 
@@ -167,6 +167,6 @@ All API endpoints are working correctly, test data has been created, and the sys
 ---
 
 **Test Environment**: Development  
-**Services Running**: Frontend (3000), Gateway (4000), Portfolio (4500)  
+**Services Running**: Frontend (4100), Gateway (4110), Portfolio (4160)  
 **Database**: PostgreSQL with mock data  
 **Authentication**: Development mode with x-user-id header

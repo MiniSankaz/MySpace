@@ -19,7 +19,7 @@ Foreign key constraint violated on the constraint: `AssistantChatMessage_session
 3. **Transaction State Issues**: PostgreSQL transactions were being aborted after the first failed query, preventing recovery within the same transaction.
 
 4. **Two Conflicting Code Paths**:
-   - **Failing Path**: `assistant-logging.service.ts` → `logMessage()` 
+   - **Failing Path**: `assistant-logging.service.ts` → `logMessage()`
    - **Successful Path**: Direct session creation followed by message logging
 
 ## Solution Implementation
@@ -27,6 +27,7 @@ Foreign key constraint violated on the constraint: `AssistantChatMessage_session
 ### 1. Fixed `logMessage` Method (`/src/services/assistant-logging.service.ts`)
 
 **Before**: Attempted message creation first, then session creation in catch block
+
 ```typescript
 // Old problematic logic
 try {
@@ -37,6 +38,7 @@ try {
 ```
 
 **After**: Session-first approach with user validation
+
 ```typescript
 // New reliable logic
 // 1. Check session existence
@@ -85,12 +87,14 @@ await this.db.assistantChatSession.create({...});
 ### 3. Fixed API Route Flow (`/src/app/api/assistant/chat/route.ts`)
 
 **Before**: Async promise chains that could execute out of order
+
 ```typescript
 const sessionPromise = assistantLogger.createSession({...}).catch(...);
 const loggingPromise = sessionPromise.then(() => assistantLogger.logMessage({...}));
 ```
 
 **After**: Sequential execution with proper error handling
+
 ```typescript
 // Create session first (MUST complete)
 try {
@@ -113,38 +117,42 @@ The fix addresses these foreign key relationships:
 -- AssistantChatSession must reference existing User
 AssistantChatSession.userId -> User.id
 
--- AssistantChatMessage must reference existing AssistantChatSession  
+-- AssistantChatMessage must reference existing AssistantChatSession
 AssistantChatMessage.sessionId -> AssistantChatSession.id
 ```
 
 ## Prevention Measures
 
 ### 1. **Always Validate Foreign Keys Before Creation**
+
 ```typescript
 // Check parent record exists before creating child
-const parentExists = await tx.parent.findUnique({where: {id: parentId}});
+const parentExists = await tx.parent.findUnique({ where: { id: parentId } });
 if (!parentExists) {
   // Create parent or handle appropriately
 }
 ```
 
 ### 2. **Use Proper Transaction Sequencing**
+
 ```typescript
 // Create in dependency order within single transaction
 await tx.$transaction(async (tx) => {
   // 1. Create User (if needed)
-  // 2. Create Session  
+  // 2. Create Session
   // 3. Create Message
 });
 ```
 
 ### 3. **Implement Defensive Programming**
+
 ```typescript
 // Handle race conditions gracefully
 try {
   await createRecord();
 } catch (error) {
-  if (error.code === 'P2002') { // Unique constraint - record exists
+  if (error.code === "P2002") {
+    // Unique constraint - record exists
     // This is OK, another request created it
   } else {
     throw error; // Real error
@@ -153,6 +161,7 @@ try {
 ```
 
 ### 4. **Add Proper Error Logging**
+
 ```typescript
 catch (error) {
   console.error('Database operation failed:', {

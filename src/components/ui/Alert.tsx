@@ -148,6 +148,9 @@ export default function Alert({
   );
 }
 
+// Named export for compatibility
+export { Alert };
+
 // Toast Alert Component (for use with a toast system)
 interface ToastAlertProps {
   id: string;

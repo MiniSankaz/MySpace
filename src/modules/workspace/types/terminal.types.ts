@@ -2,7 +2,7 @@
  * Terminal Session Contract - Standardized interfaces for WebSocket terminal sessions
  * This file defines the contract between frontend and backend terminal components
  * to prevent session ID format mismatches and ensure consistent session management.
- * 
+ *
  * Session ID Format: `session_{timestamp}_{random}`
  * Example: session_1704123456789_abc123
  */
@@ -17,7 +17,7 @@ export interface SessionIdentifier {
   /** Project ID (separate from session ID) */
   projectId: string;
   /** Terminal type */
-  type: 'system' | 'claude';
+  type: "system" | "claude";
 }
 
 /**
@@ -26,7 +26,7 @@ export interface SessionIdentifier {
 export interface SessionCreationParams {
   projectId: string;
   projectPath: string;
-  type: 'system' | 'claude';
+  type: "system" | "claude";
   tabName: string;
   userId?: string;
   environment?: Record<string, string>;
@@ -45,7 +45,7 @@ export interface WebSocketConnectionParams {
   /** Authentication token */
   token?: string;
   /** Terminal type for port selection */
-  type: 'system' | 'claude';
+  type: "system" | "claude";
 }
 
 /**
@@ -54,8 +54,13 @@ export interface WebSocketConnectionParams {
 export interface SessionState {
   sessionId: string;
   projectId: string;
-  type: 'system' | 'claude';
-  status: 'connecting' | 'connected' | 'disconnected' | 'error' | 'reconnecting';
+  type: "system" | "claude";
+  status:
+    | "connecting"
+    | "connected"
+    | "disconnected"
+    | "error"
+    | "reconnecting";
   reconnectAttempts: number;
   lastActivity: Date;
   isBackground: boolean;
@@ -66,7 +71,18 @@ export interface SessionState {
  * WebSocket message format
  */
 export interface WebSocketMessage {
-  type: 'input' | 'output' | 'resize' | 'clear' | 'error' | 'status' | 'connected' | 'disconnected' | 'stream' | 'history' | 'exit';
+  type:
+    | "input"
+    | "output"
+    | "resize"
+    | "clear"
+    | "error"
+    | "status"
+    | "connected"
+    | "disconnected"
+    | "stream"
+    | "history"
+    | "exit";
   sessionId?: string;
   data?: any;
   error?: string;
@@ -96,7 +112,7 @@ export interface CircuitBreakerConfig {
  * Circuit breaker state
  */
 export interface CircuitBreakerState {
-  state: 'closed' | 'open' | 'half-open';
+  state: "closed" | "open" | "half-open";
   failures: number;
   lastFailureTime: Date | null;
   nextRetryTime: Date | null;
@@ -132,13 +148,15 @@ export class SessionValidator {
    * @param sessionId The session ID to parse
    * @returns Parsed components or null if invalid
    */
-  static parseSessionId(sessionId: string): { timestamp: number; random: string } | null {
+  static parseSessionId(
+    sessionId: string,
+  ): { timestamp: number; random: string } | null {
     const match = sessionId.match(/^session_(\d+)_([a-z0-9]+)$/);
     if (!match) return null;
-    
+
     return {
       timestamp: parseInt(match[1], 10),
-      random: match[2]
+      random: match[2],
     };
   }
 
@@ -149,7 +167,7 @@ export class SessionValidator {
    */
   static isLegacyFormat(sessionId: string): boolean {
     // Check for old composite format: {sessionId}_{projectId}
-    return sessionId.includes('_') && !sessionId.startsWith('session_');
+    return sessionId.includes("_") && !sessionId.startsWith("session_");
   }
 
   /**

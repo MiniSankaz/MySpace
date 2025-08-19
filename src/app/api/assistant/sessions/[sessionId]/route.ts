@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { verifyAuth } from '@/middleware/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import { verifyAuth } from "@/middleware/auth";
 
 const prisma = new PrismaClient();
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ sessionId: string }> }
+  { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
     // Verify authentication
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Authentication required' 
+          error: "Authentication required",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -27,39 +27,39 @@ export async function DELETE(
     const session = await prisma.assistantChatSession.findFirst({
       where: {
         id: sessionId,
-        userId: user.id
-      }
+        userId: user.id,
+      },
     });
 
     if (!session) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Session not found or access denied' 
+          error: "Session not found or access denied",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // Delete the session and all related messages (cascade delete)
     await prisma.assistantChatSession.delete({
       where: {
-        id: session.id
-      }
+        id: session.id,
+      },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Session deleted successfully'
+      message: "Session deleted successfully",
     });
   } catch (error) {
-    console.error('Delete session error:', error);
+    console.error("Delete session error:", error);
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: 'Failed to delete session' 
+        error: "Failed to delete session",
       },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     await prisma.$disconnect();
@@ -68,18 +68,18 @@ export async function DELETE(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ sessionId: string }> }
+  { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
     // Verify authentication
     const user = await verifyAuth(request);
     if (!user) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Authentication required' 
+          error: "Authentication required",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -89,24 +89,24 @@ export async function GET(
     const session = await prisma.assistantChatSession.findFirst({
       where: {
         id: sessionId,
-        userId: user.id
+        userId: user.id,
       },
       include: {
         messages: {
           orderBy: {
-            timestamp: 'asc'
-          }
-        }
-      }
+            timestamp: "asc",
+          },
+        },
+      },
     });
 
     if (!session) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Session not found' 
+          error: "Session not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -118,22 +118,22 @@ export async function GET(
         title: session.sessionName,
         startedAt: session.startedAt,
         messageCount: session.messages.length,
-        messages: session.messages.map(msg => ({
+        messages: session.messages.map((msg) => ({
           id: msg.id,
           content: msg.content,
           role: msg.role,
-          timestamp: msg.timestamp
-        }))
-      }
+          timestamp: msg.timestamp,
+        })),
+      },
     });
   } catch (error) {
-    console.error('Get session error:', error);
+    console.error("Get session error:", error);
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: 'Failed to get session' 
+        error: "Failed to get session",
       },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     await prisma.$disconnect();

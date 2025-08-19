@@ -33,7 +33,7 @@ interface LinkButtonProps extends BaseButtonProps {
 
 export type CombinedButtonProps = ButtonProps | LinkButtonProps;
 
-export default function Button({
+export function Button({
   children,
   variant = "primary",
   size = "medium",
@@ -235,3 +235,5 @@ export function ButtonGroup({
   return <div className={classes}>{children}</div>;
 }
 
+// Export Button as default for backward compatibility
+export default Button;

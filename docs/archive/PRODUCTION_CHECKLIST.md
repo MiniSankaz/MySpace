@@ -3,6 +3,7 @@
 ## ✅ Pre-Deployment Checklist
 
 ### 1. Environment & Configuration
+
 - [ ] Copy `.env.production.example` to `.env.production`
 - [ ] Set all required environment variables
 - [ ] Generate secure secrets for:
@@ -13,6 +14,7 @@
 - [ ] Set `NODE_ENV=production`
 
 ### 2. Security
+
 - [ ] Enable HTTPS/SSL certificate
 - [ ] Configure CORS origins for production domain
 - [ ] Set secure cookie settings
@@ -23,6 +25,7 @@
 - [ ] Scan for vulnerabilities: `npm audit`
 
 ### 3. Database
+
 - [ ] Run database migrations: `npx prisma migrate deploy`
 - [ ] Set up database backups
 - [ ] Configure connection pooling
@@ -30,6 +33,7 @@
 - [ ] Set up read replicas (if needed)
 
 ### 4. Performance
+
 - [ ] Build for production: `npm run build`
 - [ ] Enable image optimization
 - [ ] Set up CDN for static assets
@@ -38,6 +42,7 @@
 - [ ] Minify CSS/JS bundles
 
 ### 5. Monitoring & Logging
+
 - [ ] Set up error tracking (Sentry/Rollbar)
 - [ ] Configure application monitoring (New Relic/Datadog)
 - [ ] Set up centralized logging
@@ -45,6 +50,7 @@
 - [ ] Set up uptime monitoring
 
 ### 6. Testing
+
 - [ ] Run all tests: `npm test`
 - [ ] Run E2E tests: `npm run test:e2e`
 - [ ] Test all API endpoints
@@ -55,6 +61,7 @@
 ## 📋 Deployment Steps
 
 ### Using Docker
+
 ```bash
 # Build Docker image
 docker build -t personal-assistant:latest .
@@ -64,6 +71,7 @@ docker-compose -f docker-compose.production.yml up -d
 ```
 
 ### Using PM2
+
 ```bash
 # Install PM2
 npm install -g pm2
@@ -77,6 +85,7 @@ pm2 startup
 ```
 
 ### Using Vercel
+
 ```bash
 # Install Vercel CLI
 npm install -g vercel
@@ -88,6 +97,7 @@ vercel --prod
 ## 🔍 Post-Deployment Verification
 
 ### Health Checks
+
 ```bash
 # Check application health
 curl https://yourdomain.com/api/health
@@ -105,6 +115,7 @@ curl https://yourdomain.com/api/health
 ```
 
 ### API Testing
+
 ```bash
 # Test chat endpoint
 curl -X POST https://yourdomain.com/api/assistant/chat \
@@ -120,6 +131,7 @@ done
 ```
 
 ### Performance Testing
+
 ```bash
 # Load test with Apache Bench
 ab -n 1000 -c 10 https://yourdomain.com/
@@ -131,6 +143,7 @@ k6 run load-test.js
 ## ⚠️ Critical Settings
 
 ### Required Environment Variables
+
 ```env
 NODE_ENV=production
 DATABASE_URL=postgresql://...
@@ -140,6 +153,7 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.com
 ```
 
 ### Recommended Security Headers
+
 ```javascript
 // middleware.ts
 {
@@ -152,6 +166,7 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.com
 ```
 
 ### Database Optimization
+
 ```sql
 -- Add indexes for frequently queried columns
 CREATE INDEX idx_assistant_conversation_userid ON "AssistantConversation"("userId");
@@ -162,12 +177,14 @@ CREATE INDEX idx_assistant_task_userid_status ON "AssistantTask"("userId", "stat
 ## 🔥 Rollback Plan
 
 ### Quick Rollback Steps
+
 1. Keep previous version backup
 2. Database backup before migration
 3. Environment variables backup
 4. Use blue-green deployment if possible
 
 ### Rollback Commands
+
 ```bash
 # Using PM2
 pm2 reload ecosystem.config.js --update-env
@@ -183,6 +200,7 @@ npx prisma migrate resolve --rolled-back
 ## 📊 Monitoring Metrics
 
 ### Key Metrics to Track
+
 - Response time (p50, p95, p99)
 - Error rate (4xx, 5xx)
 - Database query time
@@ -193,6 +211,7 @@ npx prisma migrate resolve --rolled-back
 - Assistant API usage
 
 ### Alert Thresholds
+
 - Response time > 1s (warning), > 3s (critical)
 - Error rate > 1% (warning), > 5% (critical)
 - Memory usage > 80% (warning), > 90% (critical)
@@ -201,6 +220,7 @@ npx prisma migrate resolve --rolled-back
 ## 📞 Support & Maintenance
 
 ### Regular Maintenance Tasks
+
 - [ ] Weekly: Review error logs
 - [ ] Weekly: Check performance metrics
 - [ ] Monthly: Security updates (`npm audit fix`)
@@ -209,6 +229,7 @@ npx prisma migrate resolve --rolled-back
 - [ ] Quarterly: Security audit
 
 ### Emergency Contacts
+
 - DevOps Team: [contact]
 - Database Admin: [contact]
 - Security Team: [contact]

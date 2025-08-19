@@ -1,9 +1,28 @@
-import { helpCommand } from './help.command';
-import { taskAddCommand, taskListCommand, taskCompleteCommand } from './task.commands';
-import { reminderSetCommand, reminderListCommand, reminderDeleteCommand } from './reminder.commands';
-import { noteCreateCommand, noteListCommand, noteSearchCommand, noteDeleteCommand } from './note.commands';
-import { aiCodeCommand, aiExplainCommand, aiDebugCommand, aiAnalyzeCommand, aiChatCommand } from './ai.commands';
-import { Command } from '../types';
+import { helpCommand } from "./help.command";
+import {
+  taskAddCommand,
+  taskListCommand,
+  taskCompleteCommand,
+} from "./task.commands";
+import {
+  reminderSetCommand,
+  reminderListCommand,
+  reminderDeleteCommand,
+} from "./reminder.commands";
+import {
+  noteCreateCommand,
+  noteListCommand,
+  noteSearchCommand,
+  noteDeleteCommand,
+} from "./note.commands";
+import {
+  aiCodeCommand,
+  aiExplainCommand,
+  aiDebugCommand,
+  aiAnalyzeCommand,
+  aiChatCommand,
+} from "./ai.commands";
+import { Command } from "../types";
 
 export const commands: Command[] = [
   helpCommand,
@@ -25,11 +44,11 @@ export const commands: Command[] = [
   aiExplainCommand,
   aiDebugCommand,
   aiAnalyzeCommand,
-  aiChatCommand
+  aiChatCommand,
 ];
 
 export function registerAllCommands(registry: any): void {
-  commands.forEach(command => {
+  commands.forEach((command) => {
     registry.register(command);
   });
 }

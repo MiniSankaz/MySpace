@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { authClient } from '@/core/auth/auth-client';
-import { 
-  PlusIcon, 
-  TrashIcon, 
+import { useState, useEffect } from "react";
+import { authClient } from "@/core/auth/auth-client";
+import {
+  PlusIcon,
+  TrashIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline';
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 
 interface ApiSettingsProps {
   user: any;
@@ -17,7 +17,12 @@ interface ApiSettingsProps {
   saving: boolean;
 }
 
-export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettingsProps) {
+export default function ApiSettings({
+  user,
+  tabId,
+  onSave,
+  saving,
+}: ApiSettingsProps) {
   const [formData, setFormData] = useState({
     // Rate Limits
     maxRequestsPerHour: 1000,
@@ -28,8 +33,8 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
 
     // Webhook Settings
     webhookEnabled: false,
-    webhookUrl: '',
-    webhookSecret: '',
+    webhookUrl: "",
+    webhookSecret: "",
     webhookRetryAttempts: 3,
     webhookRetryDelay: 1000,
     webhookTimeout: 5000,
@@ -38,13 +43,13 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
 
     // Integrations
     githubEnabled: false,
-    githubToken: '',
+    githubToken: "",
     gitlabEnabled: false,
-    gitlabToken: '',
+    gitlabToken: "",
     slackEnabled: false,
-    slackWebhook: '',
+    slackWebhook: "",
     discordEnabled: false,
-    discordWebhook: '',
+    discordWebhook: "",
 
     // Security
     ipWhitelist: [] as string[],
@@ -52,22 +57,22 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
     requireHTTPS: true,
     enableCORS: false,
     allowedOrigins: [] as string[],
-    enableRateLimiting: true
+    enableRateLimiting: true,
   });
 
-  const [newIP, setNewIP] = useState('');
-  const [newOrigin, setNewOrigin] = useState('');
+  const [newIP, setNewIP] = useState("");
+  const [newOrigin, setNewOrigin] = useState("");
 
   const availableWebhookEvents = [
-    'assistant.message',
-    'assistant.session.created',
-    'assistant.session.deleted',
-    'api.token.created',
-    'api.token.revoked',
-    'api.limit.exceeded',
-    'project.created',
-    'project.updated',
-    'terminal.command.executed'
+    "assistant.message",
+    "assistant.session.created",
+    "assistant.session.deleted",
+    "api.token.created",
+    "api.token.revoked",
+    "api.limit.exceeded",
+    "project.created",
+    "project.updated",
+    "terminal.command.executed",
   ];
 
   useEffect(() => {
@@ -76,13 +81,13 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
 
   const loadSettings = async () => {
     try {
-      const response = await authClient.fetch('/api/settings/api');
+      const response = await authClient.fetch("/api/settings/api");
       if (response.ok) {
         const data = await response.json();
-        setFormData(prev => ({ ...prev, ...data.settings }));
+        setFormData((prev) => ({ ...prev, ...data.settings }));
       }
     } catch (error) {
-      console.error('Failed to load API settings:', error);
+      console.error("Failed to load API settings:", error);
     }
   };
 
@@ -95,16 +100,16 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
     if (newIP && !formData.ipWhitelist.includes(newIP)) {
       setFormData({
         ...formData,
-        ipWhitelist: [...formData.ipWhitelist, newIP]
+        ipWhitelist: [...formData.ipWhitelist, newIP],
       });
-      setNewIP('');
+      setNewIP("");
     }
   };
 
   const removeIPFromWhitelist = (ip: string) => {
     setFormData({
       ...formData,
-      ipWhitelist: formData.ipWhitelist.filter(i => i !== ip)
+      ipWhitelist: formData.ipWhitelist.filter((i) => i !== ip),
     });
   };
 
@@ -112,16 +117,16 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
     if (newIP && !formData.ipBlacklist.includes(newIP)) {
       setFormData({
         ...formData,
-        ipBlacklist: [...formData.ipBlacklist, newIP]
+        ipBlacklist: [...formData.ipBlacklist, newIP],
       });
-      setNewIP('');
+      setNewIP("");
     }
   };
 
   const removeIPFromBlacklist = (ip: string) => {
     setFormData({
       ...formData,
-      ipBlacklist: formData.ipBlacklist.filter(i => i !== ip)
+      ipBlacklist: formData.ipBlacklist.filter((i) => i !== ip),
     });
   };
 
@@ -129,30 +134,33 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
     if (newOrigin && !formData.allowedOrigins.includes(newOrigin)) {
       setFormData({
         ...formData,
-        allowedOrigins: [...formData.allowedOrigins, newOrigin]
+        allowedOrigins: [...formData.allowedOrigins, newOrigin],
       });
-      setNewOrigin('');
+      setNewOrigin("");
     }
   };
 
   const removeAllowedOrigin = (origin: string) => {
     setFormData({
       ...formData,
-      allowedOrigins: formData.allowedOrigins.filter(o => o !== origin)
+      allowedOrigins: formData.allowedOrigins.filter((o) => o !== origin),
     });
   };
 
   // Render different content based on tab
-  if (tabId === 'api-limits') {
+  if (tabId === "api-limits") {
     return (
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex">
             <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400 mr-2" />
             <div>
-              <h3 className="text-sm font-medium text-yellow-800">Rate Limiting</h3>
+              <h3 className="text-sm font-medium text-yellow-800">
+                Rate Limiting
+              </h3>
               <p className="text-sm text-yellow-700 mt-1">
-                Configure API rate limits to protect your account from abuse and ensure fair usage.
+                Configure API rate limits to protect your account from abuse and
+                ensure fair usage.
               </p>
             </div>
           </div>
@@ -166,7 +174,12 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             <input
               type="number"
               value={formData.maxRequestsPerHour}
-              onChange={(e) => setFormData({ ...formData, maxRequestsPerHour: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  maxRequestsPerHour: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1"
               max="100000"
@@ -180,7 +193,12 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             <input
               type="number"
               value={formData.maxRequestsPerDay}
-              onChange={(e) => setFormData({ ...formData, maxRequestsPerDay: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  maxRequestsPerDay: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1"
               max="1000000"
@@ -194,7 +212,12 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             <input
               type="number"
               value={formData.maxTokensPerRequest}
-              onChange={(e) => setFormData({ ...formData, maxTokensPerRequest: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  maxTokensPerRequest: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="100"
               max="100000"
@@ -208,7 +231,12 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             <input
               type="number"
               value={formData.maxConcurrentRequests}
-              onChange={(e) => setFormData({ ...formData, maxConcurrentRequests: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  maxConcurrentRequests: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1"
               max="100"
@@ -222,7 +250,12 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             <input
               type="number"
               value={formData.requestTimeout}
-              onChange={(e) => setFormData({ ...formData, requestTimeout: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  requestTimeout: parseInt(e.target.value),
+                })
+              }
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               min="1000"
               max="300000"
@@ -234,10 +267,17 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
               <input
                 type="checkbox"
                 checked={formData.enableRateLimiting}
-                onChange={(e) => setFormData({ ...formData, enableRateLimiting: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    enableRateLimiting: e.target.checked,
+                  })
+                }
                 className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Enable Rate Limiting</span>
+              <span className="ml-2 text-sm text-gray-700">
+                Enable Rate Limiting
+              </span>
             </label>
           </div>
         </div>
@@ -248,14 +288,14 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             disabled={saving}
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : 'Save Limits'}
+            {saving ? "Saving..." : "Save Limits"}
           </button>
         </div>
       </form>
     );
   }
 
-  if (tabId === 'webhooks') {
+  if (tabId === "webhooks") {
     return (
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -263,10 +303,14 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             <input
               type="checkbox"
               checked={formData.webhookEnabled}
-              onChange={(e) => setFormData({ ...formData, webhookEnabled: e.target.checked })}
+              onChange={(e) =>
+                setFormData({ ...formData, webhookEnabled: e.target.checked })
+              }
               className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
             />
-            <span className="ml-2 text-sm font-medium text-gray-700">Enable Webhooks</span>
+            <span className="ml-2 text-sm font-medium text-gray-700">
+              Enable Webhooks
+            </span>
           </label>
 
           {formData.webhookEnabled && (
@@ -278,7 +322,9 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
                 <input
                   type="url"
                   value={formData.webhookUrl}
-                  onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, webhookUrl: e.target.value })
+                  }
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="https://your-domain.com/webhook"
                 />
@@ -291,7 +337,9 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
                 <input
                   type="text"
                   value={formData.webhookSecret}
-                  onChange={(e) => setFormData({ ...formData, webhookSecret: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, webhookSecret: e.target.value })
+                  }
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="Your webhook secret for verification"
                 />
@@ -302,7 +350,7 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
                   Events to Subscribe
                 </label>
                 <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3">
-                  {availableWebhookEvents.map(event => (
+                  {availableWebhookEvents.map((event) => (
                     <label key={event} className="flex items-center">
                       <input
                         type="checkbox"
@@ -311,18 +359,22 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
                           if (e.target.checked) {
                             setFormData({
                               ...formData,
-                              webhookEvents: [...formData.webhookEvents, event]
+                              webhookEvents: [...formData.webhookEvents, event],
                             });
                           } else {
                             setFormData({
                               ...formData,
-                              webhookEvents: formData.webhookEvents.filter(e => e !== event)
+                              webhookEvents: formData.webhookEvents.filter(
+                                (e) => e !== event,
+                              ),
                             });
                           }
                         }}
                         className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                       />
-                      <span className="ml-2 text-sm text-gray-700">{event}</span>
+                      <span className="ml-2 text-sm text-gray-700">
+                        {event}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -336,7 +388,12 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
                   <input
                     type="number"
                     value={formData.webhookRetryAttempts}
-                    onChange={(e) => setFormData({ ...formData, webhookRetryAttempts: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        webhookRetryAttempts: parseInt(e.target.value),
+                      })
+                    }
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     min="0"
                     max="10"
@@ -350,7 +407,12 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
                   <input
                     type="number"
                     value={formData.webhookTimeout}
-                    onChange={(e) => setFormData({ ...formData, webhookTimeout: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        webhookTimeout: parseInt(e.target.value),
+                      })
+                    }
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     min="1000"
                     max="30000"
@@ -362,10 +424,17 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
                 <input
                   type="checkbox"
                   checked={formData.webhookVerifySSL}
-                  onChange={(e) => setFormData({ ...formData, webhookVerifySSL: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      webhookVerifySSL: e.target.checked,
+                    })
+                  }
                   className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
-                <span className="ml-2 text-sm text-gray-700">Verify SSL Certificate</span>
+                <span className="ml-2 text-sm text-gray-700">
+                  Verify SSL Certificate
+                </span>
               </label>
             </div>
           )}
@@ -377,7 +446,7 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
             disabled={saving}
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : 'Save Webhook Settings'}
+            {saving ? "Saving..." : "Save Webhook Settings"}
           </button>
         </div>
       </form>
@@ -387,7 +456,9 @@ export default function ApiSettings({ user, tabId, onSave, saving }: ApiSettings
   // Default: API Tokens view (redirect to API keys page)
   return (
     <div className="text-center py-8">
-      <h3 className="text-lg font-medium text-gray-900 mb-2">API Token Management</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-2">
+        API Token Management
+      </h3>
       <p className="text-sm text-gray-500 mb-4">
         Manage your API tokens and access keys from the dedicated API Keys page.
       </p>

@@ -1,4 +1,4 @@
-import { prisma } from '@/core/database/prisma';
+import { prisma } from "@/core/database/prisma";
 
 interface LogUsageParams {
   tokenId: string;
@@ -42,7 +42,7 @@ export class ApiUsageService {
       ipAddress,
       userAgent,
       errorMessage,
-      metadata
+      metadata,
     } = params;
 
     // Sanitize request/response bodies
@@ -52,7 +52,7 @@ export class ApiUsageService {
     // Update last used IP for token
     await prisma.apiToken.update({
       where: { id: tokenId },
-      data: { lastUsedIp: ipAddress }
+      data: { lastUsedIp: ipAddress },
     });
 
     // Create usage log
@@ -69,8 +69,8 @@ export class ApiUsageService {
         ipAddress,
         userAgent,
         errorMessage,
-        metadata
-      }
+        metadata,
+      },
     });
   }
 
@@ -82,28 +82,32 @@ export class ApiUsageService {
 
     try {
       const sanitized = JSON.parse(JSON.stringify(body));
-      
+
       // Remove sensitive fields
       const sensitiveFields = [
-        'password',
-        'token',
-        'secret',
-        'apiKey',
-        'apiSecret',
-        'authorization',
-        'creditCard',
-        'ssn',
-        'bankAccount'
+        "password",
+        "token",
+        "secret",
+        "apiKey",
+        "apiSecret",
+        "authorization",
+        "creditCard",
+        "ssn",
+        "bankAccount",
       ];
 
       const removeSensitive = (obj: any) => {
-        if (typeof obj !== 'object' || obj === null) return obj;
+        if (typeof obj !== "object" || obj === null) return obj;
 
         for (const key in obj) {
           const lowerKey = key.toLowerCase();
-          if (sensitiveFields.some(field => lowerKey.includes(field.toLowerCase()))) {
-            obj[key] = '[REDACTED]';
-          } else if (typeof obj[key] === 'object') {
+          if (
+            sensitiveFields.some((field) =>
+              lowerKey.includes(field.toLowerCase()),
+            )
+          ) {
+            obj[key] = "[REDACTED]";
+          } else if (typeof obj[key] === "object") {
             removeSensitive(obj[key]);
           }
         }
@@ -119,26 +123,31 @@ export class ApiUsageService {
   /**
    * Get usage statistics
    */
-  async getUsageStats(userId: string, tokenId?: string, days: number = 30): Promise<UsageStats> {
+  async getUsageStats(
+    userId: string,
+    tokenId?: string,
+    days: number = 30,
+  ): Promise<UsageStats> {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    
+
     const where = {
       userId,
       ...(tokenId && { tokenId }),
-      createdAt: { gte: startDate }
+      createdAt: { gte: startDate },
     };
 
     // Get total stats
-    const [totalRequests, successfulRequests, avgResponseTime] = await Promise.all([
-      prisma.apiUsageLog.count({ where }),
-      prisma.apiUsageLog.count({ 
-        where: { ...where, statusCode: { gte: 200, lt: 300 } } 
-      }),
-      prisma.apiUsageLog.aggregate({
-        where,
-        _avg: { responseTime: true }
-      })
-    ]);
+    const [totalRequests, successfulRequests, avgResponseTime] =
+      await Promise.all([
+        prisma.apiUsageLog.count({ where }),
+        prisma.apiUsageLog.count({
+          where: { ...where, statusCode: { gte: 200, lt: 300 } },
+        }),
+        prisma.apiUsageLog.aggregate({
+          where,
+          _avg: { responseTime: true },
+        }),
+      ]);
 
     // Get daily usage
     const dailyUsage = await prisma.$queryRaw`
@@ -172,38 +181,39 @@ export class ApiUsageService {
 
     // Get endpoint usage
     const endpointUsage = await prisma.apiUsageLog.groupBy({
-      by: ['endpoint', 'method'],
+      by: ["endpoint", "method"],
       where,
       _count: true,
       _avg: { responseTime: true },
-      orderBy: { _count: { endpoint: 'desc' } },
-      take: 20
+      orderBy: { _count: { endpoint: "desc" } },
+      take: 20,
     });
 
     // Get status code distribution
     const statusCodeDist = await prisma.apiUsageLog.groupBy({
-      by: ['statusCode'],
+      by: ["statusCode"],
       where,
       _count: true,
-      orderBy: { statusCode: 'asc' }
+      orderBy: { statusCode: "asc" },
     });
 
     return {
       daily: dailyUsage as any[],
       hourly: hourlyUsage as any[],
-      endpoints: endpointUsage.map(e => ({
+      endpoints: endpointUsage.map((e) => ({
         endpoint: e.endpoint,
         method: e.method,
         count: e._count,
-        avgResponseTime: e._avg.responseTime
+        avgResponseTime: e._avg.responseTime,
       })),
-      statusCodes: statusCodeDist.map(s => ({
+      statusCodes: statusCodeDist.map((s) => ({
         statusCode: s.statusCode,
-        count: s._count
+        count: s._count,
       })),
       totalRequests,
-      successRate: totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 0,
-      avgResponseTime: avgResponseTime._avg.responseTime || 0
+      successRate:
+        totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 0,
+      avgResponseTime: avgResponseTime._avg.responseTime || 0,
     };
   }
 
@@ -214,7 +224,7 @@ export class ApiUsageService {
     return await prisma.apiUsageLog.findMany({
       where: {
         userId,
-        ...(tokenId && { tokenId })
+        ...(tokenId && { tokenId }),
       },
       select: {
         id: true,
@@ -229,12 +239,12 @@ export class ApiUsageService {
         ApiToken: {
           select: {
             name: true,
-            tokenPrefix: true
-          }
-        }
+            tokenPrefix: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit
+      orderBy: { createdAt: "desc" },
+      take: limit,
     });
   }
 
@@ -245,17 +255,17 @@ export class ApiUsageService {
     return await prisma.apiUsageLog.findFirst({
       where: {
         id: logId,
-        userId
+        userId,
       },
       include: {
         ApiToken: {
           select: {
             name: true,
             tokenPrefix: true,
-            scopes: true
-          }
-        }
-      }
+            scopes: true,
+          },
+        },
+      },
     });
   }
 
@@ -264,11 +274,11 @@ export class ApiUsageService {
    */
   async cleanOldLogs(daysToKeep: number = 90) {
     const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
-    
+
     const result = await prisma.apiUsageLog.deleteMany({
       where: {
-        createdAt: { lt: cutoffDate }
-      }
+        createdAt: { lt: cutoffDate },
+      },
     });
 
     return result.count;
@@ -281,19 +291,19 @@ export class ApiUsageService {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const ipUsage = await prisma.apiUsageLog.groupBy({
-      by: ['ipAddress'],
+      by: ["ipAddress"],
       where: {
         userId,
-        createdAt: { gte: startDate }
+        createdAt: { gte: startDate },
       },
       _count: true,
-      orderBy: { _count: { ipAddress: 'desc' } },
-      take: 20
+      orderBy: { _count: { ipAddress: "desc" } },
+      take: 20,
     });
 
-    return ipUsage.map(ip => ({
+    return ipUsage.map((ip) => ({
       ipAddress: ip.ipAddress,
-      requests: ip._count
+      requests: ip._count,
     }));
   }
 
@@ -302,44 +312,45 @@ export class ApiUsageService {
    */
   async detectSuspiciousActivity(userId: string) {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    
+
     // Check for high error rates
     const [totalRequests, failedRequests] = await Promise.all([
       prisma.apiUsageLog.count({
         where: {
           userId,
-          createdAt: { gte: oneHourAgo }
-        }
+          createdAt: { gte: oneHourAgo },
+        },
       }),
       prisma.apiUsageLog.count({
         where: {
           userId,
           createdAt: { gte: oneHourAgo },
-          statusCode: { gte: 400 }
-        }
-      })
+          statusCode: { gte: 400 },
+        },
+      }),
     ]);
 
-    const errorRate = totalRequests > 0 ? (failedRequests / totalRequests) * 100 : 0;
+    const errorRate =
+      totalRequests > 0 ? (failedRequests / totalRequests) * 100 : 0;
 
     // Check for unusual IP activity
     const ipActivity = await prisma.apiUsageLog.groupBy({
-      by: ['ipAddress'],
+      by: ["ipAddress"],
       where: {
         userId,
-        createdAt: { gte: oneHourAgo }
+        createdAt: { gte: oneHourAgo },
       },
-      _count: true
+      _count: true,
     });
 
-    const suspiciousIPs = ipActivity.filter(ip => ip._count > 100);
+    const suspiciousIPs = ipActivity.filter((ip) => ip._count > 100);
 
     return {
       highErrorRate: errorRate > 50,
       errorRate,
       suspiciousIPs,
       totalRequests,
-      failedRequests
+      failedRequests,
     };
   }
 }

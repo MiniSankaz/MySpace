@@ -1,0 +1,176 @@
+// Portfolio Management Models
+// Add these to your main schema.prisma file
+
+model Portfolio {
+  id                      String              @id @default(cuid())
+  userId                  String
+  name                    String
+  description             String?
+  isDefault               Boolean             @default(false)
+  isPublic                Boolean             @default(false)
+  totalValue              Float               @default(0)
+  totalCost               Float               @default(0)
+  totalGainLoss           Float               @default(0)
+  totalGainLossPercentage Float               @default(0)
+  dayChange               Float               @default(0)
+  dayChangePercentage     Float               @default(0)
+  currency                String              @default("USD")
+  metadata                Json?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  User                    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Position                Position[]
+  Trade                   Trade[]
+  PortfolioSnapshot       PortfolioSnapshot[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isPublic])
+}
+
+model Stock {
+  id                String              @id @default(cuid())
+  symbol            String              @unique
+  name              String
+  exchange          String?
+  type              String?             @default("EQUITY")
+  sector            String?
+  industry          String?
+  currentPrice      Float               @default(0)
+  previousClose     Float?              @default(0)
+  dayChange         Float?              @default(0)
+  dayChangePercent  Float?              @default(0)
+  volume            Int?                @default(0)
+  marketCap         BigInt?
+  pe                Float?
+  eps               Float?
+  beta              Float?
+  dividendYield     Float?
+  weekHigh52        Float?
+  weekLow52         Float?
+  currency          String?             @default("USD")
+  lastUpdated       DateTime?           @default(now())
+  metadata          Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  Position          Position[]
+  Trade             Trade[]
+  WatchlistStock    WatchlistStock[]
+  StockPriceHistory StockPriceHistory[]
+
+  @@index([symbol])
+  @@index([sector])
+}
+
+model Position {
+  id                  String    @id @default(cuid())
+  portfolioId         String
+  stockId             String
+  quantity            Float
+  averageCost         Float
+  totalCost           Float
+  currentValue        Float     @default(0)
+  gainLoss            Float     @default(0)
+  gainLossPercentage  Float     @default(0)
+  dayChange           Float     @default(0)
+  dayChangePercentage Float     @default(0)
+  metadata            Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  Portfolio           Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  Stock               Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, stockId])
+  @@index([portfolioId])
+  @@index([stockId])
+}
+
+model Trade {
+  id          String    @id @default(cuid())
+  portfolioId String
+  stockId     String
+  type        String // BUY, SELL
+  quantity    Float
+  price       Float
+  totalAmount Float
+  commission  Float?    @default(0)
+  notes       String?
+  executedAt  DateTime  @default(now())
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  Stock       Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([stockId])
+  @@index([type])
+  @@index([executedAt])
+}
+
+model Watchlist {
+  id             String           @id @default(cuid())
+  userId         String
+  name           String
+  description    String?
+  isDefault      Boolean          @default(false)
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  User           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  WatchlistStock WatchlistStock[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model WatchlistStock {
+  id          String    @id @default(cuid())
+  watchlistId String
+  stockId     String
+  notes       String?
+  alertPrice  Float?
+  alertType   String? // ABOVE, BELOW
+  addedAt     DateTime  @default(now())
+  Watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  Stock       Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, stockId])
+  @@index([watchlistId])
+  @@index([stockId])
+}
+
+model StockPriceHistory {
+  id            String   @id @default(cuid())
+  stockId       String
+  date          DateTime @db.Date
+  open          Float
+  high          Float
+  low           Float
+  close         Float
+  adjustedClose Float?
+  volume        BigInt?
+  createdAt     DateTime @default(now())
+  Stock         Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([stockId, date])
+  @@index([stockId])
+  @@index([date])
+}
+
+model PortfolioSnapshot {
+  id                 String    @id @default(cuid())
+  portfolioId        String
+  date               DateTime  @db.Date
+  totalValue         Float
+  totalCost          Float
+  gainLoss           Float
+  gainLossPercentage Float
+  metadata           Json?
+  createdAt          DateTime  @default(now())
+  Portfolio          Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, date])
+  @@index([portfolioId])
+  @@index([date])
+}

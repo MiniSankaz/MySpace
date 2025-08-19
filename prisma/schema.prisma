@@ -7,472 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model AuditLog {
-  id         String   @id
-  userId     String?
-  action     String
-  resource   String
-  resourceId String?
-  changes    Json?
-  metadata   Json?
-  ipAddress  String?
-  userAgent  String?
-  severity   String   @default("info")
-  createdAt  DateTime @default(now())
-  User       User?    @relation(fields: [userId], references: [id])
-
-  @@index([action])
-  @@index([createdAt])
-  @@index([resource])
-  @@index([userId])
-}
-
-model Category {
-  id             String     @id
-  name           String
-  slug           String     @unique
-  description    String?
-  parentId       String?
-  order          Int        @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime
-  Category       Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
-  other_Category Category[] @relation("CategoryToCategory")
-  Gallery        Gallery[]
-  Post           Post[]
-
-  @@index([parentId])
-  @@index([slug])
-}
-
-model Translation {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  namespace String   @default("common")
-  locale    String
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([key, locale, namespace])
-  @@index([namespace])
-  @@index([locale])
-}
-
-model ChatConversation {
-  id           String        @id
-  visitorId    String
-  visitorName  String?
-  visitorEmail String?
-  visitorPhone String?
-  status       String        @default("active")
-  rating       Int?
-  startedAt    DateTime      @default(now())
-  endedAt      DateTime?
-  metadata     Json?
-  agentId      String?
-  User         User?         @relation(fields: [agentId], references: [id])
-  ChatMessage  ChatMessage[]
-
-  @@index([agentId])
-  @@index([startedAt])
-  @@index([status])
-  @@index([visitorId])
-}
-
-model ChatMessage {
-  id               String           @id
-  conversationId   String
-  senderId         String
-  senderType       String
-  message          String
-  attachments      Json?
-  isRead           Boolean          @default(false)
-  readAt           DateTime?
-  createdAt        DateTime         @default(now())
-  ChatConversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId, createdAt])
-  @@index([senderId])
-}
-
-model ChatSettings {
-  id             String   @id
-  isEnabled      Boolean  @default(true)
-  welcomeMessage Json
-  offlineMessage Json
-  workingHours   Json
-  autoReplyDelay Int      @default(5)
-  theme          Json
-  position       String   @default("bottom-right")
-  departments    Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime
-}
-
-model EmailCampaign {
-  id                     String                   @id
-  name                   String
-  subject                String
-  preheader              String?
-  fromName               String
-  fromEmail              String
-  replyTo                String?
-  content                Json
-  template               String?
-  status                 String                   @default("draft")
-  scheduledAt            DateTime?
-  sentAt                 DateTime?
-  completedAt            DateTime?
-  targetTags             String[]
-  excludeTags            String[]
-  stats                  Json?
-  createdById            String
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime
-  User                   User                     @relation(fields: [createdById], references: [id])
-  EmailCampaignRecipient EmailCampaignRecipient[]
-
-  @@index([scheduledAt])
-  @@index([status])
-}
-
-model EmailCampaignRecipient {
-  id              String          @id
-  campaignId      String
-  subscriberId    String
-  status          String          @default("pending")
-  sentAt          DateTime?
-  openedAt        DateTime?
-  clickedAt       DateTime?
-  bouncedAt       DateTime?
-  unsubscribedAt  DateTime?
-  openCount       Int             @default(0)
-  clickCount      Int             @default(0)
-  EmailCampaign   EmailCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  EmailSubscriber EmailSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
-
-  @@unique([campaignId, subscriberId])
-  @@index([campaignId])
-  @@index([status])
-  @@index([subscriberId])
-}
-
-model EmailSubscriber {
-  id                     String                   @id
-  email                  String                   @unique
-  name                   String?
-  status                 String                   @default("active")
-  customFields           Json?
-  source                 String?
-  confirmToken           String?                  @unique
-  confirmedAt            DateTime?
-  unsubscribedAt         DateTime?
-  unsubscribeToken       String                   @unique
-  bounceCount            Int                      @default(0)
-  subscribedAt           DateTime                 @default(now())
-  updatedAt              DateTime
-  EmailCampaignRecipient EmailCampaignRecipient[]
-  SubscriberTag          SubscriberTag[]
+model User {
+  id                  String          @id
+  email               String          @unique
+  username            String          @unique
+  passwordHash        String
+  firstName           String?
+  lastName            String?
+  displayName         String?
+  avatar              String?
+  bio                 String?
+  phone               String?
+  isActive            Boolean         @default(true)
+  emailVerified       DateTime?
+  phoneVerified       DateTime?
+  mfaEnabled          Boolean         @default(false)
+  mfaSecret           String?
+  failedLoginAttempts Int             @default(0)
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+  accountLockedUntil  DateTime?
+  passwordChangedAt   DateTime        @default(now())
+  mustChangePassword  Boolean         @default(false)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  createdBy           String?
+  updatedBy           String?
+  deletedAt           DateTime?
+  deletedBy           String?
+  version             Int             @default(1)
+  AuditLog            AuditLog[]
+  LoginHistory        LoginHistory[]
+  PasswordReset       PasswordReset[]
+  Session             Session[]
+  UserActivity        UserActivity[]
+  UserProfile         UserProfile?
+  UserRole            UserRole[]
+  // Portfolio relations
+  Portfolios          Portfolio[]
+  Watchlists          Watchlist[]
 
   @@index([email])
-  @@index([status])
-}
-
-model Form {
-  id             String           @id
-  name           String
-  slug           String           @unique
-  description    String?
-  fields         Json
-  settings       Json?
-  isActive       Boolean          @default(true)
-  honeypot       Boolean          @default(true)
-  recaptcha      Boolean          @default(false)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime
-  createdBy      String
-  User           User             @relation(fields: [createdBy], references: [id])
-  FormSubmission FormSubmission[]
-
-  @@index([isActive])
-  @@index([slug])
-}
-
-model FormSubmission {
-  id          String   @id
-  formId      String
-  data        Json
-  metadata    Json?
-  status      String   @default("new")
-  submittedBy String?
-  createdAt   DateTime @default(now())
-  Form        Form     @relation(fields: [formId], references: [id])
-  User        User?    @relation(fields: [submittedBy], references: [id])
-
+  @@index([username])
+  @@index([isActive, deletedAt])
   @@index([createdAt])
-  @@index([formId])
-  @@index([status])
-}
-
-model Gallery {
-  id           String         @id
-  name         String
-  slug         String         @unique
-  description  String?
-  categoryId   String?
-  isPublic     Boolean        @default(true)
-  order        Int            @default(0)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  Category     Category?      @relation(fields: [categoryId], references: [id])
-  GalleryMedia GalleryMedia[]
-
-  @@index([categoryId])
-  @@index([slug])
-}
-
-model GalleryMedia {
-  id        String  @id
-  galleryId String
-  mediaId   String
-  order     Int     @default(0)
-  Gallery   Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
-  Media     Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-
-  @@unique([galleryId, mediaId])
-  @@index([galleryId])
-  @@index([mediaId])
-}
-
-model LoginHistory {
-  id            String   @id
-  userId        String
-  ipAddress     String
-  userAgent     String?
-  success       Boolean
-  failureReason String?
-  createdAt     DateTime @default(now())
-  User          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([createdAt])
-  @@index([userId])
-}
-
-model Media {
-  id           String         @id
-  filename     String
-  originalName String
-  mimeType     String
-  size         Int
-  url          String
-  thumbnailUrl String?
-  alt          String?
-  caption      String?
-  width        Int?
-  height       Int?
-  metadata     Json?
-  folderId     String?
-  isPublic     Boolean        @default(true)
-  scanStatus   String         @default("pending")
-  scanResult   Json?
-  createdAt    DateTime       @default(now())
-  uploadedBy   String
-  deletedAt    DateTime?
-  GalleryMedia GalleryMedia[]
-  MediaFolder  MediaFolder?   @relation(fields: [folderId], references: [id])
-  User         User           @relation(fields: [uploadedBy], references: [id])
-  MediaTag     MediaTag[]
-  PostMedia    PostMedia[]
-
-  @@index([createdAt])
-  @@index([folderId])
-  @@index([uploadedBy])
-}
-
-model MediaFolder {
-  id                String        @id
-  name              String
-  parentId          String?
-  path              String
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime
-  Media             Media[]
-  MediaFolder       MediaFolder?  @relation("MediaFolderToMediaFolder", fields: [parentId], references: [id])
-  other_MediaFolder MediaFolder[] @relation("MediaFolderToMediaFolder")
-
-  @@index([parentId])
-  @@index([path])
-}
-
-model Menu {
-  id        String   @id
-  name      String
-  code      String   @unique
-  location  String
-  items     Json
-  settings  Json?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-
-  @@index([code])
-  @@index([location])
-}
-
-model Page {
-  id                        String          @id
-  title                     String
-  slug                      String          @unique
-  content                   String?
-  components                Json?
-  excerpt                   String?
-  status                    String          @default("draft")
-  publishedAt               DateTime?
-  metaTitle                 String?
-  metaDescription           String?
-  metaKeywords              String?
-  ogImage                   String?
-  language                  String          @default("en")
-  translations              Json?
-  layout                    String          @default("default")
-  template                  String?
-  templateId                String?
-  customCss                 String?
-  customJs                  String?
-  createdAt                 DateTime        @default(now())
-  updatedAt                 DateTime
-  createdBy                 String?
-  updatedBy                 String?
-  deletedAt                 DateTime?
-  version                   Int             @default(1)
-  authorId                  String?
-  featuredImage             String?
-  isHomePage                Boolean         @default(false)
-  seoDescription            String?
-  seoKeywords               String?
-  seoTitle                  String?
-  views                     Int             @default(0)
-  User_Page_authorIdToUser  User?           @relation("Page_authorIdToUser", fields: [authorId], references: [id])
-  User_Page_createdByToUser User?           @relation("Page_createdByToUser", fields: [createdBy], references: [id])
-  PageTemplate              PageTemplate?   @relation(fields: [templateId], references: [id])
-  PageComponent             PageComponent[]
-
-  @@index([authorId])
-  @@index([language])
-  @@index([publishedAt])
-  @@index([slug])
-  @@index([status])
-}
-
-model PageComponent {
-  id                  String          @id
-  pageId              String
-  type                String
-  order               Int
-  settings            Json
-  content             Json
-  columnIndex         Int?
-  parentId            String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime
-  Page                Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  PageComponent       PageComponent?  @relation("PageComponentToPageComponent", fields: [parentId], references: [id])
-  other_PageComponent PageComponent[] @relation("PageComponentToPageComponent")
-
-  @@index([pageId, order])
-  @@index([parentId])
-}
-
-model PageTemplate {
-  id        String   @id
-  name      Json
-  code      String   @unique
-  structure Json
-  preview   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  Page      Page[]
-}
-
-model PasswordReset {
-  id        String    @id
-  token     String    @unique
-  userId    String
-  expires   DateTime
-  used      Boolean   @default(false)
-  usedAt    DateTime?
-  ipAddress String?
-  createdAt DateTime  @default(now())
-  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([expires])
-  @@index([token])
-  @@index([userId])
-}
-
-model Permission {
-  id             String           @id
-  code           String           @unique
-  name           String
-  description    String?
-  resource       String
-  action         String
-  scope          String           @default("global")
-  isActive       Boolean          @default(true)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime
-  RolePermission RolePermission[]
-
-  @@unique([resource, action, scope])
-  @@index([code])
-  @@index([isActive])
-  @@index([resource])
-}
-
-model Post {
-  id              String      @id
-  title           String
-  slug            String      @unique
-  content         String?
-  excerpt         String?
-  featuredImage   String?
-  status          String      @default("draft")
-  publishedAt     DateTime?
-  metaTitle       String?
-  metaDescription String?
-  metaKeywords    String?
-  categoryId      String?
-  views           Int         @default(0)
-  likes           Int         @default(0)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime
-  authorId        String
-  deletedAt       DateTime?
-  User            User        @relation(fields: [authorId], references: [id])
-  Category        Category?   @relation(fields: [categoryId], references: [id])
-  PostMedia       PostMedia[]
-  PostTag         PostTag[]
-
-  @@index([authorId])
-  @@index([categoryId])
-  @@index([publishedAt])
-  @@index([slug])
-  @@index([status])
-}
-
-model PostMedia {
-  id      String @id
-  postId  String
-  mediaId String
-  order   Int    @default(0)
-  Media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  Post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, mediaId])
-  @@index([mediaId])
-  @@index([postId])
 }
 
 model Role {
@@ -484,7 +62,7 @@ model Role {
   isSystemRole   Boolean          @default(false)
   isActive       Boolean          @default(true)
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime         @updatedAt
   createdBy      String?
   updatedBy      String?
   RolePermission RolePermission[]
@@ -492,286 +70,6 @@ model Role {
 
   @@index([code])
   @@index([isActive])
-}
-
-model RolePermission {
-  id           String     @id
-  roleId       String
-  permissionId String
-  grantedBy    String?
-  grantedAt    DateTime   @default(now())
-  Permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  Role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, permissionId])
-  @@index([permissionId])
-  @@index([roleId])
-}
-
-model Session {
-  id           String   @id
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime
-  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([expires])
-  @@index([userId])
-}
-
-model Survey {
-  id             String           @id
-  title          Json
-  description    Json?
-  slug           String           @unique
-  fields         Json
-  settings       Json
-  status         String           @default("active")
-  startDate      DateTime?
-  endDate        DateTime?
-  maxResponses   Int?
-  requireAuth    Boolean          @default(false)
-  allowMultiple  Boolean          @default(false)
-  createdById    String
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime
-  User           User             @relation(fields: [createdById], references: [id])
-  SurveyResponse SurveyResponse[]
-
-  @@index([slug])
-  @@index([status])
-}
-
-model SurveyResponse {
-  id           String   @id
-  surveyId     String
-  data         Json
-  metadata     Json?
-  score        Int?
-  respondentId String?
-  submittedAt  DateTime @default(now())
-  Survey       Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
-
-  @@index([respondentId])
-  @@index([submittedAt])
-  @@index([surveyId])
-}
-
-model SystemConfig {
-  id          String   @id
-  key         String   @unique
-  value       Json
-  type        String
-  category    String
-  description String?
-  isPublic    Boolean  @default(false)
-  isEditable  Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
-
-  @@index([category])
-  @@index([key])
-}
-
-model ThemeConfig {
-  id          String   @id
-  name        String   @unique @default("default")
-  colors      Json
-  fonts       Json
-  layout      Json
-  components  Json?
-  customCss   String?
-  customJs    String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
-  updatedById String?
-  User        User?    @relation(fields: [updatedById], references: [id])
-}
-
-model Tag {
-  id            String          @id
-  name          String          @unique
-  slug          String          @unique
-  description   String?
-  color         String?
-  icon          String?
-  usageCount    Int             @default(0)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime
-  createdBy     String?
-  MediaTag      MediaTag[]
-  PostTag       PostTag[]
-  SubscriberTag SubscriberTag[]
-  User          User?           @relation(fields: [createdBy], references: [id])
-
-  @@index([name])
-  @@index([slug])
-  @@index([usageCount])
-}
-
-model PostTag {
-  id     String @id
-  postId String
-  tagId  String
-  Post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  Tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, tagId])
-  @@index([postId])
-  @@index([tagId])
-}
-
-model MediaTag {
-  id      String @id
-  mediaId String
-  tagId   String
-  Media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  Tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([mediaId, tagId])
-  @@index([mediaId])
-  @@index([tagId])
-}
-
-model SubscriberTag {
-  id           String          @id
-  subscriberId String
-  tagId        String
-  Subscriber   EmailSubscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
-  Tag          Tag             @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([subscriberId, tagId])
-  @@index([subscriberId])
-  @@index([tagId])
-}
-
-model User {
-  id                                String                     @id
-  email                             String                     @unique
-  username                          String                     @unique
-  passwordHash                      String
-  firstName                         String?
-  lastName                          String?
-  displayName                       String?
-  avatar                            String?
-  bio                               String?
-  phone                             String?
-  isActive                          Boolean                    @default(true)
-  emailVerified                     DateTime?
-  phoneVerified                     DateTime?
-  mfaEnabled                        Boolean                    @default(false)
-  mfaSecret                         String?
-  failedLoginAttempts               Int                        @default(0)
-  lastLoginAt                       DateTime?
-  lastLoginIp                       String?
-  accountLockedUntil                DateTime?
-  passwordChangedAt                 DateTime                   @default(now())
-  mustChangePassword                Boolean                    @default(false)
-  createdAt                         DateTime                   @default(now())
-  updatedAt                         DateTime
-  createdBy                         String?
-  updatedBy                         String?
-  deletedAt                         DateTime?
-  deletedBy                         String?
-  version                           Int                        @default(1)
-  ApiToken                          ApiToken[]
-  ApiUsageLog                       ApiUsageLog[]
-  ApiWebhook                        ApiWebhook[]
-  AssistantAnalytics                AssistantAnalytics[]
-  AssistantChatMessages             AssistantChatMessage[]
-  AssistantChatSessions             AssistantChatSession[]
-  AssistantConversation             AssistantConversation[]
-  AssistantFolder                   AssistantFolder[]
-  AssistantNote                     AssistantNote[]
-  AssistantReminder                 AssistantReminder[]
-  AssistantTask                     AssistantTask[]
-  AuditLog                          AuditLog[]
-  BackupExport                      BackupExport[]
-  BackupSchedule                    BackupSchedule[]
-  ChatConversation                  ChatConversation[]
-  DepartmentManager                 Department[]               @relation("DepartmentManager")
-  EmailCampaign                     EmailCampaign[]
-  Form                              Form[]
-  FormSubmission                    FormSubmission[]
-  GitConfigHistory                  GitConfigHistory[]
-  LoginHistory                      LoginHistory[]
-  Media                             Media[]
-  MenuItem_MenuItem_createdByToUser MenuItem[]                 @relation("MenuItem_createdByToUser")
-  MenuItem_MenuItem_deletedByToUser MenuItem[]                 @relation("MenuItem_deletedByToUser")
-  MenuItem_MenuItem_updatedByToUser MenuItem[]                 @relation("MenuItem_updatedByToUser")
-  Page_Page_authorIdToUser          Page[]                     @relation("Page_authorIdToUser")
-  Page_Page_createdByToUser         Page[]                     @relation("Page_createdByToUser")
-  PasswordReset                     PasswordReset[]
-  Post                              Post[]
-  Session                           Session[]
-  Survey                            Survey[]
-  Tag                               Tag[]
-  TeamLeader                        Team[]                     @relation("TeamLeader")
-  TeamMember                        TeamMember[]
-  TerminalAnalytics                 TerminalAnalytics[]
-  TerminalLog                       TerminalLog[]
-  TerminalSOPCreator                TerminalSOP[]              @relation("TerminalSOPCreator")
-  TerminalSession                   TerminalSession[]
-  TerminalShortcut                  TerminalShortcut[]
-  ThemeConfig                       ThemeConfig[]
-  User_User_createdByToUser         User?                      @relation("User_createdByToUser", fields: [createdBy], references: [id])
-  other_User_User_createdByToUser   User[]                     @relation("User_createdByToUser")
-  User_User_deletedByToUser         User?                      @relation("User_deletedByToUser", fields: [deletedBy], references: [id])
-  other_User_User_deletedByToUser   User[]                     @relation("User_deletedByToUser")
-  User_User_updatedByToUser         User?                      @relation("User_updatedByToUser", fields: [updatedBy], references: [id])
-  other_User_User_updatedByToUser   User[]                     @relation("User_updatedByToUser")
-  UserActivity                      UserActivity[]
-  UserApiKey                        UserApiKey[]
-  UserConfig                        UserConfig[]
-  UserDepartment                    UserDepartment[]
-  UserDevice                        UserDevice[]
-  UserInvitation                    UserInvitation[]
-  UserNotification                  UserNotification[]
-  UserPreference                    UserPreference[]
-  UserProfile                       UserProfile?
-  UserRole                          UserRole[]
-  WorkspaceTerminalCommands         WorkspaceTerminalCommand[]
-  WorkspaceTerminalLogs             WorkspaceTerminalLog[]
-  WorkspaceTerminalSessions         WorkspaceTerminalSession[]
-  // Knowledge Base Relations
-  KBIssuesCreated                   KBIssue[]                  @relation("KBIssueCreator")
-  KBIssuesAssigned                  KBIssue[]                  @relation("KBIssueAssignee")
-  KBSolutionsCreated                KBSolution[]               @relation("KBSolutionCreator")
-  KBSolutionFeedback                KBSolutionFeedback[]
-  KBIssueRelations                  KBIssueRelation[]
-  KBAttachments                     KBAttachment[]
-  ProjectPreferences                ProjectPreferences[]
-  UserSidebarSettings               UserSidebarSettings?
-
-  @@index([createdAt])
-  @@index([email])
-  @@index([isActive, deletedAt])
-  @@index([username])
-}
-
-model UserInvitation {
-  id         String    @id
-  email      String
-  role       String
-  message    String?
-  token      String    @unique
-  status     String    @default("pending")
-  expiresAt  DateTime
-  acceptedAt DateTime?
-  invitedBy  String
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime
-  User       User      @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
-
-  @@index([email])
-  @@index([expiresAt])
-  @@index([status])
-  @@index([token])
 }
 
 model UserRole {
@@ -786,191 +84,42 @@ model UserRole {
   User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
-  @@index([isActive])
+  @@index([userId])
   @@index([roleId])
-  @@index([userId])
+  @@index([isActive])
 }
 
-model BackupExport {
-  id             String    @id
+model Permission {
+  id             String           @id
+  code           String           @unique
   name           String
-  type           String
-  format         String
-  status         String    @default("pending")
-  filters        Json?
-  fileUrl        String?
-  fileName       String?
-  fileSize       Int?
-  recordCount    Int?
-  compression    Boolean   @default(false)
-  encrypted      Boolean   @default(false)
-  progress       Int       @default(0)
-  error          String?
-  metadata       Json?
-  expiresAt      DateTime?
-  downloadCount  Int       @default(0)
-  lastDownloadAt DateTime?
-  createdBy      String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime
-  completedAt    DateTime?
-  User           User      @relation(fields: [createdBy], references: [id])
+  description    String?
+  resource       String
+  action         String
+  scope          String           @default("global")
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  RolePermission RolePermission[]
 
-  @@index([createdBy])
-  @@index([createdAt])
-  @@index([status])
-  @@index([type])
-  @@index([expiresAt])
-}
-
-model BackupSchedule {
-  id          String    @id
-  name        String
-  type        String
-  frequency   String
-  cronPattern String?
-  isActive    Boolean   @default(true)
-  filters     Json?
-  settings    Json?
-  lastRunAt   DateTime?
-  nextRunAt   DateTime?
-  runCount    Int       @default(0)
-  failCount   Int       @default(0)
-  createdBy   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime
-  User        User      @relation(fields: [createdBy], references: [id])
-
-  @@index([createdBy])
+  @@unique([resource, action, scope])
+  @@index([code])
   @@index([isActive])
-  @@index([nextRunAt])
+  @@index([resource])
 }
 
-model MenuItem {
-  id                            String    @id @default(uuid())
-  menuId                        String
-  label                         String
-  url                           String
-  type                          String
-  target                        String    @default("_self")
-  icon                          String?
-  order                         Int       @default(0)
-  parentId                      String?
-  isActive                      Boolean   @default(true)
-  createdAt                     DateTime  @default(now())
-  createdBy                     String
-  updatedAt                     DateTime  @updatedAt
-  updatedBy                     String?
-  deletedAt                     DateTime?
-  deletedBy                     String?
-  User_MenuItem_createdByToUser User      @relation("MenuItem_createdByToUser", fields: [createdBy], references: [id])
-  User_MenuItem_deletedByToUser User?     @relation("MenuItem_deletedByToUser", fields: [deletedBy], references: [id])
-  User_MenuItem_updatedByToUser User?     @relation("MenuItem_updatedByToUser", fields: [updatedBy], references: [id])
+model RolePermission {
+  id           String     @id
+  roleId       String
+  permissionId String
+  grantedBy    String?
+  grantedAt    DateTime   @default(now())
+  Permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  Role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@index([menuId])
-  @@index([parentId])
-  @@index([isActive])
-  @@index([order])
-}
-
-model AssistantFolder {
-  id            String                  @id @default(uuid())
-  userId        String
-  name          String
-  color         String?                 @default("#3B82F6")
-  icon          String?                 @default("folder")
-  order         Int                     @default(0)
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-  conversations AssistantConversation[]
-  User          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-model AssistantConversation {
-  id        String             @id @default(uuid())
-  userId    String
-  sessionId String
-  title     String?
-  folderId  String?
-  isActive  Boolean            @default(true)
-  startedAt DateTime           @default(now())
-  endedAt   DateTime?
-  metadata  Json?
-  Folder    AssistantFolder?   @relation(fields: [folderId], references: [id])
-  User      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  AssistantMessage[]
-
-  @@unique([userId, sessionId])
-  @@index([userId])
-  @@index([sessionId])
-  @@index([folderId])
-  @@index([startedAt])
-}
-
-model AssistantMessage {
-  id             String                @id @default(uuid())
-  conversationId String
-  content        String
-  type           String
-  metadata       Json?
-  createdAt      DateTime              @default(now())
-  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
-  @@index([createdAt])
-}
-
-model AssistantTask {
-  id          String    @id @default(uuid())
-  userId      String
-  title       String
-  description String?
-  status      String    @default("pending")
-  priority    String    @default("medium")
-  dueDate     DateTime?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@index([dueDate])
-}
-
-model AssistantReminder {
-  id            String    @id @default(uuid())
-  userId        String
-  title         String
-  description   String?
-  time          DateTime
-  recurring     Json?
-  enabled       Boolean   @default(true)
-  lastTriggered DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  User          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([time])
-  @@index([enabled])
-}
-
-model AssistantNote {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String
-  content   String
-  tags      String[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([createdAt])
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
 }
 
 model UserProfile {
@@ -1002,23 +151,69 @@ model UserProfile {
   @@index([userId])
 }
 
-model UserDevice {
-  id         String   @id @default(uuid())
-  userId     String
-  deviceId   String   @unique
-  deviceType String
-  deviceName String?
-  platform   String?
-  pushToken  String?
-  lastActive DateTime @default(now())
-  isActive   Boolean  @default(true)
-  metadata   Json?
-  createdAt  DateTime @default(now())
-  User       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([deviceId])
-  @@index([lastActive])
+  @@index([expires])
+}
+
+model LoginHistory {
+  id            String   @id
+  userId        String
+  ipAddress     String
+  userAgent     String?
+  success       Boolean
+  failureReason String?
+  createdAt     DateTime @default(now())
+  User          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PasswordReset {
+  id        String    @id
+  token     String    @unique
+  userId    String
+  expires   DateTime
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expires])
+}
+
+model AuditLog {
+  id         String   @id
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  changes    Json?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  severity   String   @default("info")
+  createdAt  DateTime @default(now())
+  User       User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
 }
 
 model UserActivity {
@@ -1039,895 +234,427 @@ model UserActivity {
   @@index([createdAt])
 }
 
-model UserApiKey {
-  id         String    @id @default(uuid())
-  userId     String
-  name       String
-  key        String    @unique
-  scopes     String[]
-  lastUsed   DateTime?
-  usageCount Int       @default(0)
-  rateLimit  Int       @default(1000)
-  expiresAt  DateTime?
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+model holdings {
+  id           String         @id
+  portfolioId  String
+  symbol       String
+  quantity     Decimal
+  averagePrice Decimal
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  portfolios   portfolios     @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  transactions transactions[]
 
-  @@index([userId])
-  @@index([key])
-  @@index([isActive])
+  @@unique([portfolioId, symbol])
+  @@index([portfolioId])
+  @@index([symbol])
 }
 
-model UserNotification {
-  id        String    @id @default(uuid())
-  userId    String
-  type      String
-  title     String
-  message   String
-  data      Json?
-  isRead    Boolean   @default(false)
-  readAt    DateTime?
-  sentAt    DateTime  @default(now())
-  expiresAt DateTime?
-  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+model portfolio_snapshots {
+  id                 String     @id
+  portfolioId        String
+  totalValue         Decimal
+  totalCost          Decimal
+  dayChange          Decimal
+  dayChangePercent   Decimal
+  totalReturn        Decimal
+  totalReturnPercent Decimal
+  timestamp          DateTime   @default(now())
+  portfolios         portfolios @relation(fields: [portfolioId], references: [id])
 
-  @@index([userId])
-  @@index([isRead])
-  @@index([sentAt])
-}
-
-model UserPreference {
-  id        String   @id @default(uuid())
-  userId    String
-  category  String
-  key       String
-  value     Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, category, key])
-  @@index([userId])
-  @@index([category])
-}
-
-model Department {
-  id              String           @id @default(uuid())
-  name            String           @unique
-  code            String           @unique
-  description     String?
-  managerId       String?
-  parentId        String?
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  Manager         User?            @relation("DepartmentManager", fields: [managerId], references: [id])
-  Parent          Department?      @relation("DepartmentHierarchy", fields: [parentId], references: [id])
-  Children        Department[]     @relation("DepartmentHierarchy")
-  UserDepartments UserDepartment[]
-
-  @@index([managerId])
-  @@index([parentId])
-  @@index([code])
-}
-
-model UserDepartment {
-  id           String     @id @default(uuid())
-  userId       String
-  departmentId String
-  position     String?
-  isPrimary    Boolean    @default(false)
-  startDate    DateTime   @default(now())
-  endDate      DateTime?
-  Department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  User         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, departmentId])
-  @@index([userId])
-  @@index([departmentId])
-}
-
-model Team {
-  id          String       @id @default(uuid())
-  name        String
-  code        String       @unique
-  description String?
-  leaderId    String?
-  isActive    Boolean      @default(true)
-  metadata    Json?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  Leader      User?        @relation("TeamLeader", fields: [leaderId], references: [id])
-  TeamMembers TeamMember[]
-
-  @@index([leaderId])
-  @@index([code])
-}
-
-model TeamMember {
-  id       String    @id @default(uuid())
-  teamId   String
-  userId   String
-  role     String    @default("member")
-  joinedAt DateTime  @default(now())
-  leftAt   DateTime?
-  Team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  User     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([teamId, userId])
-  @@index([teamId])
-  @@index([userId])
-}
-
-model Project {
-  id                        String                     @id @default(uuid())
-  name                      String
-  description               String
-  path                      String
-  structure                 Json
-  envVariables              Json                       @default("{}")
-  scripts                   Json                       @default("[]")
-  settings                  Json?
-  createdAt                 DateTime                   @default(now())
-  updatedAt                 DateTime                   @updatedAt
-  assistantAnalytics        AssistantAnalytics[]
-  assistantChatMessages     AssistantChatMessage[]
-  assistantSessions         AssistantChatSession[]
-  assistantCommands         AssistantCommand[]
-  assistantFiles            AssistantFile[]
-  gitConfig                 GitConfig?
-  gitConfigHistory          GitConfigHistory[]
-  commands                  TerminalCommand[]
-  terminals                 TerminalSession[]
-  workspaceTerminalCommands WorkspaceTerminalCommand[]
-  workspaceTerminalLogs     WorkspaceTerminalLog[]
-  workspaceTerminalSessions WorkspaceTerminalSession[]
-  projectPreferences        ProjectPreferences[]
-  projectStatusCache        ProjectStatusCache?
-
-  @@index([name])
-  @@index([createdAt])
-}
-
-model TerminalSession {
-  id          String                @id @default(uuid())
-  projectId   String
-  userId      String?
-  type        String
-  tabName     String
-  status      String                @default("active") // active, inactive, closed, error, suspended
-  active      Boolean               @default(true)
-  output      Json                  @default("[]")
-  currentPath String
-  pid         Int?
-  metadata    Json?
-  startedAt   DateTime              @default(now())
-  endedAt     DateTime?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  commands    TerminalCommand[]
-  logs        TerminalLog[]
-  Project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User        User?                 @relation(fields: [userId], references: [id])
-  sessionState TerminalSessionState?
-
-  @@index([projectId])
-  @@index([userId])
-  @@index([type])
-  @@index([status])
-  @@index([active])
-  @@index([startedAt])
-}
-
-model TerminalSessionState {
-  id               String           @id @default(uuid())
-  sessionId        String           @unique
-  projectId        String
-  suspendedAt      DateTime?
-  resumedAt        DateTime?
-  outputBuffer     Json             @default("[]") // Last 1000 lines
-  cursorPosition   Json?            // { row: number, col: number }
-  workingDirectory String?
-  environmentVars  Json?            // Environment variables snapshot
-  uiState          Json?            // Layout, focus, etc.
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  
-  session          TerminalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  @@index([projectId])
-  @@index([suspendedAt])
-  @@index([resumedAt])
-}
-
-model TerminalCommand {
-  id        String          @id @default(uuid())
-  sessionId String
-  projectId String
-  command   String
-  output    String
-  exitCode  Int?
-  timestamp DateTime        @default(now())
-  Project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  Session   TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([projectId])
+  @@index([portfolioId])
   @@index([timestamp])
 }
 
-model TerminalLog {
-  id         String          @id @default(uuid())
-  sessionId  String
-  userId     String?
-  type       String
-  direction  String?
-  content    String
-  rawContent String?
-  timestamp  DateTime        @default(now())
-  sequence   Int
-  metadata   Json?
-  Session    TerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  User       User?           @relation(fields: [userId], references: [id])
+model portfolios {
+  id                  String                @id
+  userId              String
+  name                String
+  description         String?
+  currency            String                @default("USD")
+  isDefault           Boolean               @default(false)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  holdings            holdings[]
+  portfolio_snapshots portfolio_snapshots[]
+  transactions        transactions[]
+  watchlists          watchlists[]
 
-  @@index([sessionId, sequence])
   @@index([userId])
-  @@index([type])
+}
+
+model stock_prices {
+  id            String   @id
+  stockId       String
+  symbol        String
+  price         Decimal
+  open          Decimal?
+  high          Decimal?
+  low           Decimal?
+  close         Decimal?
+  volume        BigInt?
+  change        Decimal?
+  changePercent Decimal?
+  timestamp     DateTime @default(now())
+  stocks        stocks   @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([stockId])
+  @@index([symbol])
   @@index([timestamp])
 }
 
-model TerminalAnalytics {
-  id               String   @id @default(uuid())
-  userId           String?
-  date             DateTime @db.Date
-  commandCount     Int      @default(0)
-  errorCount       Int      @default(0)
-  sessionCount     Int      @default(0)
-  totalDuration    Int      @default(0)
-  uniqueCommands   Json
-  commonPatterns   Json
-  errorPatterns    Json
-  workflowPatterns Json
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  User             User?    @relation(fields: [userId], references: [id])
-
-  @@unique([userId, date])
-  @@index([userId])
-  @@index([date])
-}
-
-model TerminalCommandPattern {
-  id           String   @id @default(uuid())
-  pattern      String   @unique
-  name         String
-  description  String?
-  category     String
-  frequency    Int      @default(0)
-  avgDuration  Int?
-  successRate  Float?
-  suggestedSop Json?
-  metadata     Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([category])
-  @@index([frequency])
-}
-
-model TerminalShortcut {
-  id          String   @id @default(uuid())
-  userId      String?
-  alias       String
-  command     String
-  description String?
-  category    String?
-  usageCount  Int      @default(0)
-  isGlobal    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  User        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, alias])
-  @@index([userId])
-  @@index([isGlobal])
-}
-
-model TerminalSOP {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  workflow    Json
-  triggers    Json
-  category    String
-  tags        String[]
-  usageCount  Int      @default(0)
-  successRate Float?
-  avgDuration Int?
-  isActive    Boolean  @default(true)
-  createdBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  User        User?    @relation("TerminalSOPCreator", fields: [createdBy], references: [id])
-
-  @@index([category])
-  @@index([isActive])
-  @@index([createdBy])
-}
-
-model ApiToken {
-  id            String        @id @default(uuid())
-  userId        String
-  name          String
-  token         String        @unique
-  tokenPrefix   String
-  scopes        String[]
-  expiresAt     DateTime?
-  lastUsedAt    DateTime?
-  lastUsedIp    String?
-  usageCount    Int           @default(0)
-  rateLimit     Int           @default(1000)
-  isActive      Boolean       @default(true)
-  metadata      Json?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  revokedAt     DateTime?
-  revokedReason String?
-  User          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ApiUsageLog   ApiUsageLog[]
-
-  @@index([userId])
-  @@index([token])
-  @@index([isActive])
-  @@index([expiresAt])
-}
-
-model ApiUsageLog {
-  id           String   @id @default(uuid())
-  tokenId      String
-  userId       String
-  endpoint     String
-  method       String
-  statusCode   Int
-  requestBody  Json?
-  responseBody Json?
-  responseTime Int
-  ipAddress    String
-  userAgent    String?
-  errorMessage String?
-  metadata     Json?
-  createdAt    DateTime @default(now())
-  ApiToken     ApiToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
-  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([tokenId])
-  @@index([userId])
-  @@index([endpoint])
-  @@index([createdAt])
-  @@index([statusCode])
-}
-
-model ApiRateLimit {
-  id           String   @id @default(uuid())
-  tokenId      String   @unique
-  windowStart  DateTime
-  requestCount Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([tokenId])
-  @@index([windowStart])
-}
-
-model ApiWebhook {
-  id              String    @id @default(uuid())
-  userId          String
-  name            String
-  url             String
-  events          String[]
-  secret          String
-  isActive        Boolean   @default(true)
-  failureCount    Int       @default(0)
-  lastTriggeredAt DateTime?
-  lastStatus      Int?
-  metadata        Json?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  User            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isActive])
-}
-
-model UserConfig {
-  id        String   @id @default(uuid())
-  userId    String
-  key       String
-  value     Json
-  category  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, key])
-  @@index([userId])
-  @@index([category])
-}
-
-model AssistantChatSession {
-  id              String                 @id @default(uuid())
-  userId          String
-  projectId       String?
-  sessionName     String?
-  model           String
-  temperature     Float                  @default(0.7)
-  maxTokens       Int                    @default(4096)
-  totalTokensUsed Int                    @default(0)
-  totalCost       Float                  @default(0)
-  metadata        Json?
-  startedAt       DateTime               @default(now())
-  lastActiveAt    DateTime               @updatedAt
-  endedAt         DateTime?
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
-  analytics       AssistantAnalytics[]
-  messages        AssistantChatMessage[]
-  Project         Project?               @relation(fields: [projectId], references: [id])
-  User            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  commands        AssistantCommand[]
-  files           AssistantFile[]
-
-  @@index([userId])
-  @@index([projectId])
-  @@index([lastActiveAt])
-}
-
-model AssistantChatMessage {
-  id         String               @id @default(uuid())
-  sessionId  String
-  userId     String?
-  projectId  String?
-  role       String
-  content    String
-  model      String?
-  tokensUsed Int?
-  cost       Float?
-  latency    Int?
-  metadata   Json?
-  timestamp  DateTime             @default(now())
-  Project    Project?             @relation(fields: [projectId], references: [id])
-  Session    AssistantChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  User       User?                @relation(fields: [userId], references: [id])
-
-  @@index([sessionId, timestamp])
-  @@index([userId])
-  @@index([projectId])
-  @@index([role])
-}
-
-model AssistantCommand {
-  id         String               @id @default(uuid())
-  sessionId  String
-  messageId  String?
-  projectId  String?
-  command    String
-  type       String
-  status     String
-  output     String?
-  error      String?
-  executedAt DateTime?
-  executedBy String?
-  metadata   Json?
-  createdAt  DateTime             @default(now())
-  Project    Project?             @relation(fields: [projectId], references: [id])
-  Session    AssistantChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([projectId])
-  @@index([status])
-  @@index([type])
-}
-
-model AssistantFile {
-  id        String               @id @default(uuid())
-  sessionId String
-  projectId String?
-  filePath  String
-  action    String
-  content   String?
-  diff      String?
-  metadata  Json?
-  timestamp DateTime             @default(now())
-  Project   Project?             @relation(fields: [projectId], references: [id])
-  Session   AssistantChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([projectId])
-  @@index([action])
-  @@index([timestamp])
-}
-
-model AssistantAnalytics {
-  id            String                @id @default(uuid())
-  sessionId     String?
-  userId        String
-  projectId     String?
-  date          DateTime              @db.Date
-  messagesCount Int                   @default(0)
-  tokensUsed    Int                   @default(0)
-  totalCost     Float                 @default(0)
-  commandsCount Int                   @default(0)
-  filesModified Int                   @default(0)
-  errorsCount   Int                   @default(0)
-  avgLatency    Float?
-  metadata      Json?
-  createdAt     DateTime              @default(now())
-  Project       Project?              @relation(fields: [projectId], references: [id])
-  Session       AssistantChatSession? @relation(fields: [sessionId], references: [id])
-  User          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, projectId, date])
-  @@index([userId])
-  @@index([projectId])
-  @@index([date])
-}
-
-model WorkspaceTerminalSession {
-  id          String                     @id @default(uuid())
-  projectId   String
-  workspaceId String?
-  userId      String
-  type        String
-  tabName     String
-  active      Boolean                    @default(true)
-  currentPath String
-  environment Json?
-  pid         Int?
-  metadata    Json?
-  startedAt   DateTime                   @default(now())
-  endedAt     DateTime?
-  createdAt   DateTime                   @default(now())
-  updatedAt   DateTime                   @updatedAt
-  commands    WorkspaceTerminalCommand[]
-  logs        WorkspaceTerminalLog[]
-  Project     Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User        User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([projectId])
-  @@index([workspaceId])
-  @@index([userId])
-  @@index([active])
-  @@index([startedAt])
-}
-
-model WorkspaceTerminalCommand {
-  id          String                   @id @default(uuid())
-  sessionId   String
-  projectId   String
-  userId      String
-  command     String
-  workingDir  String
-  output      String?
-  errorOutput String?
-  exitCode    Int?
-  duration    Int?
-  timestamp   DateTime                 @default(now())
-  Project     Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  Session     WorkspaceTerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  User        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([projectId])
-  @@index([userId])
-  @@index([timestamp])
-}
-
-model WorkspaceTerminalLog {
-  id         String                   @id @default(uuid())
-  sessionId  String
-  projectId  String
-  userId     String
-  type       String
-  content    String
-  rawContent String?
-  sequence   Int
-  timestamp  DateTime                 @default(now())
-  Project    Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  Session    WorkspaceTerminalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  User       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId, sequence])
-  @@index([projectId])
-  @@index([userId])
-  @@index([type])
-  @@index([timestamp])
-}
-
-model GitConfig {
-  id            String             @id @default(cuid())
-  projectId     String             @unique
-  projectPath   String
-  repoName      String
-  isGitRepo     Boolean
-  isBare        Boolean
-  workingDir    String
-  currentBranch String
-  defaultBranch String
-  isClean       Boolean
-  ahead         Int                @default(0)
-  behind        Int                @default(0)
-  staged        Int                @default(0)
-  modified      Int                @default(0)
-  untracked     Int                @default(0)
-  userName      String?
-  userEmail     String?
-  remotes       Json
-  branches      Json
-  config        Json
-  gitVersion    String?
-  lastFetch     DateTime?
-  syncedAt      DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  Project       Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  history       GitConfigHistory[]
-
-  @@index([projectId])
-  @@index([syncedAt])
-}
-
-model GitConfigHistory {
-  id         String    @id @default(cuid())
-  configId   String
-  projectId  String
-  changeType String
-  fromValue  String?
-  toValue    String?
-  details    Json?
-  userId     String?
-  timestamp  DateTime  @default(now())
-  GitConfig  GitConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  Project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  User       User?     @relation(fields: [userId], references: [id])
-
-  @@index([configId])
-  @@index([projectId])
-  @@index([userId])
-  @@index([timestamp])
-}
-
-// ==================== Knowledge Base Models ====================
-
-model KBIssue {
-  id                String              @id @default(uuid())
-  title             String
-  description       String
-  errorMessage      String?
-  stackTrace        String?
-  severity          String              @default("medium") // critical, high, medium, low, info
-  status            String              @default("open") // open, in_progress, resolved, closed, reopened
-  categoryId        String?
-  environment       String?
-  affectedComponents String[]
-  reproductionSteps String?
-  businessImpact    String?
-  createdBy         String
-  assignedTo        String?
-  resolvedAt        DateTime?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
-  // Relations
-  Category          KBCategory?         @relation(fields: [categoryId], references: [id])
-  Creator           User                @relation("KBIssueCreator", fields: [createdBy], references: [id])
-  Assignee          User?               @relation("KBIssueAssignee", fields: [assignedTo], references: [id])
-  Solutions         KBSolution[]
-  Tags              KBIssueTag[]
-  Relationships     KBIssueRelation[]   @relation("ParentIssue")
-  RelatedTo         KBIssueRelation[]   @relation("RelatedIssue")
-  Attachments       KBAttachment[]
-  SearchIndex       KBSearchIndex[]
-
-  @@index([status])
-  @@index([severity])
-  @@index([categoryId])
-  @@index([createdBy])
-  @@index([assignedTo])
-  @@index([createdAt])
-}
-
-model KBSolution {
-  id                String              @id @default(uuid())
-  issueId           String
-  title             String
-  description       String
-  codeSnippet       String?
-  rootCause         String?
-  preventionSteps   String?
-  effectivenessScore Int               @default(0)
-  verified          Boolean             @default(false)
-  verificationCount Int                @default(0)
-  createdBy         String
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-
-  // Relations
-  Issue             KBIssue             @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  Creator           User                @relation("KBSolutionCreator", fields: [createdBy], references: [id])
-  Feedback          KBSolutionFeedback[]
-  SearchIndex       KBSearchIndex[]
-
-  @@index([issueId])
-  @@index([createdBy])
-  @@index([effectivenessScore])
-}
-
-model KBCategory {
-  id                String              @id @default(uuid())
-  name              String              @unique
-  description       String?
-  parentId          String?
-  color             String?             // hex color code
-  icon              String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-
-  // Relations
-  Parent            KBCategory?         @relation("KBCategoryHierarchy", fields: [parentId], references: [id])
-  Children          KBCategory[]        @relation("KBCategoryHierarchy")
-  Issues            KBIssue[]
-
-  @@index([parentId])
-}
-
-model KBTag {
-  id                String              @id @default(uuid())
-  name              String              @unique
-  description       String?
-  color             String?             // hex color code
-  createdAt         DateTime            @default(now())
-
-  // Relations
-  Issues            KBIssueTag[]
-
-  @@index([name])
-}
-
-model KBIssueTag {
-  id                String              @id @default(uuid())
-  issueId           String
-  tagId             String
-
-  // Relations
-  Issue             KBIssue             @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  Tag               KBTag               @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([issueId, tagId])
-  @@index([issueId])
-  @@index([tagId])
-}
-
-model KBSolutionFeedback {
-  id                String              @id @default(uuid())
-  solutionId        String
-  userId            String
-  rating            Int                 // 1-5
-  comment           String?
-  resolvedIssue     Boolean
-  timeToResolve     Int?                // in minutes
-  createdAt         DateTime            @default(now())
-
-  // Relations
-  Solution          KBSolution          @relation(fields: [solutionId], references: [id], onDelete: Cascade)
-  User              User                @relation(fields: [userId], references: [id])
-
-  @@index([solutionId])
-  @@index([userId])
-  @@index([rating])
-}
-
-model KBIssueRelation {
-  id                String              @id @default(uuid())
-  parentIssueId     String
-  relatedIssueId    String
-  relationshipType  String              // duplicate, related, depends_on, blocks, caused_by
-  createdBy         String
-  createdAt         DateTime            @default(now())
-
-  // Relations
-  ParentIssue       KBIssue             @relation("ParentIssue", fields: [parentIssueId], references: [id], onDelete: Cascade)
-  RelatedIssue      KBIssue             @relation("RelatedIssue", fields: [relatedIssueId], references: [id], onDelete: Cascade)
-  Creator           User                @relation(fields: [createdBy], references: [id])
-
-  @@unique([parentIssueId, relatedIssueId, relationshipType])
-  @@index([parentIssueId])
-  @@index([relatedIssueId])
-}
-
-model KBAttachment {
-  id                String              @id @default(uuid())
-  issueId           String
-  filename          String
-  filePath          String
-  fileSize          Int
-  mimeType          String
-  uploadedBy        String
-  uploadedAt        DateTime            @default(now())
-
-  // Relations
-  Issue             KBIssue             @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  Uploader          User                @relation(fields: [uploadedBy], references: [id])
-
-  @@index([issueId])
-}
-
-model KBSearchIndex {
-  id                String              @id @default(uuid())
-  issueId           String?
-  solutionId        String?
-  contentVector     String?             // Will use for pgvector embedding later
-  contentText       String
-  lastIndexed       DateTime            @default(now())
-
-  // Relations
-  Issue             KBIssue?            @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  Solution          KBSolution?         @relation(fields: [solutionId], references: [id], onDelete: Cascade)
-
-  @@index([issueId])
-  @@index([solutionId])
-  @@index([lastIndexed])
-}
-
-// Project Sidebar Models
-model ProjectPreferences {
+// Market Data Models
+model market_quotes {
   id             String   @id @default(uuid())
-  userId         String
-  projectId      String
-  isPinned       Boolean  @default(false)
-  customIcon     String?
-  customColor    String?
-  sortOrder      Int      @default(0)
-  lastAccessedAt DateTime @default(now())
+  symbol         String
+  price          Float
+  open           Float?
+  high           Float?
+  low            Float?
+  close          Float?
+  previousClose  Float?
+  volume         BigInt?
+  change         Float?
+  changePercent  Float?
+  marketCap      BigInt?
+  delaySeconds   Int?
+  timestamp      DateTime
+  source         String   @default("polygon")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  // Relations
-  User    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, projectId])
-  @@index([userId, isPinned])
-  @@index([userId, lastAccessedAt])
+  @@index([symbol, timestamp])
 }
 
-model UserSidebarSettings {
-  id                   String   @id @default(uuid())
-  userId               String   @unique
-  isCollapsed          Boolean  @default(false)
-  width                Int      @default(250)
-  sortBy               String   @default("lastAccessed")
-  viewMode             String   @default("icons")
-  showStatusIndicators Boolean  @default(true)
-  groupBy              String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+model api_usage_tracking {
+  id                  String   @id @default(uuid())
+  userId              String?
+  endpoint            String
+  method              String
+  statusCode          Int      @default(200)
+  responseTime        Int
+  cacheHit            Boolean  @default(false)
+  apiCallsUsed        Int      @default(1)
+  rateLimitRemaining  Int?
+  timestamp           DateTime @default(now())
+  apiProvider         String   @default("polygon")
+  credits             Int      @default(1)
 
-  // Relations
-  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, timestamp])
+  @@index([endpoint, timestamp])
 }
 
-model ProjectStatusCache {
-  id            String   @id @default(uuid())
-  projectId     String   @unique
-  gitStatus     Json?
-  terminalStatus Json?
-  buildStatus   String?
-  hasErrors     Boolean  @default(false)
-  hasWarnings   Boolean  @default(false)
-  lastUpdatedAt DateTime @default(now())
+// Enhanced Stock Master Data
+model StockMaster {
+  id                    String          @id @default(cuid())
+  symbol                String
+  name                  String
+  exchange              String
+  market                String          // Market enum as string (SET, NYSE, NASDAQ, etc.)
+  country               String          @default("US")
+  currency              String          @default("USD")
+  sector                String?
+  industry              String?
+  description           String?
+  website               String?
+  logo                  String?
+  employees             Int?
+  marketCap             Decimal?        @db.Decimal(20, 2)
+  sharesOutstanding     Decimal?        @db.Decimal(20, 2)
+  peRatio               Decimal?        @db.Decimal(10, 4)
+  eps                   Decimal?        @db.Decimal(10, 4)
+  beta                  Decimal?        @db.Decimal(8, 4)
+  dividendYield         Decimal?        @db.Decimal(8, 4)
+  fiftyTwoWeekHigh      Decimal?        @db.Decimal(10, 4)
+  fiftyTwoWeekLow       Decimal?        @db.Decimal(10, 4)
+  avgVolume             Decimal?        @db.Decimal(20, 2)
+  isActive              Boolean         @default(true)
+  isDelisted            Boolean         @default(false)
+  delistedDate          DateTime?
+  ipoDate               DateTime?
+  fiscalYearEnd         String?         // MM-DD format
+  lastUpdated           DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  createdBy             String?
+  updatedBy             String?
 
   // Relations
-  Project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prices                StockPriceHistory[]
+  realtimePrice         StockRealTimePrice?
+  portfolioPositions    PortfolioPosition[]
+  trades                Trade[]
+  watchlistItems        WatchlistItem[]
 
-  @@index([lastUpdatedAt])
+  @@unique([symbol, market])
+  @@index([symbol])
+  @@index([market])
+  @@index([country])
+  @@index([sector])
+  @@index([isActive])
+  @@index([marketCap])
+  @@map("stock_master")
+}
+
+model StockPriceHistory {
+  id                    String          @id @default(cuid())
+  stockId               String
+  symbol                String          // Denormalized for performance
+  date                  DateTime        @db.Date
+  open                  Decimal         @db.Decimal(10, 4)
+  high                  Decimal         @db.Decimal(10, 4)
+  low                   Decimal         @db.Decimal(10, 4)
+  close                 Decimal         @db.Decimal(10, 4)
+  adjustedClose         Decimal         @db.Decimal(10, 4)
+  volume                Decimal         @db.Decimal(20, 2)
+  change                Decimal?        @db.Decimal(10, 4)
+  changePercent         Decimal?        @db.Decimal(8, 4)
+  source                String          @default("YAHOO") // YAHOO, POLYGON, ALPHA_VANTAGE, etc.
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  // Relations
+  stock                 StockMaster     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([stockId, date])
+  @@index([symbol, date])
+  @@index([date])
+  @@index([source])
+  @@map("stock_price_history")
+}
+
+model StockRealTimePrice {
+  id                    String          @id @default(cuid())
+  stockId               String          @unique
+  symbol                String          // Denormalized for performance
+  price                 Decimal         @db.Decimal(10, 4)
+  change                Decimal         @db.Decimal(10, 4)
+  changePercent         Decimal         @db.Decimal(8, 4)
+  volume                Decimal         @db.Decimal(20, 2)
+  high                  Decimal         @db.Decimal(10, 4)
+  low                   Decimal         @db.Decimal(10, 4)
+  open                  Decimal         @db.Decimal(10, 4)
+  previousClose         Decimal         @db.Decimal(10, 4)
+  marketCap             Decimal?        @db.Decimal(20, 2)
+  timestamp             DateTime
+  source                String          @default("YAHOO")
+  isMarketOpen          Boolean         @default(false)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  // Relations
+  stock                 StockMaster     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([symbol])
+  @@index([timestamp])
+  @@map("stock_realtime_prices")
+}
+
+model Portfolio {
+  id                    String          @id @default(cuid())
+  userId                String
+  name                  String
+  description           String?
+  currency              String          @default("USD")
+  baseCurrency          String          @default("USD") // For multi-currency portfolios
+  isDefault             Boolean         @default(false)
+  isActive              Boolean         @default(true)
+  totalValue            Decimal         @default(0) @db.Decimal(20, 2)
+  totalCost             Decimal         @default(0) @db.Decimal(20, 2)
+  totalGainLoss         Decimal         @default(0) @db.Decimal(20, 2)
+  totalGainLossPercent  Decimal         @default(0) @db.Decimal(8, 4)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  createdBy             String?
+  updatedBy             String?
+
+  // Relations
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions             PortfolioPosition[]
+  trades                Trade[]
+  performance           PortfolioPerformance[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([isDefault])
+  @@map("portfolios_v2")
+}
+
+model PortfolioPosition {
+  id                    String          @id @default(cuid())
+  portfolioId           String
+  stockId               String
+  symbol                String          // Denormalized
+  quantity              Decimal         @db.Decimal(20, 8)
+  averageCost           Decimal         @db.Decimal(10, 4)
+  currentPrice          Decimal         @db.Decimal(10, 4)
+  marketValue           Decimal         @db.Decimal(20, 2)
+  unrealizedGainLoss    Decimal         @db.Decimal(20, 2)
+  unrealizedGainLossPercent Decimal     @db.Decimal(8, 4)
+  realizedGainLoss      Decimal         @default(0) @db.Decimal(20, 2)
+  weight                Decimal         @db.Decimal(8, 4)
+  lastPriceUpdate       DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  // Relations
+  portfolio             Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  stock                 StockMaster     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, stockId])
+  @@index([portfolioId])
+  @@index([stockId])
+  @@map("portfolio_positions_v2")
+}
+
+model Trade {
+  id                    String          @id @default(cuid())
+  portfolioId           String
+  stockId               String
+  symbol                String          // Denormalized
+  market                String          // Market (SET, NYSE, etc.)
+  type                  String          // BUY, SELL, TRANSFER_IN, TRANSFER_OUT
+  quantity              Decimal         @db.Decimal(20, 8)
+  price                 Decimal         @db.Decimal(10, 4)
+  totalAmount           Decimal         @db.Decimal(20, 2)
+  fees                  Decimal         @default(0) @db.Decimal(10, 4)
+  tax                   Decimal         @default(0) @db.Decimal(10, 4)
+  notes                 String?
+  status                String          @default("EXECUTED") // PENDING, EXECUTED, CANCELLED, FAILED
+  executedAt            DateTime
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  createdBy             String?
+
+  // Relations
+  portfolio             Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  stock                 StockMaster     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([stockId])
+  @@index([market])
+  @@index([type])
+  @@index([executedAt])
+  @@index([status])
+  @@map("trades_v2")
+}
+
+model PortfolioPerformance {
+  id                    String          @id @default(cuid())
+  portfolioId           String
+  date                  DateTime        @db.Date
+  totalValue            Decimal         @db.Decimal(20, 2)
+  totalCost             Decimal         @db.Decimal(20, 2)
+  dayReturn             Decimal         @db.Decimal(20, 2)
+  dayReturnPercent      Decimal         @db.Decimal(8, 4)
+  totalReturn           Decimal         @db.Decimal(20, 2)
+  totalReturnPercent    Decimal         @db.Decimal(8, 4)
+  createdAt             DateTime        @default(now())
+
+  // Relations
+  portfolio             Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, date])
+  @@index([portfolioId])
+  @@index([date])
+  @@map("portfolio_performance_v2")
+}
+
+model Watchlist {
+  id                    String          @id @default(cuid())
+  userId                String
+  name                  String
+  description           String?
+  isDefault             Boolean         @default(false)
+  isActive              Boolean         @default(true)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  // Relations
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items                 WatchlistItem[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("watchlists_v2")
+}
+
+model WatchlistItem {
+  id                    String          @id @default(cuid())
+  watchlistId           String
+  stockId               String
+  symbol                String          // Denormalized
+  sortOrder             Int             @default(0)
+  notes                 String?
+  createdAt             DateTime        @default(now())
+
+  // Relations
+  watchlist             Watchlist       @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  stock                 StockMaster     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, stockId])
+  @@index([watchlistId])
+  @@index([stockId])
+  @@map("watchlist_items_v2")
+}
+
+// Legacy stocks model (keep for backward compatibility)
+model stocks {
+  id           String         @id
+  symbol       String         @unique
+  name         String
+  exchange     String?
+  sector       String?
+  industry     String?
+  marketCap    Decimal?
+  description  String?
+  website      String?
+  lastUpdated  DateTime       @default(now())
+  stock_prices stock_prices[]
+
+  @@index([symbol])
+}
+
+model transactions {
+  id          String          @id
+  portfolioId String
+  holdingId   String?
+  type        TransactionType
+  symbol      String
+  quantity    Decimal
+  price       Decimal
+  fees        Decimal         @default(0)
+  total       Decimal
+  notes       String?
+  executedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  holdings    holdings?       @relation(fields: [holdingId], references: [id])
+  portfolios  portfolios      @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([executedAt])
+  @@index([portfolioId])
+  @@index([symbol])
+}
+
+model watchlists {
+  id          String     @id
+  portfolioId String
+  userId      String
+  name        String
+  symbols     String[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  portfolios  portfolios @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@index([userId])
+}
+
+enum TransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  SPLIT
+  TRANSFER_IN
+  TRANSFER_OUT
 }

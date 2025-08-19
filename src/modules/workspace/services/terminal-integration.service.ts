@@ -1,9 +1,12 @@
-import { EventEmitter } from 'events';
-import { terminalConfig, getWebSocketUrl } from '@/config/terminal.config';
-import { terminalSessionManager } from './terminal-session-manager';
-import { createTerminalMultiplexer, TerminalWebSocketMultiplexer } from './terminal-websocket-multiplexer';
-import { terminalService } from './terminal.service';
-import { TerminalSession } from '../types';
+import { EventEmitter } from "events";
+import { terminalConfig, getWebSocketUrl } from "@/config/terminal.config";
+import { terminalSessionManager } from "./terminal-session-manager";
+import {
+  createTerminalMultiplexer,
+  TerminalWebSocketMultiplexer,
+} from "./terminal-websocket-multiplexer";
+import { terminalService } from "./terminal.service";
+import { TerminalSession } from "../types";
 
 /**
  * Terminal Integration Service
@@ -17,7 +20,9 @@ export class TerminalIntegrationService extends EventEmitter {
   constructor() {
     super();
     // Use the standalone WebSocket server on port terminalConfig.websocket.port for system terminals
-    this.wsUrl = process.env.TERMINAL_WS_URL || 'ws://127.0.0.1:terminalConfig.websocket.port';
+    this.wsUrl =
+      process.env.TERMINAL_WS_URL ||
+      "ws://127.0.0.1:terminalConfig.websocket.port";
     // Initialize will be called when needed, not immediately
     // this.initialize();
   }
@@ -43,9 +48,12 @@ export class TerminalIntegrationService extends EventEmitter {
       this.setupTerminalServiceListeners();
 
       this.initialized = true;
-      console.log('Terminal integration service initialized');
+      console.log("Terminal integration service initialized");
     } catch (error) {
-      console.error('Failed to initialize terminal integration service:', error);
+      console.error(
+        "Failed to initialize terminal integration service:",
+        error,
+      );
       throw error;
     }
   }
@@ -54,30 +62,30 @@ export class TerminalIntegrationService extends EventEmitter {
     if (!this.multiplexer) return;
 
     // Handle session connections
-    this.multiplexer.on('session:connected', ({ sessionId }) => {
+    this.multiplexer.on("session:connected", ({ sessionId }) => {
       terminalSessionManager.markConnected(sessionId, sessionId);
     });
 
-    this.multiplexer.on('session:disconnected', ({ sessionId }) => {
+    this.multiplexer.on("session:disconnected", ({ sessionId }) => {
       terminalSessionManager.markDisconnected(sessionId);
     });
 
     // Handle session data
-    this.multiplexer.on('session:data', ({ sessionId, data }) => {
+    this.multiplexer.on("session:data", ({ sessionId, data }) => {
       terminalSessionManager.addOutput(sessionId, data);
     });
 
     // Handle session errors
-    this.multiplexer.on('session:error', ({ sessionId, error }) => {
+    this.multiplexer.on("session:error", ({ sessionId, error }) => {
       console.error(`Session ${sessionId} error:`, error);
-      this.emit('session:error', { sessionId, error });
+      this.emit("session:error", { sessionId, error });
     });
   }
 
   private setupSessionManagerListeners() {
     // Handle session creation
-    terminalSessionManager.on('session:created', (session: TerminalSession) => {
-      console.log('Session created:', session.id);
+    terminalSessionManager.on("session:created", (session: TerminalSession) => {
+      console.log("Session created:", session.id);
       // Auto-connect if multiplexer is available
       if (this.multiplexer) {
         this.connectSession(session.id, session.projectId, session.type);
@@ -85,12 +93,12 @@ export class TerminalIntegrationService extends EventEmitter {
     });
 
     // Handle session updates
-    terminalSessionManager.on('session:updated', (session: TerminalSession) => {
-      this.emit('session:updated', session);
+    terminalSessionManager.on("session:updated", (session: TerminalSession) => {
+      this.emit("session:updated", session);
     });
 
     // Handle session closure
-    terminalSessionManager.on('session:closed', ({ sessionId }) => {
+    terminalSessionManager.on("session:closed", ({ sessionId }) => {
       if (this.multiplexer) {
         this.multiplexer.disconnectSession(sessionId);
       }
@@ -99,27 +107,27 @@ export class TerminalIntegrationService extends EventEmitter {
     });
 
     // Handle output from session manager
-    terminalSessionManager.on('session:output', ({ sessionId, data }) => {
+    terminalSessionManager.on("session:output", ({ sessionId, data }) => {
       // Forward to connected clients
-      this.emit('output', { sessionId, data });
+      this.emit("output", { sessionId, data });
     });
   }
 
   private setupTerminalServiceListeners() {
     // Handle terminal output
-    terminalService.on('output', (message) => {
+    terminalService.on("output", (message) => {
       const { sessionId, data } = message;
       // Add to session manager
       terminalSessionManager.addOutput(sessionId, data);
       // Forward to clients
-      this.emit('output', { sessionId, data });
+      this.emit("output", { sessionId, data });
     });
 
     // Handle terminal exit
-    terminalService.on('exit', async ({ sessionId, exitCode }) => {
+    terminalService.on("exit", async ({ sessionId, exitCode }) => {
       console.log(`Terminal ${sessionId} exited with code ${exitCode}`);
       await terminalSessionManager.updateSessionStatus(sessionId, false);
-      this.emit('session:exit', { sessionId, exitCode });
+      this.emit("session:exit", { sessionId, exitCode });
     });
   }
 
@@ -128,10 +136,10 @@ export class TerminalIntegrationService extends EventEmitter {
    */
   async createSession(
     projectId: string,
-    type: 'system' | 'claude',
+    type: "system" | "claude",
     tabName: string,
     projectPath: string,
-    userId?: string
+    userId?: string,
   ): Promise<TerminalSession> {
     try {
       // Create or restore session in session manager
@@ -140,16 +148,18 @@ export class TerminalIntegrationService extends EventEmitter {
         type,
         tabName,
         projectPath,
-        userId
+        userId,
       );
 
       // NOTE: WebSocket connection will be handled directly by frontend
       // The standalone WebSocket servers are independent and don't need multiplexer
-      console.log(`Created terminal session ${session.id} for ${type} terminal`);
-      
+      console.log(
+        `Created terminal session ${session.id} for ${type} terminal`,
+      );
+
       return session;
     } catch (error) {
-      console.error('Failed to create terminal session:', error);
+      console.error("Failed to create terminal session:", error);
       throw error;
     }
   }
@@ -158,9 +168,15 @@ export class TerminalIntegrationService extends EventEmitter {
    * Connect to an existing session via WebSocket
    * NOTE: This is handled directly by frontend connecting to standalone WebSocket servers
    */
-  async connectSession(sessionId: string, projectId: string, type: 'system' | 'claude') {
+  async connectSession(
+    sessionId: string,
+    projectId: string,
+    type: "system" | "claude",
+  ) {
     // No-op - connection is handled by standalone WebSocket servers
-    console.log(`Session ${sessionId} connection will be handled by standalone ${type === 'claude' ? 'Claude' : 'System'} WebSocket server`);
+    console.log(
+      `Session ${sessionId} connection will be handled by standalone ${type === "claude" ? "Claude" : "System"} WebSocket server`,
+    );
   }
 
   /**
@@ -234,7 +250,10 @@ export class TerminalIntegrationService extends EventEmitter {
   /**
    * Get sessions by type for a project
    */
-  getProjectSessionsByType(projectId: string, type: 'system' | 'claude'): TerminalSession[] {
+  getProjectSessionsByType(
+    projectId: string,
+    type: "system" | "claude",
+  ): TerminalSession[] {
     return terminalSessionManager.getProjectSessionsByType(projectId, type);
   }
 
@@ -264,8 +283,8 @@ export class TerminalIntegrationService extends EventEmitter {
    * Cleanup and shutdown
    */
   async shutdown() {
-    console.log('Shutting down terminal integration service...');
-    
+    console.log("Shutting down terminal integration service...");
+
     // Destroy multiplexer
     if (this.multiplexer) {
       this.multiplexer.destroy();
@@ -287,14 +306,14 @@ export class TerminalIntegrationService extends EventEmitter {
 export const terminalIntegration = new TerminalIntegrationService();
 
 // Cleanup on process exit
-process.on('beforeExit', () => {
+process.on("beforeExit", () => {
   terminalIntegration.shutdown();
 });
 
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   terminalIntegration.shutdown().then(() => process.exit(0));
 });
 
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   terminalIntegration.shutdown().then(() => process.exit(0));
 });

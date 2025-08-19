@@ -1,5 +1,5 @@
 // Re-export terminal types for convenience
-export * from './terminal.types';
+export * from "./terminal.types";
 
 export interface Project {
   id: string;
@@ -16,7 +16,7 @@ export interface Project {
 
 export interface FileNode {
   name: string;
-  type: 'file' | 'directory';
+  type: "file" | "directory";
   path: string;
   children?: FileNode[];
   size?: number;
@@ -28,14 +28,14 @@ export interface Script {
   name: string;
   command: string;
   description?: string;
-  category?: 'dev' | 'build' | 'test' | 'deploy' | 'custom';
+  category?: "dev" | "build" | "test" | "deploy" | "custom";
   icon?: string;
 }
 
 export interface TerminalSession {
   id: string;
   projectId: string;
-  type: 'system' | 'claude';
+  type: "system" | "claude";
   tabName: string;
   active: boolean;
   output: string[];
@@ -45,7 +45,7 @@ export interface TerminalSession {
 }
 
 export interface ProjectSettings {
-  theme?: 'dark' | 'light';
+  theme?: "dark" | "light";
   fontSize?: number;
   fontFamily?: string;
   terminalHeight?: number;
@@ -85,7 +85,7 @@ export interface ProjectTemplate {
   envVariables: Record<string, string>;
 }
 
-export type TerminalType = 'system' | 'claude';
+export type TerminalType = "system" | "claude";
 
 export interface CreateProjectDTO {
   name: string;
@@ -104,7 +104,7 @@ export interface UpdateProjectDTO {
 }
 
 export interface TerminalMessage {
-  type: 'command' | 'output' | 'error' | 'info' | 'clear';
+  type: "command" | "output" | "error" | "info" | "clear";
   data: string;
   sessionId: string;
   timestamp: Date;

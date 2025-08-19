@@ -1,4 +1,4 @@
-import { prisma } from '@/core/database/prisma';
+import { prisma } from "@/core/database/prisma";
 
 interface ConfigValue {
   id?: string;
@@ -17,7 +17,7 @@ export class SettingsService {
   async getSystemConfig(key?: string, category?: string) {
     if (key) {
       const config = await prisma.systemConfig.findUnique({
-        where: { key }
+        where: { key },
       });
       return config ? config.value : null;
     }
@@ -25,11 +25,16 @@ export class SettingsService {
     const where = category ? { category } : {};
     return await prisma.systemConfig.findMany({
       where,
-      orderBy: [{ category: 'asc' }, { key: 'asc' }]
+      orderBy: [{ category: "asc" }, { key: "asc" }],
     });
   }
 
-  async setSystemConfig(key: string, value: any, category: string, description?: string) {
+  async setSystemConfig(
+    key: string,
+    value: any,
+    category: string,
+    description?: string,
+  ) {
     return await prisma.systemConfig.upsert({
       where: { key },
       create: {
@@ -41,20 +46,20 @@ export class SettingsService {
         description,
         isPublic: false,
         isEditable: true,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       update: {
         value,
         type: typeof value,
         category,
-        description
-      }
+        description,
+      },
     });
   }
 
   async deleteSystemConfig(key: string) {
     return await prisma.systemConfig.delete({
-      where: { key }
+      where: { key },
     });
   }
 
@@ -64,7 +69,7 @@ export class SettingsService {
   async getUserConfig(userId: string, key?: string, category?: string) {
     if (key) {
       const config = await prisma.userConfig.findUnique({
-        where: { userId_key: { userId, key } }
+        where: { userId_key: { userId, key } },
       });
       return config ? config.value : null;
     }
@@ -74,29 +79,34 @@ export class SettingsService {
 
     return await prisma.userConfig.findMany({
       where,
-      orderBy: [{ category: 'asc' }, { key: 'asc' }]
+      orderBy: [{ category: "asc" }, { key: "asc" }],
     });
   }
 
-  async setUserConfig(userId: string, key: string, value: any, category: string) {
+  async setUserConfig(
+    userId: string,
+    key: string,
+    value: any,
+    category: string,
+  ) {
     return await prisma.userConfig.upsert({
       where: { userId_key: { userId, key } },
       create: {
         userId,
         key,
         value,
-        category
+        category,
       },
       update: {
         value,
-        category
-      }
+        category,
+      },
     });
   }
 
   async deleteUserConfig(userId: string, key: string) {
     return await prisma.userConfig.delete({
-      where: { userId_key: { userId, key } }
+      where: { userId_key: { userId, key } },
     });
   }
 
@@ -113,7 +123,7 @@ export class SettingsService {
   async getApiConfig(userId: string, key?: string, category?: string) {
     if (key) {
       const config = await prisma.userConfig.findUnique({
-        where: { userId_key: { userId, key } }
+        where: { userId_key: { userId, key } },
       });
       return config ? config.value : null;
     }
@@ -123,23 +133,29 @@ export class SettingsService {
 
     return await prisma.userConfig.findMany({
       where,
-      orderBy: [{ category: 'asc' }, { key: 'asc' }]
+      orderBy: [{ category: "asc" }, { key: "asc" }],
     });
   }
 
-  async setApiConfig(userId: string, key: string, value: any, category: string, description?: string) {
+  async setApiConfig(
+    userId: string,
+    key: string,
+    value: any,
+    category: string,
+    description?: string,
+  ) {
     return await prisma.userConfig.upsert({
       where: { userId_key: { userId, key } },
       create: {
         userId,
         key,
         value,
-        category
+        category,
       },
       update: {
         value,
-        category
-      }
+        category,
+      },
     });
   }
 
@@ -151,7 +167,7 @@ export class SettingsService {
 
   async deleteApiConfig(userId: string, key: string) {
     return await prisma.userConfig.delete({
-      where: { userId_key: { userId, key } }
+      where: { userId_key: { userId, key } },
     });
   }
 
@@ -159,40 +175,40 @@ export class SettingsService {
    * Bulk operations
    */
   async setUserConfigs(userId: string, configs: ConfigValue[]) {
-    const operations = configs.map(config => 
+    const operations = configs.map((config) =>
       prisma.userConfig.upsert({
         where: { userId_key: { userId, key: config.key } },
         create: {
           userId,
           key: config.key,
           value: config.value,
-          category: config.category
+          category: config.category,
         },
         update: {
           value: config.value,
-          category: config.category
-        }
-      })
+          category: config.category,
+        },
+      }),
     );
 
     return await prisma.$transaction(operations);
   }
 
   async setApiConfigs(userId: string, configs: ConfigValue[]) {
-    const operations = configs.map(config => 
+    const operations = configs.map((config) =>
       prisma.userConfig.upsert({
         where: { userId_key: { userId, key: config.key } },
         create: {
           userId,
           key: config.key,
           value: config.value,
-          category: config.category
+          category: config.category,
         },
         update: {
           value: config.value,
-          category: config.category
-        }
-      })
+          category: config.category,
+        },
+      }),
     );
 
     return await prisma.$transaction(operations);
@@ -204,12 +220,12 @@ export class SettingsService {
   getDefaultUserSettings() {
     return {
       preferences: {
-        theme: 'light',
-        language: 'en',
-        timezone: 'UTC',
-        dateFormat: 'MM/DD/YYYY',
-        timeFormat: '12h',
-        firstDayOfWeek: 'sunday'
+        theme: "light",
+        language: "en",
+        timezone: "UTC",
+        dateFormat: "MM/DD/YYYY",
+        timeFormat: "12h",
+        firstDayOfWeek: "sunday",
       },
       notifications: {
         email: true,
@@ -217,34 +233,34 @@ export class SettingsService {
         sms: false,
         desktop: true,
         sound: true,
-        vibration: true
+        vibration: true,
       },
       privacy: {
-        profileVisibility: 'public',
+        profileVisibility: "public",
         showEmail: false,
         showPhone: false,
         showLocation: false,
         allowMessages: true,
-        allowInvites: true
+        allowInvites: true,
       },
       display: {
-        density: 'comfortable',
-        fontSize: 'medium',
+        density: "comfortable",
+        fontSize: "medium",
         animations: true,
         reducedMotion: false,
         highContrast: false,
-        colorBlindMode: 'none'
+        colorBlindMode: "none",
       },
       ai_assistant: {
         responseTimeout: 60,
         maxContextMessages: 10,
-        modelSelection: 'claude-3-sonnet',
+        modelSelection: "claude-3-sonnet",
         temperature: 0.7,
         maxTokens: 4096,
-        languagePreference: 'en',
+        languagePreference: "en",
         autoSaveConversations: true,
-        debugMode: false
-      }
+        debugMode: false,
+      },
     };
   }
 
@@ -252,12 +268,12 @@ export class SettingsService {
     return {
       responseTimeout: 60,
       maxContextMessages: 10,
-      modelSelection: 'claude-3-sonnet',
+      modelSelection: "claude-3-sonnet",
       temperature: 0.7,
       maxTokens: 4096,
-      languagePreference: 'en',
+      languagePreference: "en",
       autoSaveConversations: true,
-      debugMode: false
+      debugMode: false,
     };
   }
 
@@ -268,21 +284,21 @@ export class SettingsService {
         maxRequestsPerDay: 10000,
         maxTokensPerRequest: process.env.PORT || 4000,
         maxConcurrentRequests: 10,
-        requestTimeout: 30000
+        requestTimeout: 30000,
       },
       webhooks: {
         enabled: false,
         retryAttempts: 3,
         retryDelay: 1000,
         timeout: 5000,
-        verifySSL: true
+        verifySSL: true,
       },
       integrations: {
         github: { enabled: false },
         gitlab: { enabled: false },
         slack: { enabled: false },
         discord: { enabled: false },
-        webhook: { enabled: false }
+        webhook: { enabled: false },
       },
       security: {
         ipWhitelist: [],
@@ -290,8 +306,8 @@ export class SettingsService {
         requireHTTPS: true,
         enableCORS: false,
         allowedOrigins: [],
-        enableRateLimiting: true
-      }
+        enableRateLimiting: true,
+      },
     };
   }
 
@@ -300,10 +316,10 @@ export class SettingsService {
       api: {
         defaultRateLimit: 1000,
         maxRateLimit: 10000,
-        defaultTokenExpiry: '30d',
-        maxTokenExpiry: '1y',
+        defaultTokenExpiry: "30d",
+        maxTokenExpiry: "1y",
         enablePublicAPI: true,
-        requireEmailVerification: false
+        requireEmailVerification: false,
       },
       user: {
         allowRegistration: true,
@@ -313,45 +329,45 @@ export class SettingsService {
         passwordRequireLowercase: true,
         passwordRequireNumbers: true,
         passwordRequireSpecial: false,
-        sessionTimeout: '24h',
+        sessionTimeout: "24h",
         maxLoginAttempts: 5,
-        lockoutDuration: '30m'
+        lockoutDuration: "30m",
       },
       system: {
         maintenanceMode: false,
         debugMode: false,
-        logLevel: 'info',
-        maxUploadSize: '10MB',
-        allowedFileTypes: ['jpg', 'png', 'pdf', 'doc', 'docx'],
-        dataRetentionDays: 90
+        logLevel: "info",
+        maxUploadSize: "10MB",
+        allowedFileTypes: ["jpg", "png", "pdf", "doc", "docx"],
+        dataRetentionDays: 90,
       },
       email: {
-        provider: 'smtp',
-        from: 'noreply@example.com',
-        smtpHost: 'smtp.gmail.com',
+        provider: "smtp",
+        from: "noreply@example.com",
+        smtpHost: "smtp.gmail.com",
         smtpPort: 587,
         smtpSecure: false,
-        smtpUser: '',
-        smtpPass: ''
+        smtpUser: "",
+        smtpPass: "",
       },
       storage: {
-        provider: 'local',
-        localPath: './uploads',
-        s3Bucket: '',
-        s3Region: '',
-        s3AccessKey: '',
-        s3SecretKey: '',
-        maxFileSize: '10MB'
+        provider: "local",
+        localPath: "./uploads",
+        s3Bucket: "",
+        s3Region: "",
+        s3AccessKey: "",
+        s3SecretKey: "",
+        maxFileSize: "10MB",
       },
       security: {
         enableTwoFactor: false,
         enableCaptcha: false,
-        captchaProvider: 'recaptcha',
-        captchaSiteKey: '',
-        captchaSecretKey: '',
+        captchaProvider: "recaptcha",
+        captchaSiteKey: "",
+        captchaSecretKey: "",
         enableCSRF: true,
-        enableXSS: true
-      }
+        enableXSS: true,
+      },
     };
   }
 }

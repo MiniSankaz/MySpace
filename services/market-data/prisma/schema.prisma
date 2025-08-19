@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Market Data Models - These are NEW tables, won't conflict with existing ones
+model MarketQuote {
+  id             String   @id @default(uuid())
+  symbol         String
+  price          Float
+  open           Float?
+  high           Float?
+  low            Float?
+  close          Float?
+  previousClose  Float?
+  volume         BigInt?
+  change         Float?
+  changePercent  Float?
+  marketCap      BigInt?
+  delaySeconds   Int?
+  timestamp      DateTime
+  source         String   @default("polygon")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([symbol, timestamp])
+  @@map("market_quotes")
+}
+
+model MarketBar {
+  id           String   @id @default(uuid())
+  symbol       String
+  timestamp    DateTime
+  open         Float
+  high         Float
+  low          Float
+  close        Float
+  volume       BigInt
+  vwap         Float?
+  timeframe    String   // 1min, 5min, 1hour, 1day
+  createdAt    DateTime @default(now())
+
+  @@unique([symbol, timestamp, timeframe])
+  @@index([symbol, timeframe])
+  @@map("market_bars")
+}
+
+model MarketSymbol {
+  id           String   @id @default(uuid())
+  symbol       String   @unique
+  name         String
+  exchange     String?
+  type         String?  // stock, etf, crypto
+  currency     String?
+  country      String?
+  sector       String?
+  industry     String?
+  marketCap    Float?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("market_symbols")
+}
+
+model ApiUsageTracking {
+  id                  String   @id @default(uuid())
+  userId              String?
+  endpoint            String
+  method              String
+  statusCode          Int      @default(200)
+  responseTime        Int
+  cacheHit            Boolean  @default(false)
+  apiCallsUsed        Int      @default(1)
+  rateLimitRemaining  Int?
+  timestamp           DateTime @default(now())
+  apiProvider         String   @default("polygon")
+  credits             Int      @default(1)
+
+  @@index([userId, timestamp])
+  @@index([endpoint, timestamp])
+  @@map("api_usage_tracking")
+}
+
+// Reference to main database transaction table (just for queries)
+model Transaction {
+  id          String   @id
+  symbol      String
+  
+  @@map("transactions")
+}
