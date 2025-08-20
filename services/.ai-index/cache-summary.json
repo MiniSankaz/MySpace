@@ -1,0 +1,52 @@
+{
+  "lastUpdate": "2025-08-19T17:04:23.033Z",
+  "services": [
+    {
+      "name": "ai-assistant",
+      "files": 29,
+      "lastModified": 1755615489000
+    },
+    {
+      "name": "gateway",
+      "files": 10,
+      "lastModified": 1755622641000
+    },
+    {
+      "name": "market-data",
+      "files": 10,
+      "lastModified": 1755615489000
+    },
+    {
+      "name": "monitoring",
+      "files": 4,
+      "lastModified": 1755615489000
+    },
+    {
+      "name": "portfolio",
+      "files": 34,
+      "lastModified": 1755622682000
+    },
+    {
+      "name": "terminal",
+      "files": 6,
+      "lastModified": 1755615489000
+    },
+    {
+      "name": "testing",
+      "files": 9,
+      "lastModified": 1755619752000
+    },
+    {
+      "name": "user-management",
+      "files": 7,
+      "lastModified": 1755615489000
+    },
+    {
+      "name": "workspace",
+      "files": 5,
+      "lastModified": 1755615490000
+    }
+  ],
+  "totalFiles": 114,
+  "totalSize": 0
+}

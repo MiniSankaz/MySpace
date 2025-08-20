@@ -1,6 +1,7 @@
 // Load environment variables FIRST before any other imports
-import dotenv from "dotenv";
-import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort, getServicePort } from '@shared/config/ports.config';
+import * as dotenv from "dotenv";
+// TODO: Fix shared config import after project restructure
+// import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort, getServicePort } from '@shared/config/ports.config';
 dotenv.config();
 
 import express from "express";
@@ -27,7 +28,7 @@ import { ClaudeService } from "./services/claude.service";
 // import chatRoutes from "./routes/chat.routes";
 // import chatCliRoutes from './routes/chat-cli.routes';  // Temporarily disabled for testing
 import folderRoutes from "./routes/folder.routes";
-// TEMPORARILY DISABLED: Causing duplicate service registrations during system upgrade
+// TEMPORARILY DISABLED: Orchestration routes causing crashes after initialization
 // import aiOrchestrationRoutes from "./routes/ai-orchestration.routes";
 // TEMPORARILY DISABLED: Causing service crashes during system upgrade
 // import ephemeralRoutes from "./routes/chat-ephemeral.routes";
@@ -36,7 +37,7 @@ const app = express();
 const server = createServer(app);
 const io = new SocketServer(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || `http://localhost:${getGatewayPort()}`,
+    origin: process.env.FRONTEND_URL || "http://localhost:4110",
     credentials: true,
   },
 });
@@ -44,7 +45,7 @@ const io = new SocketServer(server, {
 // Check if we're using Claude CLI or API
 const useCLI = process.env.USE_CLAUDE_CLI !== "false";
 
-const PORT = process.env.PORT || getServicePort('aiAssistant');
+const PORT = process.env.PORT || 4130;
 const SERVICE_NAME = "ai-assistant";
 
 // Initialize services
@@ -61,7 +62,7 @@ app.use(
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || `http://localhost:${getGatewayPort()}`,
+    origin: process.env.FRONTEND_URL || "http://localhost:4110",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -305,7 +306,7 @@ app.get("/info", (req, res) => {
 // app.use("/chat", chatRoutes);
 // app.use('/chat-cli', chatCliRoutes);  // Temporarily disabled for testing
 app.use("/", folderRoutes); // Folders routes are at root level
-// TEMPORARILY DISABLED: Causing duplicate service registrations during system upgrade  
+// TEMPORARILY DISABLED: Orchestration routes causing crashes after initialization
 // app.use("/api/v1/ai", aiOrchestrationRoutes); // AI Features routes
 // TEMPORARILY DISABLED: Causing service crashes during system upgrade
 // app.use("/api/v1/chat", ephemeralRoutes); // Fair Use Policy compliant routes
@@ -363,19 +364,22 @@ const startServer = async () => {
 
     try {
       conversationService = new ConversationService();
+      logger.info("ConversationService initialized successfully");
     } catch (error) {
-      logger.warn("ConversationService initialization failed:", error);
+      logger.error("ConversationService initialization failed:", error);
     }
 
     try {
       claudeService = new ClaudeService();
+      logger.info("ClaudeService initialized successfully");
     } catch (error) {
-      logger.warn("ClaudeService initialization failed:", error);
+      logger.error("ClaudeService initialization failed:", error);
     }
 
     webSocketService = new WebSocketService(io);
+    logger.info("WebSocketService initialized successfully");
 
-    logger.info("Services initialized successfully");
+    logger.info("All services initialized successfully");
 
     // Test Claude API connection (only if not using CLI mode)
     if (useCLI) {

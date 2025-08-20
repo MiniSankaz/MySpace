@@ -1,8 +1,9 @@
 import axios from 'axios';
-import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort } from '@/shared/config/ports.config';
+// import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort } from '@/shared/config/ports.config';
 import { logger } from '../utils/logger';
 import { Market } from '../types';
 import { MarketValidationService } from './market-validation.service';
+import { redisCache, RedisCacheService } from './redis-cache.service';
 
 interface MarketQuote {
   symbol: string;
@@ -58,14 +59,29 @@ enum ApiProvider {
 export class MarketDataService {
   private baseUrl: string;
   private cache: Map<string, { data: MarketQuote; timestamp: number }>;
-  private cacheTTL: number = 30000; // 30 seconds cache
+  private cacheTTL: number = 60; // 60 seconds cache (in seconds for Redis)
+  private memoryCacheTTL: number = 30000; // 30 seconds for in-memory cache (milliseconds)
   private yahooBaseUrl: string = 'https://query1.finance.yahoo.com/v8/finance/chart';
   private apiFailureCount: Map<string, number> = new Map();
   private maxRetries: number = 3;
+  private batchRequestQueue: Map<string, Promise<MarketQuote>> = new Map();
+  private isRedisInitialized: boolean = false;
 
   constructor() {
-    this.baseUrl = process.env.MARKET_DATA_URL || `http://${getServiceUrl("marketData")}`;
+    this.baseUrl = process.env.MARKET_DATA_URL || "http://localhost:4170"; // Default Market Data service port
     this.cache = new Map();
+    this.initializeRedis();
+  }
+
+  private async initializeRedis(): Promise<void> {
+    try {
+      await redisCache.connect();
+      this.isRedisInitialized = true;
+      logger.info('Redis cache initialized for market data service');
+    } catch (error) {
+      logger.warn('Redis cache initialization failed, falling back to in-memory cache:', error);
+      this.isRedisInitialized = false;
+    }
   }
 
   /**
@@ -106,7 +122,7 @@ export class MarketDataService {
         }
 
         const currentPrice = meta.regularMarketPrice || quote.close?.[quote.close.length - 1] || 0;
-        const previousClose = meta.previousClose || meta.chartPreviousClose || quote.close?.[quote.close.length - 2] || currentPrice;
+        const previousClose = meta.previousClose || (meta as any).chartPreviousClose || quote.close?.[quote.close.length - 2] || currentPrice;
         const change = currentPrice - previousClose;
         const changePercent = previousClose !== 0 ? (change / previousClose) * 100 : 0;
 
@@ -200,10 +216,28 @@ export class MarketDataService {
    * Get full quote data for a symbol with fallback support
    */
   async getQuote(symbol: string): Promise<MarketQuote> {
-    // Check cache first
+    // Check Redis cache first
+    if (redisCache.isAvailable()) {
+      const cacheKey = RedisCacheService.createMarketDataKey(symbol);
+      const cachedData = await redisCache.get<MarketQuote>(cacheKey);
+      if (cachedData) {
+        logger.debug(`Redis cache hit for symbol: ${symbol}`);
+        return cachedData;
+      }
+    }
+    
+    // Check in-memory cache as fallback
     const cached = this.cache.get(symbol);
-    if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+    if (cached && Date.now() - cached.timestamp < this.memoryCacheTTL) {
+      logger.debug(`Memory cache hit for symbol: ${symbol}`);
       return cached.data;
+    }
+    
+    // Check if there's already a request in progress for this symbol
+    const existingRequest = this.batchRequestQueue.get(symbol);
+    if (existingRequest) {
+      logger.debug(`Reusing existing request for symbol: ${symbol}`);
+      return existingRequest;
     }
 
     // Try primary API first unless it has too many failures
@@ -217,11 +251,8 @@ export class MarketDataService {
         if (response.data?.success && response.data?.data) {
           const quote = response.data.data;
           
-          // Update cache and reset failure count on success
-          this.cache.set(symbol, {
-            data: quote,
-            timestamp: Date.now()
-          });
+          // Update both caches and reset failure count on success
+          await this.updateCaches(symbol, quote);
           this.apiFailureCount.set(ApiProvider.PRIMARY, 0);
           
           logger.debug(`Successfully fetched quote for ${symbol} from primary API`);
@@ -241,11 +272,8 @@ export class MarketDataService {
     try {
       const quote = await this.getYahooQuote(symbol);
       
-      // Update cache
-      this.cache.set(symbol, {
-        data: quote,
-        timestamp: Date.now()
-      });
+      // Update both caches
+      await this.updateCaches(symbol, quote);
       
       logger.info(`Successfully fetched quote for ${symbol} from Yahoo Finance backup`);
       return quote;
@@ -389,6 +417,59 @@ export class MarketDataService {
       
       return quotes.sort((a, b) => symbols.indexOf(a.symbol) - symbols.indexOf(b.symbol));
     }
+  }
+
+  /**
+   * Update both Redis and in-memory caches
+   */
+  private async updateCaches(symbol: string, quote: MarketQuote): Promise<void> {
+    // Update in-memory cache
+    this.cache.set(symbol, {
+      data: quote,
+      timestamp: Date.now()
+    });
+    
+    // Update Redis cache if available
+    if (redisCache.isAvailable()) {
+      const cacheKey = RedisCacheService.createMarketDataKey(symbol);
+      await redisCache.set(cacheKey, quote, { ttl: this.cacheTTL });
+    }
+  }
+  
+  /**
+   * Clear cache for a specific symbol
+   */
+  async clearCache(symbol?: string): Promise<void> {
+    if (symbol) {
+      this.cache.delete(symbol);
+      if (redisCache.isAvailable()) {
+        const cacheKey = RedisCacheService.createMarketDataKey(symbol);
+        await redisCache.del(cacheKey);
+      }
+    } else {
+      // Clear all caches
+      this.cache.clear();
+      if (redisCache.isAvailable()) {
+        await redisCache.flush();
+      }
+    }
+  }
+  
+  /**
+   * Get cache statistics
+   */
+  async getCacheStats(): Promise<{ 
+    memoryCache: number; 
+    redisCache: { connected: boolean; keys: number; memory?: string };
+    hitRate: number;
+  }> {
+    const redisStats = await redisCache.getStats();
+    
+    return {
+      memoryCache: this.cache.size,
+      redisCache: redisStats,
+      hitRate: 0 // Will be calculated based on actual hits/misses
+    };
   }
 
   /**

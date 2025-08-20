@@ -124,7 +124,7 @@ export class MarketValidationService {
     const isOpen = isMarketOpen(market);
     
     // Default trading hours (simplified)
-    const marketHours = {
+    const marketHours: Record<string, { open: string; close: string }> = {
       [Market.NYSE]: { open: '09:30', close: '16:00' },
       [Market.NASDAQ]: { open: '09:30', close: '16:00' },
       [Market.NYSE_ARCA]: { open: '09:30', close: '16:00' },
@@ -137,7 +137,7 @@ export class MarketValidationService {
       [Market.ASX]: { open: '10:00', close: '16:00' }
     };
     
-    const hours = marketHours[market] || { open: '09:00', close: '17:00' };
+    const hours = marketHours[market as string] || { open: '09:00', close: '17:00' };
     
     return {
       timezone: info.timezone,

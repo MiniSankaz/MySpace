@@ -49,6 +49,44 @@
 - [Next steps]
 ```
 
+### 🧪 Testing & Validation Procedures
+
+**Auto-Approved Testing Commands:**
+Agents can execute these commands WITHOUT requesting permission:
+
+1. **Health & Status Checks**
+   - `curl -s http://localhost:*/health`
+   - `curl -s http://localhost:*/api/health`
+   - `curl -s http://127.0.0.1:*/health`
+   - Service status verification
+   - API endpoint availability
+
+2. **Test Suite Execution**
+   - `npm test`, `npm run test:*`
+   - `./test-*.sh` scripts
+   - `./scripts/test-*.sh`
+   - Testing Service API calls (port 4180)
+
+3. **Validation Commands**
+   - `curl http://localhost:4180/api/v1/test/validate`
+   - `curl http://localhost:4180/api/v1/test/results`
+   - Pre-execution safety checks
+   - Test result verification
+
+4. **API Testing**
+   - `curl -X GET http://localhost:*/api/v1/*`
+   - `curl -X POST http://localhost:*/api/v1/test/*`
+   - `curl -s http://localhost:4110/services`
+   - Gateway routing tests
+
+**Commands Requiring Approval:**
+- Database modifications (DELETE, DROP, TRUNCATE)
+- File system changes outside project directory
+- External API calls (non-localhost)
+- Production deployments
+- System configuration changes
+- User data modifications
+
 ---
 
 ## 🔍 Code Reviewer Agent SOPs

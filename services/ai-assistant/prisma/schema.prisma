@@ -2091,7 +2091,6 @@ model assistant_message_legacy {
   @@index([createdAt], map: "AssistantMessage_createdAt_idx")
 }
 
-// Fair Use Policy Compliance Tables
 model usage_tracking {
   id            String   @id @default(uuid())
   user_id       String
@@ -2108,15 +2107,15 @@ model usage_tracking {
 }
 
 model user_context {
-  id                 String   @id @default(uuid())
-  user_id            String   @unique
+  id                 String    @id @default(uuid())
+  user_id            String    @unique
   context_summary    String?
   recent_messages    Json?
   system_prompt      String?
-  total_interactions Int      @default(0)
+  total_interactions Int       @default(0)
   last_interaction   DateTime?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @default(now()) @updatedAt
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @default(now()) @updatedAt
 
   @@index([user_id])
   @@index([updated_at(sort: Desc)])
@@ -2125,7 +2124,7 @@ model user_context {
 model rate_limits {
   id         String   @id @default(uuid())
   user_id    String
-  limit_type String   // 'minute', 'hour', 'day'
+  limit_type String
   count      Int      @default(0)
   reset_at   DateTime
   created_at DateTime @default(now())

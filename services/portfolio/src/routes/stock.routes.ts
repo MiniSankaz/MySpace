@@ -1,11 +1,13 @@
 import { Router, Request, Response } from "express";
 import { MockPrismaClient } from "../types/mock-db";
 import { StockService } from "../services/stock.service";
+import { MarketDataService } from "../services/market-data.service";
 import { logger } from "../utils/logger";
 
 const router = Router();
 const prisma = new MockPrismaClient();
 const stockService = new StockService(prisma);
+const marketDataService = new MarketDataService();
 
 // Search stocks
 router.get("/search", async (req: Request, res: Response) => {
@@ -80,6 +82,83 @@ router.get("/:symbol/history", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error("Error fetching stock history:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get current quote for a stock
+router.get("/:symbol/quote", async (req: Request, res: Response) => {
+  try {
+    const quote = await marketDataService.getQuote(req.params.symbol.toUpperCase());
+    res.json({
+      success: true,
+      data: quote,
+    });
+  } catch (error: any) {
+    logger.error("Error fetching stock quote:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get quotes for multiple stocks
+router.get("/quotes", async (req: Request, res: Response) => {
+  try {
+    const symbols = (req.query.symbols as string)?.split(',').map(s => s.toUpperCase());
+    if (!symbols || symbols.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Symbols parameter is required",
+      });
+    }
+    
+    const quotes = await marketDataService.getQuotes(symbols);
+    res.json({
+      success: true,
+      data: quotes,
+    });
+  } catch (error: any) {
+    logger.error("Error fetching stock quotes:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get cache statistics
+router.get("/cache/stats", async (req: Request, res: Response) => {
+  try {
+    const stats = await marketDataService.getCacheStats();
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error: any) {
+    logger.error("Error fetching cache stats:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Clear cache (admin endpoint)
+router.delete("/cache/clear", async (req: Request, res: Response) => {
+  try {
+    const symbol = req.query.symbol as string;
+    await marketDataService.clearCache(symbol);
+    res.json({
+      success: true,
+      message: symbol ? `Cache cleared for ${symbol}` : "All cache cleared",
+    });
+  } catch (error: any) {
+    logger.error("Error clearing cache:", error);
     res.status(500).json({
       success: false,
       error: error.message,

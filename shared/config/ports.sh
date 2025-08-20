@@ -18,6 +18,7 @@ export PORT_SERVICE_TERMINAL=4140
 export PORT_SERVICE_WORKSPACE=4150
 export PORT_SERVICE_PORTFOLIO=4160
 export PORT_SERVICE_MARKET=4170
+export PORT_SERVICE_ORCHESTRATION=4191
 
 # WebSocket
 export PORT_WS_SYSTEM=8001
@@ -43,6 +44,7 @@ export TERMINAL_SERVICE_URL="http://localhost:${PORT_SERVICE_TERMINAL}"
 export WORKSPACE_SERVICE_URL="http://localhost:${PORT_SERVICE_WORKSPACE}"
 export PORTFOLIO_SERVICE_URL="http://localhost:${PORT_SERVICE_PORTFOLIO}"
 export MARKET_SERVICE_URL="http://localhost:${PORT_SERVICE_MARKET}"
+export ORCHESTRATION_SERVICE_URL="http://localhost:${PORT_SERVICE_ORCHESTRATION}"
 
 # WebSocket URLs
 export WS_SYSTEM_URL="ws://localhost:${PORT_WS_SYSTEM}"
@@ -76,6 +78,9 @@ get_service_url() {
             ;;
         "market"|"marketData")
             echo "${protocol}://${host}:${PORT_SERVICE_MARKET}"
+            ;;
+        "orchestration"|"aiOrchestration")
+            echo "${protocol}://${host}:${PORT_SERVICE_ORCHESTRATION}"
             ;;
         *)
             echo "Error: Unknown service '$service'" >&2
@@ -140,6 +145,9 @@ get_gateway_api_url() {
         "market"|"marketData")
             echo "${protocol}://${host}:${PORT_GATEWAY_MAIN}/api/v1/market"
             ;;
+        "orchestration"|"aiOrchestration")
+            echo "${protocol}://${host}:${PORT_GATEWAY_MAIN}/api/v1/orchestration"
+            ;;
         *)
             echo "Error: Unknown service '$service'" >&2
             return 1
@@ -159,6 +167,7 @@ validate_ports() {
         "PORT_SERVICE_WORKSPACE"
         "PORT_SERVICE_PORTFOLIO"
         "PORT_SERVICE_MARKET"
+        "PORT_SERVICE_ORCHESTRATION"
         "PORT_WS_SYSTEM"
         "PORT_WS_CLAUDE"
         "PORT_WS_TERMINAL"
@@ -226,7 +235,8 @@ check_all_ports() {
     
     # Check services
     for port in $PORT_SERVICE_USER $PORT_SERVICE_AI $PORT_SERVICE_TERMINAL \
-                $PORT_SERVICE_WORKSPACE $PORT_SERVICE_PORTFOLIO $PORT_SERVICE_MARKET; do
+                $PORT_SERVICE_WORKSPACE $PORT_SERVICE_PORTFOLIO $PORT_SERVICE_MARKET \
+                $PORT_SERVICE_ORCHESTRATION; do
         if ! check_port_available $port; then
             all_available=false
         fi
@@ -268,6 +278,7 @@ Services:
   Workspace: ${PORT_SERVICE_WORKSPACE}
   Portfolio: ${PORT_SERVICE_PORTFOLIO}
   Market Data: ${PORT_SERVICE_MARKET}
+  AI Orchestration: ${PORT_SERVICE_ORCHESTRATION}
 
 WebSocket:
   System: ${PORT_WS_SYSTEM}

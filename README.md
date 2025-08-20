@@ -1,190 +1,242 @@
-# CMS ERP System
+# Personal Digital Command Center v3.0
+## 🎯 All-in-One Developer Workspace & Investment Hub
 
-Enterprise Content Management System with advanced User Management (UMS) and Permission Access Management (PAMS) modules.
+A comprehensive personal productivity platform that combines developer tools, investment portfolio management, and AI assistance into a unified digital workspace. Think of it as your "digital briefcase" - everything you need in one place.
 
-## 🚀 Features
+## 🎯 Overview
 
-### Core Modules
+**"Your Complete Digital Workspace"** - A powerful platform that integrates:
+- **💻 Developer Workspace**: Full-featured cloud IDE with terminal, Git integration, and project management
+- **💰 Investment Portfolio**: Real-time trading, portfolio tracking, and market analysis
+- **🤖 AI Assistant**: Claude-powered coding assistant and investment advisor
+- **📊 Data Analytics**: Comprehensive dashboards for both development metrics and investment performance
+- **🔧 Personal Tools**: All your essential tools accessible from anywhere
 
-- **UMS (User Management System)**
-  - User registration and authentication
-  - Profile management
-  - Password policies and reset
-  - Multi-factor authentication (MFA)
-  - Session management
-  - Account lockout protection
+Designed for developers who invest and investors who code - bringing together all your digital tools in one unified platform.
 
-- **PAMS (Permission Access Management System)**
-  - Role-based access control (RBAC)
-  - Fine-grained permissions
-  - Dynamic permission assignment
-  - Role hierarchy
+## ✨ Features
 
-- **CMS (Content Management)**
-  - Page management
-  - Blog system
-  - Media library
-  - Form builder
-  - Gallery system
-  - SEO optimization
+### Developer Workspace
+- **🖥️ Cloud Terminal**: Full Linux terminal in your browser
+- **📁 File Management**: Complete file system with Git integration
+- **🔨 Project Management**: Organize and manage multiple projects
+- **🤖 AI Pair Programming**: Claude-powered code completion and debugging
+- **📝 Documentation Tools**: Integrated markdown editor and viewer
+
+### Investment Platform
+- **📈 Portfolio Management**: Track multiple portfolios with real-time valuations
+- **💹 Stock Trading**: Buy, sell, and manage positions (Thai & US markets)
+- **📊 Market Data**: Real-time quotes and historical data analysis
+- **🎯 AI Trading Assistant**: Claude-powered insights and recommendations
+- **💱 Multi-Currency**: Full support for THB (฿) and USD ($)
+- **📱 Real-time Updates**: WebSocket-powered live market data
+
+### Unified Features
+- **🔐 Secure Authentication**: JWT-based auth with role management
+- **⚡ Real-time Sync**: All data synchronized across services
+- **🎨 Modern UI**: Responsive design with dark/light themes
+- **📊 Analytics Dashboard**: Unified view of all your metrics
+- **🔄 Cross-Platform**: Access from anywhere, on any device
+
+## 🏗️ Architecture
+
+### Microservices Architecture (v3.0)
+
+**Designed as a modular platform** where each service represents a major feature area. This architecture allows for:
+- Independent scaling of different workloads (coding vs trading)
+- Feature isolation for stability
+- Flexible deployment options
+- Easy addition of new capabilities
+
+The platform uses a distributed microservices architecture optimized for a comprehensive personal workspace:
+
+| Service | Port | Purpose | Justification |
+|---------|------|---------|---------------|
+| **Frontend** | 4100 | Unified UI Dashboard | Single interface for all features |
+| **API Gateway** | 4110 | Service Orchestration | Routes requests, handles auth |
+| **User Management** | 4120 | Auth & Profiles | Secure multi-user support |
+| **AI Assistant** | 4130 | Claude Integration | Code & investment AI assistance |
+| **Terminal** | 4140 | Cloud IDE Terminal | Remote development capability |
+| **Workspace** | 4150 | Project & File Mgmt | Git, file operations, projects |
+| **Portfolio** | 4160 | Investment Tracking | Portfolio & trading management |
+| **Market Data** | 4170 | Real-time Quotes | Market data aggregation |
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: Next.js 15 with App Router, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: NextAuth.js
-- **Validation**: Zod
-- **Security**: OWASP compliant, enterprise-grade security
+### Frontend
+- **Framework**: Next.js 15.4.5 with App Router
+- **UI Library**: React 19
+- **Language**: TypeScript (strict mode)
+- **Styling**: Tailwind CSS
+- **State Management**: Context API + Custom hooks
+- **Real-time**: WebSocket (Socket.io)
+
+### Backend Services
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Cache**: Redis
+- **Queue**: Bull (Redis-based)
+
+### Infrastructure
+- **Authentication**: JWT with refresh tokens
+- **AI Integration**: Claude API (Anthropic)
+- **Market Data**: Polygon.io API
+- **Monitoring**: Health checks, metrics
+- **Logging**: Winston
+- **Testing**: Jest, React Testing Library
 
 ## 📋 Prerequisites
 
 - Node.js 18 or higher
 - PostgreSQL 14 or higher
+- Redis 6 or higher
 - npm or yarn
+- Claude API key (for AI features)
 
-## 🔧 Installation
+## 🚀 Quick Start
 
-1. Clone the repository:
+### 1. Clone and Install
 
 ```bash
 git clone <repository-url>
-cd CMS
-```
-
-2. Install dependencies:
-
-```bash
+cd port
 npm install
 ```
 
-3. Set up environment variables:
+### 2. Environment Setup
 
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env.local
 # Edit .env.local with your configuration
 ```
 
-4. Set up the database:
+### 3. Database Setup
 
 ```bash
-# Make sure PostgreSQL is running
-# Run the setup script
-./scripts/setup-dev.sh
-```
+# Create databases
+createdb portfolio_db
+createdb user_management_db
+createdb ai_assistant_db
 
-Or manually:
+# Run migrations
+npx prisma migrate dev
 
-```bash
-# Create database
-createdb cms_db
-
-# Push schema
-npx prisma db push
-
-# Generate Prisma client
-npx prisma generate
-
-# Seed database
+# Seed data
 npx prisma db seed
 ```
 
-## 🚀 Development
+### 4. Start Services
 
-Start the development server:
-
+#### Option A: Start All Services
 ```bash
-npm run dev
+./services/start-all-services.sh
 ```
 
-Open [http://localhost:3100](http://localhost:3100) in your browser.
+#### Option B: Start Individual Services
+```bash
+# Terminal 1 - Frontend
+PORT=4100 npm run dev
 
-### Default Credentials
+# Terminal 2 - API Gateway
+cd services/gateway && PORT=4110 npm run dev
 
-- **Email**: admin@example.com
-- **Password**: Admin@123
+# Terminal 3 - User Management
+cd services/user-management && PORT=4120 npm run dev
 
-## 📁 Project Structure
+# Terminal 4 - AI Assistant
+cd services/ai-assistant && PORT=4130 npm run dev
+
+# Terminal 5 - Terminal Service
+cd services/terminal && PORT=4140 npm run dev
+
+# Terminal 6 - Workspace Service
+cd services/workspace && PORT=4150 npm run dev
+
+# Terminal 7 - Portfolio Service
+cd services/portfolio && PORT=4160 npm run dev
+
+# Terminal 8 - Market Data Service
+cd services/market-data && PORT=4170 npm run dev
+```
+
+### 5. Access the Platform
+
+Open [http://localhost:4100](http://localhost:4100) in your browser.
+
+## 🔐 Default Credentials
 
 ```
-CMS/
-├── src/
-│   ├── app/              # Next.js App Router
-│   ├── modules/          # Feature modules (UMS, PAMS, CMS)
-│   ├── shared/           # Shared components and utilities
-│   └── infrastructure/   # Core infrastructure (DB, Auth)
-├── prisma/              # Database schema and migrations
-├── tests/               # Test files
-├── _sop/                # Standard Operating Procedures
-└── _library/            # Reusable component library
+Admin: sankaz@example.com / Sankaz#3E25167B@2025
+User: test@personalai.com / Test@123
+```
+
+## 📊 Service Health Monitoring
+
+Check all services health:
+```bash
+curl http://localhost:4110/health/all
+```
+
+Individual service health:
+```bash
+curl http://localhost:<service-port>/health
 ```
 
 ## 🧪 Testing
 
-Run tests:
-
 ```bash
-# Unit tests
+# Run all tests
 npm test
 
-# E2E tests
-npm run test:e2e
-
-# Test coverage
+# Run with coverage
 npm run test:coverage
-```
 
-## 🔒 Security Features
-
-- Password policies (complexity, history, expiration)
-- Account lockout after failed attempts
-- Multi-factor authentication (MFA)
-- Session management with timeout
-- Audit logging for all sensitive operations
-- Input validation and sanitization
-- SQL injection protection
-- XSS protection
-- CSRF protection
-- Rate limiting
-- GDPR/PDPA compliance ready
-
-## 📝 Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run test` - Run tests
-- `npm run db:push` - Push database schema
-- `npm run db:studio` - Open Prisma Studio
-- `npm run db:seed` - Seed database
-
-## 🚢 Deployment
-
-1. Build the application:
-
-```bash
-npm run build
-```
-
-2. Set production environment variables
-3. Run database migrations
-4. Start the server:
-
-```bash
-npm start
+# Run specific service tests
+cd services/<service-name> && npm test
 ```
 
 ## 📚 Documentation
 
-- [API Documentation](./docs/api/README.md)
-- [Architecture Guide](./docs/architecture/README.md)
-- [Development SOPs](./_sop/README.md)
+- [Architecture Overview](./docs/architecture.md)
+- [API Documentation](./docs/api.md)
+- [Development Guide](./docs/development.md)
+- [Deployment Guide](./docs/deployment.md)
+- [Agent Guidelines](./docs/claude/13-agent-guidelines.md)
 
 ## 🤝 Contributing
 
-Please read the [Development SOPs](./_sop/development/SOP-DEVELOPMENT-GUIDE.md) before contributing.
+Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-## 📄 License
+## 📝 License
 
-This project is proprietary and confidential.
+This project is proprietary software. All rights reserved.
+
+## 🏆 Why This Architecture?
+
+While this might seem over-engineered for a simple portfolio app, it's designed as a **comprehensive personal workspace** that combines:
+
+1. **Developer Tools**: Full cloud IDE capabilities for coding on the go
+2. **Investment Management**: Professional-grade portfolio tracking and trading
+3. **AI Integration**: Cutting-edge AI assistance for both coding and investing
+4. **Scalability**: Each module can grow independently as needs evolve
+5. **Flexibility**: Easy to add new tools and features without affecting existing ones
+
+Think of it as building your own **"Personal Operating System"** in the cloud - a single platform that replaces multiple separate tools and brings everything together in one cohesive experience.
+
+## 🚀 Future Roadmap
+
+- [ ] Mobile app (React Native)
+- [ ] Voice commands integration
+- [ ] Advanced AI automation workflows
+- [ ] Social features for collaborative trading/coding
+- [ ] Plugin system for custom tools
+- [ ] Blockchain integration for DeFi
+- [ ] Advanced backtesting engine
+- [ ] CI/CD pipeline integration
+
+---
+
+**Built with ❤️ for developers who want everything in one place**

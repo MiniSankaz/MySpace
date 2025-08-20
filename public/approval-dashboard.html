@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Orchestration - Approval Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse { animation: pulse 2s infinite; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header -->
+    <div class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold">🤖 AI Orchestration Dashboard</h1>
+                    <span id="connectionStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-red-600">
+                        Disconnected
+                    </span>
+                </div>
+                <div class="text-sm text-gray-400">
+                    <span id="currentTime"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-3">
+            <div class="grid grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-yellow-400" id="pendingCount">0</div>
+                    <div class="text-xs text-gray-400">Pending</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-400" id="approvedCount">0</div>
+                    <div class="text-xs text-gray-400">Approved</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-400" id="rejectedCount">0</div>
+                    <div class="text-xs text-gray-400">Rejected</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-400" id="activeAgents">0</div>
+                    <div class="text-xs text-gray-400">Active Agents</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Approval Queue -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center">
+                        <span class="mr-2">📋</span> Approval Queue
+                    </h2>
+                    <div id="approvalQueue" class="space-y-3">
+                        <!-- Approval items will be inserted here -->
+                    </div>
+                    <div id="emptyQueue" class="text-center py-8 text-gray-500">
+                        No pending approvals
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Activity -->
+            <div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center">
+                        <span class="mr-2">⚡</span> Agent Activity
+                    </h2>
+                    <div id="agentActivity" class="space-y-2">
+                        <!-- Agent activity will be inserted here -->
+                    </div>
+                    <div id="noActivity" class="text-center py-8 text-gray-500">
+                        No active agents
+                    </div>
+                </div>
+
+                <!-- Recent Decisions -->
+                <div class="bg-gray-800 rounded-lg p-4 mt-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center">
+                        <span class="mr-2">📜</span> Recent Decisions
+                    </h2>
+                    <div id="recentDecisions" class="space-y-2 text-sm">
+                        <!-- Recent decisions will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Test Controls -->
+                <div class="bg-gray-800 rounded-lg p-4 mt-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center">
+                        <span class="mr-2">🧪</span> Test Controls
+                    </h2>
+                    <div class="space-y-2">
+                        <button onclick="addMockApproval()" 
+                                class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm">
+                            Add Mock Approval
+                        </button>
+                        <button onclick="spawnTestAgent()" 
+                                class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-sm">
+                            Spawn Real Agent
+                        </button>
+                        <button onclick="testOrchestrationFeatures()" 
+                                class="w-full px-3 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-sm">
+                            Test Parallel Agents
+                        </button>
+                        <button onclick="checkConnection()" 
+                                class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm">
+                            Check Connection
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationToast" class="fixed top-4 right-4 max-w-sm hidden">
+        <div class="bg-yellow-600 text-white px-4 py-3 rounded-lg shadow-lg slide-in">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">🔔</span>
+                <div>
+                    <div class="font-semibold" id="notificationTitle">New Approval Request</div>
+                    <div class="text-sm" id="notificationBody">Description</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Modal -->
+    <div id="approvalModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4">
+            <h3 class="text-xl font-bold mb-4" id="modalTitle">Approval Details</h3>
+            
+            <div class="space-y-3 mb-6">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-400">Type:</span>
+                        <span id="modalType" class="ml-2"></span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Risk:</span>
+                        <span id="modalRisk" class="ml-2"></span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Requested By:</span>
+                        <span id="modalRequestedBy" class="ml-2"></span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Time Left:</span>
+                        <span id="modalTimeLeft" class="ml-2"></span>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="text-gray-400 mb-2">Description:</div>
+                    <div id="modalDescription" class="text-sm bg-gray-900 p-3 rounded"></div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="text-gray-400 mb-2">Context:</div>
+                    <pre id="modalContext" class="text-xs bg-gray-900 p-3 rounded overflow-auto max-h-40"></pre>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded">
+                    Cancel
+                </button>
+                <button onclick="rejectApproval()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded">
+                    Reject
+                </button>
+                <button onclick="approveApproval()" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded">
+                    Approve
+                </button>
+                <button onclick="bypassApproval()" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded">
+                    Emergency Bypass
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const ORCHESTRATION_URL = 'http://localhost:4191';
+        const WEBSOCKET_URL = 'http://localhost:4191';
+        // Alternative: Use API Gateway for production
+        // const ORCHESTRATION_URL = 'http://localhost:4110';
+        // const WEBSOCKET_URL = 'http://localhost:4110';
+        
+        // Mock data for testing
+        const mockApprovals = [
+            {
+                id: 'req-001',
+                type: 'CODE_DEPLOYMENT',
+                title: 'Deploy authentication fix to production',
+                description: 'Critical security patch for authentication module',
+                requestedBy: 'agent-001',
+                requestedAt: new Date(),
+                expiresAt: new Date(Date.now() + 10 * 60000),
+                status: 'pending',
+                context: {
+                    service: 'user-management',
+                    riskLevel: 'high',
+                    agentId: 'agent-001',
+                    changes: ['auth.controller.ts', 'jwt.service.ts']
+                }
+            },
+            {
+                id: 'req-002',
+                type: 'DATABASE_CHANGE',
+                title: 'Add index to users table',
+                description: 'Performance optimization for user queries',
+                requestedBy: 'agent-002',
+                requestedAt: new Date(),
+                expiresAt: new Date(Date.now() + 30 * 60000),
+                status: 'pending',
+                context: {
+                    service: 'database',
+                    riskLevel: 'medium',
+                    agentId: 'agent-002',
+                    table: 'users',
+                    operation: 'CREATE INDEX'
+                }
+            }
+        ];
+
+        const mockAgents = [
+            { id: 'agent-001', type: 'business-analyst', status: 'working', task: 'Analyzing requirements', progress: 45 },
+            { id: 'agent-002', type: 'code-reviewer', status: 'working', task: 'Reviewing code', progress: 78 },
+            { id: 'agent-003', type: 'test-runner', status: 'completed', task: 'Running tests', progress: 100 }
+        ];
+
+        let currentApproval = null;
+        let socket = null;
+        let isConnected = false;
+        let mockCount = 0;
+
+        // Initialize
+        function init() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // Try to connect to server
+            connectToServer();
+            
+            // Load mock data for demo
+            loadMockData();
+            
+            // Update stats
+            updateStats();
+
+            // Show initial message
+            showNotification('Dashboard loaded with mock data');
+        }
+
+        function connectToServer() {
+            try {
+                // Connect directly to orchestration service WebSocket
+                socket = io(WEBSOCKET_URL, {
+                    reconnection: true,
+                    reconnectionDelay: 5000,
+                    timeout: 10000,
+                    forceNew: true
+                });
+
+                socket.on('connect', () => {
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    console.log('Connected to orchestration server');
+                });
+
+                socket.on('disconnect', () => {
+                    isConnected = false;
+                    updateConnectionStatus(false);
+                });
+
+                // Listen for orchestration events
+                socket.on('agent:output', (data) => {
+                    console.log('Agent output:', data);
+                    updateAgentActivity(data);
+                });
+
+                socket.on('agent:completed', (data) => {
+                    console.log('Agent completed:', data);
+                    updateAgentActivity({...data, status: 'completed'});
+                });
+
+                socket.on('agent:error', (data) => {
+                    console.log('Agent error:', data);
+                    updateAgentActivity({...data, status: 'failed'});
+                });
+
+                socket.on('agent:spawned', (data) => {
+                    console.log('Agent spawned:', data);
+                    showNotification('New agent spawned: ' + data.agentId);
+                });
+
+                // Legacy approval events (for mock testing)
+                socket.on('approval:required', (approval) => {
+                    addApprovalToQueue(approval);
+                    showNotification('New approval request: ' + approval.title);
+                });
+
+                socket.on('agent:update', (agent) => {
+                    updateAgentActivity(agent);
+                });
+
+                // Check server health
+                fetch(ORCHESTRATION_URL + '/health')
+                    .then(res => res.json())
+                    .then(data => {
+                        updateAgentStats(data.agents);
+                        updateConnectionStatus(true);
+                    })
+                    .catch(() => updateConnectionStatus(false));
+
+            } catch (err) {
+                console.log('Server not available, using mock data');
+                updateConnectionStatus(false);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-green-600';
+            } else {
+                status.textContent = 'Mock Mode';
+                status.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-yellow-600';
+            }
+        }
+
+        function updateTime() {
+            document.getElementById('currentTime').textContent = 
+                new Date().toLocaleString('en-US', { 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+        }
+
+        function loadMockData() {
+            // Load approvals
+            mockApprovals.forEach(approval => {
+                addApprovalToQueue(approval);
+            });
+
+            // Load agents
+            mockAgents.forEach(agent => {
+                updateAgentActivity(agent);
+            });
+        }
+
+        function addApprovalToQueue(approval) {
+            const queue = document.getElementById('approvalQueue');
+            const emptyMsg = document.getElementById('emptyQueue');
+            
+            emptyMsg.style.display = 'none';
+            
+            const riskColors = {
+                low: 'bg-green-600',
+                medium: 'bg-yellow-600',
+                high: 'bg-orange-600',
+                critical: 'bg-red-600'
+            };
+
+            const timeLeft = Math.floor((new Date(approval.expiresAt) - new Date()) / 60000);
+            const urgencyClass = timeLeft < 5 ? 'text-red-400' : timeLeft < 15 ? 'text-yellow-400' : 'text-green-400';
+
+            const item = document.createElement('div');
+            item.className = 'bg-gray-900 rounded p-4 hover:bg-gray-700 cursor-pointer transition slide-in';
+            item.id = `approval-${approval.id}`;
+            item.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="font-semibold">${approval.title}</div>
+                        <div class="text-sm text-gray-400 mt-1">${approval.description}</div>
+                        <div class="flex items-center mt-2 space-x-4 text-xs">
+                            <span class="px-2 py-1 rounded ${riskColors[approval.context.riskLevel]}">
+                                ${approval.context.riskLevel?.toUpperCase() || 'UNKNOWN'}
+                            </span>
+                            <span>${approval.type.replace(/_/g, ' ')}</span>
+                            <span>by ${approval.requestedBy}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="${urgencyClass} font-semibold">${Math.max(0, timeLeft)}m</div>
+                        <div class="text-xs text-gray-400">remaining</div>
+                    </div>
+                </div>
+            `;
+            
+            item.onclick = () => showApprovalDetails(approval);
+            queue.appendChild(item);
+        }
+
+        function updateAgentActivity(agent) {
+            const activity = document.getElementById('agentActivity');
+            const emptyMsg = document.getElementById('noActivity');
+            
+            emptyMsg.style.display = 'none';
+            
+            let item = document.getElementById(`agent-${agent.id}`);
+            if (!item) {
+                item = document.createElement('div');
+                item.id = `agent-${agent.id}`;
+                item.className = 'bg-gray-900 rounded p-3';
+                activity.appendChild(item);
+            }
+
+            const statusColors = {
+                initializing: 'text-yellow-400',
+                working: 'text-green-400',
+                completed: 'text-blue-400',
+                failed: 'text-red-400'
+            };
+
+            item.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-sm font-semibold">${agent.id}</div>
+                    <div class="${statusColors[agent.status]} text-xs">${agent.status}</div>
+                </div>
+                <div class="text-xs text-gray-400 mb-2">${agent.task}</div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full transition-all" style="width: ${agent.progress}%"></div>
+                </div>
+            `;
+        }
+
+        function updateAgentStats(agentData) {
+            if (agentData) {
+                document.getElementById('activeAgents').textContent = agentData.active;
+            }
+        }
+
+        function showApprovalDetails(approval) {
+            currentApproval = approval;
+            
+            document.getElementById('modalTitle').textContent = approval.title;
+            document.getElementById('modalType').textContent = approval.type.replace(/_/g, ' ');
+            document.getElementById('modalRisk').textContent = approval.context.riskLevel?.toUpperCase() || 'UNKNOWN';
+            document.getElementById('modalRisk').className = `ml-2 font-semibold ${getRiskColor(approval.context.riskLevel)}`;
+            document.getElementById('modalRequestedBy').textContent = approval.requestedBy;
+            
+            const timeLeft = Math.floor((new Date(approval.expiresAt) - new Date()) / 60000);
+            document.getElementById('modalTimeLeft').textContent = `${Math.max(0, timeLeft)} minutes`;
+            
+            document.getElementById('modalDescription').textContent = approval.description;
+            document.getElementById('modalContext').textContent = JSON.stringify(approval.context, null, 2);
+            
+            document.getElementById('approvalModal').classList.remove('hidden');
+        }
+
+        function getRiskColor(risk) {
+            const colors = {
+                low: 'text-green-400',
+                medium: 'text-yellow-400',
+                high: 'text-orange-400',
+                critical: 'text-red-400'
+            };
+            return colors[risk] || 'text-gray-400';
+        }
+
+        function closeModal() {
+            document.getElementById('approvalModal').classList.add('hidden');
+            currentApproval = null;
+        }
+
+        function approveApproval() {
+            if (!currentApproval) return;
+            
+            handleDecision('approved');
+            showDecisionToast('Approved', 'green');
+        }
+
+        function rejectApproval() {
+            if (!currentApproval) return;
+            
+            handleDecision('rejected');
+            showDecisionToast('Rejected', 'red');
+        }
+
+        function bypassApproval() {
+            if (!currentApproval) return;
+            
+            if (confirm('Emergency bypass will be logged and audited. Continue?')) {
+                handleDecision('bypassed');
+                showDecisionToast('Bypassed', 'yellow');
+            }
+        }
+
+        function handleDecision(decision) {
+            if (isConnected && socket) {
+                socket.emit('approval:decision', {
+                    requestId: currentApproval.id,
+                    decision: decision,
+                    decidedBy: 'user',
+                    timestamp: new Date()
+                });
+            }
+            
+            // Remove from UI
+            const item = document.getElementById(`approval-${currentApproval.id}`);
+            if (item) {
+                item.remove();
+            }
+            
+            // Add to recent decisions
+            addRecentDecision(currentApproval, decision);
+            
+            closeModal();
+            updateStats();
+        }
+
+        function addRecentDecision(approval, decision) {
+            const container = document.getElementById('recentDecisions');
+            
+            const decisionColors = {
+                approved: 'text-green-400',
+                rejected: 'text-red-400',
+                bypassed: 'text-yellow-400'
+            };
+            
+            const item = document.createElement('div');
+            item.className = 'flex justify-between items-center py-2 border-b border-gray-700';
+            item.innerHTML = `
+                <div class="flex-1 truncate">${approval.title}</div>
+                <div class="${decisionColors[decision]}">${decision.toUpperCase()}</div>
+            `;
+            
+            container.insertBefore(item, container.firstChild);
+            
+            // Keep only last 5 decisions
+            while (container.children.length > 5) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function showNotification(message) {
+            const toast = document.getElementById('notificationToast');
+            document.getElementById('notificationTitle').textContent = 'System Alert';
+            document.getElementById('notificationBody').textContent = message;
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function showDecisionToast(decision, color) {
+            const toast = document.getElementById('notificationToast');
+            const wrapper = toast.querySelector('div');
+            
+            wrapper.className = `bg-${color}-600 text-white px-4 py-3 rounded-lg shadow-lg slide-in`;
+            document.getElementById('notificationTitle').textContent = `Request ${decision}`;
+            document.getElementById('notificationBody').textContent = currentApproval.title;
+            
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function updateStats() {
+            const pending = document.querySelectorAll('#approvalQueue > div').length;
+            document.getElementById('pendingCount').textContent = pending;
+            
+            // Update other stats (mock for now)
+            document.getElementById('approvedCount').textContent = 
+                document.querySelectorAll('#recentDecisions .text-green-400').length;
+            document.getElementById('rejectedCount').textContent = 
+                document.querySelectorAll('#recentDecisions .text-red-400').length;
+        }
+
+        // Test functions
+        function addMockApproval() {
+            mockCount++;
+            const mockApproval = {
+                id: `mock-${mockCount}`,
+                type: 'CODE_DEPLOYMENT',
+                title: `Mock Deployment Request #${mockCount}`,
+                description: `Test approval request created at ${new Date().toLocaleTimeString()}`,
+                requestedBy: `test-agent-${mockCount}`,
+                requestedAt: new Date(),
+                expiresAt: new Date(Date.now() + 15 * 60000),
+                status: 'pending',
+                context: {
+                    service: 'test-service',
+                    riskLevel: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
+                    agentId: `test-agent-${mockCount}`
+                }
+            };
+            
+            addApprovalToQueue(mockApproval);
+            updateStats();
+            showNotification(`Mock approval #${mockCount} added`);
+        }
+
+        function spawnTestAgent() {
+            if (isConnected && socket) {
+                // Use real orchestration service
+                const taskData = {
+                    type: ['business-analyst', 'code-reviewer', 'test-runner'][Math.floor(Math.random() * 3)],
+                    task: {
+                        description: `Real test task ${Math.floor(Math.random() * 100)}`,
+                        prompt: 'Test the integration between dashboard and orchestration service',
+                        context: { source: 'approval-dashboard', timestamp: new Date().toISOString() },
+                        priority: 50
+                    },
+                    config: { timeout: 30000 }
+                };
+                
+                socket.emit('spawn:agent', taskData);
+                showNotification('Spawning real agent via WebSocket...');
+            } else {
+                // Fallback to REST API
+                fetch(ORCHESTRATION_URL + '/api/spawn-agent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'test-runner',
+                        task: {
+                            description: 'Real test task via REST API',
+                            prompt: 'Test the REST API integration',
+                            context: { source: 'approval-dashboard-rest' },
+                            priority: 50
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(`Real agent spawned: ${data.agentId}`);
+                        // Add to UI
+                        updateAgentActivity({
+                            id: data.agentId,
+                            type: 'test-runner',
+                            status: 'working',
+                            task: data.task.description,
+                            progress: 0
+                        });
+                    } else {
+                        showNotification('Failed to spawn agent: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(err => {
+                    showNotification('Error spawning agent: ' + err.message);
+                    console.error('Spawn agent error:', err);
+                });
+            }
+        }
+
+        function checkConnection() {
+            fetch(ORCHESTRATION_URL + '/health')
+                .then(res => res.json())
+                .then(data => {
+                    showNotification(`Connected! Uptime: ${Math.floor(data.uptime)}s, Agents: ${data.agents.total}`);
+                    updateConnectionStatus(true);
+                    updateAgentStats(data.agents);
+                    
+                    // Also check if WebSocket is connected
+                    if (socket && socket.connected) {
+                        showNotification('WebSocket also connected! Real-time mode active.');
+                    }
+                })
+                .catch(err => {
+                    showNotification('Connection failed: ' + err.message);
+                    updateConnectionStatus(false);
+                    console.error('Health check error:', err);
+                });
+        }
+        
+        // New function to test real orchestration features
+        function testOrchestrationFeatures() {
+            if (!isConnected) {
+                showNotification('Not connected to orchestration service');
+                return;
+            }
+            
+            // Test multiple agent spawn
+            fetch(ORCHESTRATION_URL + '/api/spawn-parallel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tasks: [
+                        {
+                            description: 'Test business analysis',
+                            prompt: 'Analyze business requirements for the dashboard',
+                            context: { module: 'approval-dashboard' },
+                            priority: 60
+                        },
+                        {
+                            description: 'Test code review',
+                            prompt: 'Review dashboard integration code',
+                            context: { module: 'orchestration-integration' },
+                            priority: 70
+                        }
+                    ]
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Spawned ${data.count} parallel agents successfully!`);
+                    data.agents.forEach(agent => {
+                        if (agent.success) {
+                            updateAgentActivity({
+                                id: agent.agentId,
+                                type: agent.type,
+                                status: 'working',
+                                task: agent.task.description,
+                                progress: 5
+                            });
+                        }
+                    });
+                } else {
+                    showNotification('Failed to spawn parallel agents');
+                }
+            })
+            .catch(err => {
+                showNotification('Error testing parallel spawn: ' + err.message);
+                console.error('Parallel spawn error:', err);
+            });
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -7,6 +7,8 @@ import {
   StockPriceHistory,
   TradeType,
   TradeStatus,
+  Market,
+  Currency,
 } from "./index";
 
 // In-memory storage
@@ -610,6 +612,9 @@ class MockDatabase {
         symbol: mockStock.symbol,
         name: mockStock.name,
         exchange: mockStock.exchange,
+        market: Market.US,
+        country: 'US',
+        currency: Currency.USD,
         sector: mockStock.sector,
         currentPrice: mockStock.price,
         previousClose: mockStock.price,

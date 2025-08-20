@@ -1,3 +1,6 @@
+// @AI-MARKER:SERVICE:GATEWAY
+// @AI-MARKER:COMPONENT:API_GATEWAY
+// @AI-MARKER:PORT:4110
 import express from "express";
 import { PortConfig } from '@shared/config/ports.config';
 import cors from "cors";
@@ -102,6 +105,7 @@ app.use(dynamicRouter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// @AI-MARKER:ENDPOINT:HEALTH_CHECK
 // Health check endpoint
 app.get("/health", async (req, res) => {
   const health: ServiceHealth = {
@@ -155,6 +159,7 @@ app.get("/health/all", async (req, res) => {
   }
 });
 
+// @AI-MARKER:ENDPOINT:SERVICE_DISCOVERY
 // Service discovery endpoint
 app.get("/services", (req, res) => {
   const services = serviceRegistry.getAllServices();
@@ -206,6 +211,7 @@ app.get("/health/:service", async (req, res) => {
   }
 });
 
+// @AI-MARKER:WEBSOCKET:PROXY_HANDLER
 // WebSocket proxies
 server.on("upgrade", (request, socket: any, head) => {
   const pathname = request.url || "";
@@ -254,6 +260,7 @@ app.use(
   },
 );
 
+// @AI-MARKER:INIT:SERVER_START
 // Start server
 server.listen(PORT, () => {
   logger.info(`🚀 ${SERVICE_NAME} service running on port ${PORT}`);

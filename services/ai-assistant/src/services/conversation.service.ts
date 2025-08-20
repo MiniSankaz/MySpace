@@ -45,8 +45,8 @@ export class ConversationService {
           title,
           folderId,
           isActive: true,
-          timestamp: new Date(),
-          updatedAt: new Date(),
+          model: "claude-3-sonnet-20240229",
+          lastActiveAt: new Date(),
         },
         include: {
           messages: {

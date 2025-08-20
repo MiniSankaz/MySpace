@@ -67,11 +67,11 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
       large: "px-4 py-3 text-base",
     };
 
-    const filteredOptions = searchable
+    const filteredOptions = searchable && options && Array.isArray(options)
       ? options.filter((option) =>
           option.label.toLowerCase().includes(searchQuery.toLowerCase()),
         )
-      : options;
+      : options || [];
 
     useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -167,17 +167,22 @@ const Select = forwardRef<HTMLDivElement, SelectProps>(
     };
 
     const getDisplayValue = () => {
+      // Check if options is defined and is an array
+      if (!options || !Array.isArray(options)) {
+        return placeholder;
+      }
+
       if (multiple) {
         const values = Array.isArray(selectedValue) ? selectedValue : [];
         if (values.length === 0) return placeholder;
         if (values.length === 1) {
-          const option = options.find((opt) => opt.value === values[0]);
+          const option = options?.find((opt) => opt.value === values[0]);
           return option?.label || values[0];
         }
         return `${values.length} items selected`;
       }
 
-      const option = options.find((opt) => opt.value === selectedValue);
+      const option = options?.find((opt) => opt.value === selectedValue);
       return option?.label || placeholder;
     };
 

@@ -1,6 +1,6 @@
-import winston from "winston";
-import path from "path";
-import fs from "fs";
+import * as winston from "winston";
+import * as path from "path";
+import * as fs from "fs";
 
 // Ensure logs directory exists
 const logsDir = path.join(process.cwd(), "logs");

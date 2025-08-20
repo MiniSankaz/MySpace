@@ -27,6 +27,7 @@ const publicRoutes = [
   // Temporarily allow workspace API for testing
   "/api/workspace/files",
   "/api/memory-info", // Diagnostic endpoint for memory monitoring
+  "/orchestration", // AI Orchestration Dashboard (development)
 ];
 
 // Admin-only routes

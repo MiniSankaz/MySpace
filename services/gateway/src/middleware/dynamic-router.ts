@@ -17,6 +17,11 @@ const SERVICE_ROUTES = {
   "/api/v1/ai/orchestration": "ai-assistant",
   "/api/v1/ai/planning": "ai-assistant",
   "/api/v1/ai/agents": "ai-assistant",
+  // Direct Orchestration Service routes (bypass gateway for real-time features)
+  "/api/spawn": "orchestration",
+  "/api/agents": "orchestration",
+  "/api/task-chain": "orchestration",
+  "/api/locks": "orchestration",
   "/api/v1/terminal": "terminal",
   "/api/v1/workspace": "workspace",
   "/api/v1/files": "workspace",
@@ -29,6 +34,9 @@ const SERVICE_ROUTES = {
   "/api/v1/export": "portfolio",
   // Market Data routes
   "/api/v1/market": "market-data",
+  // Testing Service routes
+  "/api/v1/test": "testing",
+  "/api/v1/validate": "testing",
 };
 
 // Add correlation ID to requests

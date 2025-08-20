@@ -68,7 +68,7 @@ router.post(
         error: "Service temporarily unavailable during system upgrade",
         message: "Claude CLI integration is being optimized. Please try again shortly.",
         retryAfter: 30
-      );
+      });
 
       // NOTE: Following code is temporarily unreachable during system upgrade
       // TODO: Re-enable after Terminal Service integration is fixed

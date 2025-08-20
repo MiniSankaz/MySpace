@@ -1,0 +1,397 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Code file index
+model CodeFile {
+  id             String         @id @default(uuid())
+  path           String         @unique
+  relativePath   String
+  name           String
+  extension      String
+  size           Int
+  lines          Int
+  language       String?
+  hash           String
+  lastModified   DateTime
+  content        String?        @db.Text
+  parsed         Boolean        @default(false)
+  indexed        Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  // Relations
+  symbols        Symbol[]
+  dependencies   Dependency[]   @relation("FileDependencies")
+  dependents     Dependency[]   @relation("FileDependents")
+  markings       CodeMarking[]
+  refactorings   Refactoring[]
+  patterns       PatternMatch[]
+  
+  @@index([extension])
+  @@index([language])
+  @@index([lastModified])
+  @@index([indexed])
+}
+
+// Code symbols (functions, classes, etc.)
+model Symbol {
+  id           String      @id @default(uuid())
+  fileId       String
+  name         String
+  type         SymbolType
+  line         Int
+  column       Int
+  endLine      Int?
+  endColumn    Int?
+  signature    String?     @db.Text
+  documentation String?     @db.Text
+  visibility   String?
+  complexity   Int?
+  params       Json?
+  returnType   String?
+  createdAt    DateTime    @default(now())
+  
+  // Relations
+  file         CodeFile    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  references   Reference[] @relation("SymbolReferences")
+  referencedBy Reference[] @relation("ReferencedSymbol")
+  markings     CodeMarking[]
+  
+  @@index([fileId])
+  @@index([type])
+  @@index([name])
+}
+
+enum SymbolType {
+  FUNCTION
+  CLASS
+  METHOD
+  INTERFACE
+  TYPE
+  ENUM
+  VARIABLE
+  CONSTANT
+  IMPORT
+  EXPORT
+  COMPONENT
+  HOOK
+  SERVICE
+  CONTROLLER
+  MODEL
+  ROUTE
+}
+
+// File dependencies
+model Dependency {
+  id           String      @id @default(uuid())
+  sourceId     String
+  targetId     String
+  type         DependencyType
+  importPath   String
+  isExternal   Boolean     @default(false)
+  isCircular   Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  
+  // Relations
+  source       CodeFile    @relation("FileDependencies", fields: [sourceId], references: [id], onDelete: Cascade)
+  target       CodeFile    @relation("FileDependents", fields: [targetId], references: [id], onDelete: Cascade)
+  
+  @@unique([sourceId, targetId, importPath])
+  @@index([sourceId])
+  @@index([targetId])
+}
+
+enum DependencyType {
+  IMPORT
+  REQUIRE
+  DYNAMIC_IMPORT
+  RE_EXPORT
+}
+
+// Symbol references
+model Reference {
+  id           String      @id @default(uuid())
+  symbolId     String
+  referencedId String
+  line         Int
+  column       Int
+  type         ReferenceType
+  createdAt    DateTime    @default(now())
+  
+  // Relations
+  symbol       Symbol      @relation("SymbolReferences", fields: [symbolId], references: [id], onDelete: Cascade)
+  referenced   Symbol      @relation("ReferencedSymbol", fields: [referencedId], references: [id], onDelete: Cascade)
+  
+  @@index([symbolId])
+  @@index([referencedId])
+}
+
+enum ReferenceType {
+  CALL
+  INSTANTIATION
+  INHERITANCE
+  IMPLEMENTATION
+  IMPORT
+  EXPORT
+  TYPE_REFERENCE
+}
+
+// Code markings
+model CodeMarking {
+  id           String         @id @default(uuid())
+  fileId       String
+  symbolId     String?
+  type         MarkingType
+  severity     MarkingSeverity
+  category     String
+  message      String
+  suggestion   String?        @db.Text
+  line         Int
+  column       Int
+  endLine      Int?
+  endColumn    Int?
+  context      Json?
+  autoFixable  Boolean        @default(false)
+  fixed        Boolean        @default(false)
+  ignored      Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  // Relations
+  file         CodeFile       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  symbol       Symbol?        @relation(fields: [symbolId], references: [id], onDelete: SetNull)
+  refactorings RefactoringMark[]
+  agentReviews AgentReview[]
+  
+  @@index([fileId])
+  @@index([type])
+  @@index([severity])
+  @@index([category])
+  @@index([fixed])
+}
+
+enum MarkingType {
+  REFACTOR_CANDIDATE
+  DUPLICATE_CODE
+  COMPLEXITY_HIGH
+  PERFORMANCE_ISSUE
+  SECURITY_ISSUE
+  DEPRECATED_USAGE
+  PATTERN_VIOLATION
+  NAMING_CONVENTION
+  UNUSED_CODE
+  DEAD_CODE
+  TODO_COMMENT
+  TECH_DEBT
+  OPTIMIZATION_OPPORTUNITY
+  ARCHITECTURE_VIOLATION
+  TESTING_MISSING
+}
+
+enum MarkingSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+// Pattern matches
+model PatternMatch {
+  id           String      @id @default(uuid())
+  fileId       String
+  patternId    String
+  line         Int
+  column       Int
+  endLine      Int
+  endColumn    Int
+  matchedText  String      @db.Text
+  confidence   Float
+  createdAt    DateTime    @default(now())
+  
+  // Relations
+  file         CodeFile    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  pattern      Pattern     @relation(fields: [patternId], references: [id], onDelete: Cascade)
+  
+  @@index([fileId])
+  @@index([patternId])
+}
+
+// Code patterns
+model Pattern {
+  id           String         @id @default(uuid())
+  name         String         @unique
+  description  String
+  type         PatternType
+  pattern      String         @db.Text
+  language     String?
+  category     String
+  enabled      Boolean        @default(true)
+  autoFix      String?        @db.Text
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  // Relations
+  matches      PatternMatch[]
+  
+  @@index([type])
+  @@index([category])
+  @@index([enabled])
+}
+
+enum PatternType {
+  ANTIPATTERN
+  BEST_PRACTICE
+  CODE_SMELL
+  DESIGN_PATTERN
+  SECURITY_PATTERN
+  PERFORMANCE_PATTERN
+  CUSTOM
+}
+
+// Refactoring operations
+model Refactoring {
+  id           String          @id @default(uuid())
+  fileId       String
+  type         RefactoringType
+  status       RefactoringStatus
+  description  String
+  diff         String?         @db.Text
+  appliedDiff  String?         @db.Text
+  error        String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  
+  // Relations
+  file         CodeFile        @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  markings     RefactoringMark[]
+  agentTasks   AgentTask[]
+  
+  @@index([fileId])
+  @@index([type])
+  @@index([status])
+}
+
+enum RefactoringType {
+  EXTRACT_FUNCTION
+  EXTRACT_VARIABLE
+  RENAME
+  MOVE
+  INLINE
+  SIMPLIFY
+  REMOVE_DUPLICATE
+  OPTIMIZE
+  MODERNIZE
+  SPLIT_FILE
+  MERGE_FILES
+  REORGANIZE_IMPORTS
+  CONVERT_TO_ASYNC
+  ADD_TYPES
+  REMOVE_DEAD_CODE
+}
+
+enum RefactoringStatus {
+  PLANNED
+  ANALYZING
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Link between markings and refactorings
+model RefactoringMark {
+  id            String      @id @default(uuid())
+  refactoringId String
+  markingId     String
+  
+  // Relations
+  refactoring   Refactoring @relation(fields: [refactoringId], references: [id], onDelete: Cascade)
+  marking       CodeMarking @relation(fields: [markingId], references: [id], onDelete: Cascade)
+  
+  @@unique([refactoringId, markingId])
+}
+
+// Agent tasks
+model AgentTask {
+  id            String        @id @default(uuid())
+  type          String
+  status        AgentTaskStatus
+  priority      Int           @default(5)
+  prompt        String        @db.Text
+  context       Json?
+  result        Json?
+  error         String?
+  retries       Int           @default(0)
+  agentId       String?
+  refactoringId String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Relations
+  refactoring   Refactoring?  @relation(fields: [refactoringId], references: [id], onDelete: SetNull)
+  reviews       AgentReview[]
+  
+  @@index([type])
+  @@index([status])
+  @@index([priority])
+}
+
+enum AgentTaskStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  WAITING_APPROVAL
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Agent reviews
+model AgentReview {
+  id           String      @id @default(uuid())
+  taskId       String
+  markingId    String?
+  agentType    String
+  review       Json
+  confidence   Float
+  approved     Boolean?
+  createdAt    DateTime    @default(now())
+  
+  // Relations
+  task         AgentTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  marking      CodeMarking? @relation(fields: [markingId], references: [id], onDelete: SetNull)
+  
+  @@index([taskId])
+  @@index([markingId])
+}
+
+// Analysis metrics
+model AnalysisMetric {
+  id           String      @id @default(uuid())
+  projectPath  String
+  totalFiles   Int
+  totalLines   Int
+  totalSymbols Int
+  totalMarkings Int
+  languages    Json
+  complexity   Json
+  coverage     Json
+  dependencies Json
+  patterns     Json
+  timestamp    DateTime    @default(now())
+  
+  @@index([projectPath])
+  @@index([timestamp])
+}

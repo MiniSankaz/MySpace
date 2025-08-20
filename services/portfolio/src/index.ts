@@ -1,5 +1,5 @@
 import express from "express";
-import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort } from '@/shared/config/ports.config';
+// Removed problematic import - using environment variables instead
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -17,15 +17,17 @@ import stockRoutes from "./routes/stock.routes";
 import performanceRoutes from "./routes/performance.routes";
 import exportRoutes from "./routes/export.routes";
 import transactionRoutes from "./routes/transaction.routes";
+import currencyRoutes from "./routes/currency.routes";
 import { initializeWebSocket } from "./services/websocket.service";
 import { startPriceUpdateJob } from "./jobs/price-updater";
 import { startPortfolioCalculationJob } from "./jobs/portfolio-calculator";
+import { redisCache } from "./services/redis-cache.service";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 4500;
+const PORT = process.env.PORT || 4160;
 const SERVICE_NAME = "portfolio";
 
 // Initialize Prisma Client
@@ -35,10 +37,10 @@ export const prisma = new PrismaClient();
 app.use(helmet());
 // CORS configuration - support both localhost and 127.0.0.1
 const corsOrigins = [
-  "http://${getFrontendPort()}",
-  "http://127.0.0.1:3000",
-  "http://${getGatewayPort()}", // Gateway service
-  "http://127.0.0.1:4000"  // Gateway service
+  "http://localhost:4100",    // Frontend
+  "http://127.0.0.1:4100",
+  "http://localhost:4110",    // Gateway service
+  "http://127.0.0.1:4110"
 ];
 
 // Add custom FRONTEND_URL if defined
@@ -197,6 +199,7 @@ app.use("/api/v1/trades", tradeRoutes);
 app.use("/api/v1/stocks", stockRoutes);
 app.use("/api/v1/performance", performanceRoutes);
 app.use("/api/v1/export", exportRoutes);
+app.use("/api/v1/currency", currencyRoutes); // Currency conversion and formatting
 
 // Request abort handling middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -292,17 +295,32 @@ const wss = new WebSocketServer({
 initializeWebSocket(wss);
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   logger.info(`🚀 ${SERVICE_NAME} service running on port ${PORT}`);
   logger.info(`📱 Health check: http://localhost:${PORT}/health`);
   logger.info(`ℹ️  Service info: http://localhost:${PORT}/info`);
   logger.info(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
 
-  // Start background jobs if mock prices are enabled
+  // Initialize Redis cache
+  try {
+    await redisCache.connect();
+    logger.info("✅ Redis cache connected successfully");
+  } catch (error) {
+    logger.warn("⚠️ Redis cache connection failed - running without cache", error);
+  }
+
+  // Start background jobs if mock prices are enabled (with database connection check)
   if (process.env.USE_MOCK_PRICES === "true") {
     logger.info("📊 Starting mock price update job...");
-    startPriceUpdateJob();
-    startPortfolioCalculationJob();
+    try {
+      // Test database connection before starting jobs
+      await prisma.$queryRaw`SELECT 1`;
+      startPriceUpdateJob();
+      startPortfolioCalculationJob();
+      logger.info("✅ Background jobs started successfully");
+    } catch (error) {
+      logger.warn("⚠️ Database not available - skipping background jobs", error);
+    }
   }
 });
 

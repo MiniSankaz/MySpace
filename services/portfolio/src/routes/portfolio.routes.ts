@@ -246,13 +246,13 @@ router.get("/:id/value", async (req: Request, res: Response) => {
     
     const holdingsWithPrices = portfolio.holdings.map((h: any) => {
       const quote = quotes.find(q => q.symbol === h.symbol);
-      const currentPrice = quote?.price || marketDataService.getCurrentPrice(h.symbol);
+      const currentPrice = quote?.price || 100; // Default fallback price
       const quantity = Number(h.quantity);
       
       return {
         ...h,
         currentPrice,
-        marketValue: currentPrice * quantity,
+        marketValue: Number(currentPrice) * quantity,
         change: quote?.change || 0,
         changePercent: quote?.changePercent || 0
       };

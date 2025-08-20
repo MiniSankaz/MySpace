@@ -15,6 +15,7 @@ else
     PORT_SERVICE_WORKSPACE=4150
     PORT_SERVICE_PORTFOLIO=4160
     PORT_SERVICE_MARKET=4170
+    PORT_SERVICE_ORCHESTRATION=4190
 fi
 
 # =============================================================================
@@ -255,6 +256,16 @@ else
     echo -e "${YELLOW}⚠️  Market Data Service not found - Portfolio will use mock prices${NC}"
 fi
 
+# Start AI Orchestration Service
+echo -e "${CYAN}🤖 Starting AI Orchestration Service (Port $PORT_SERVICE_ORCHESTRATION)...${NC}"
+if [ -f "$PWD/services/ai-assistant/src/orchestration-runner.ts" ]; then
+    start_service "AI Orchestration Service" $PORT_SERVICE_ORCHESTRATION \
+        "$PWD/services/ai-assistant" \
+        "ORCHESTRATION_PORT=$PORT_SERVICE_ORCHESTRATION NODE_ENV=development npx tsx src/orchestration-runner.ts > /tmp/orchestration.log 2>&1"
+else
+    echo -e "${YELLOW}⚠️  AI Orchestration Service not found - Parallel agent features disabled${NC}"
+fi
+
 echo ""
 
 # =============================================================================
@@ -293,6 +304,7 @@ check_health "Terminal Service" "http://localhost:$PORT_SERVICE_TERMINAL/health"
 check_health "Workspace Service" "http://localhost:$PORT_SERVICE_WORKSPACE/health" && health_results+=("workspace:ok") || health_results+=("workspace:fail")
 check_health "Portfolio Service" "http://localhost:$PORT_SERVICE_PORTFOLIO/health" && health_results+=("portfolio:ok") || health_results+=("portfolio:fail")
 check_health "Market Data Service" "http://localhost:$PORT_SERVICE_MARKET/health" && health_results+=("market:ok") || health_results+=("market:fail")
+check_health "AI Orchestration" "http://localhost:$PORT_SERVICE_ORCHESTRATION/health" && health_results+=("orchestration:ok") || health_results+=("orchestration:fail")
 check_health "Frontend" "http://localhost:$PORT_FRONTEND_MAIN" && health_results+=("frontend:ok") || health_results+=("frontend:fail")
 
 echo ""
@@ -308,7 +320,7 @@ echo -e "${BLUE}═════════════════════�
 # Count running services
 running_count=0
 failed_count=0
-for port in $PORT_FRONTEND_MAIN $PORT_GATEWAY_MAIN $PORT_SERVICE_USER $PORT_SERVICE_AI $PORT_SERVICE_TERMINAL $PORT_SERVICE_WORKSPACE $PORT_SERVICE_PORTFOLIO $PORT_SERVICE_MARKET; do
+for port in $PORT_FRONTEND_MAIN $PORT_GATEWAY_MAIN $PORT_SERVICE_USER $PORT_SERVICE_AI $PORT_SERVICE_TERMINAL $PORT_SERVICE_WORKSPACE $PORT_SERVICE_PORTFOLIO $PORT_SERVICE_MARKET $PORT_SERVICE_ORCHESTRATION; do
     if check_port $port; then
         running_count=$((running_count + 1))
     else
@@ -317,17 +329,17 @@ for port in $PORT_FRONTEND_MAIN $PORT_GATEWAY_MAIN $PORT_SERVICE_USER $PORT_SERV
 done
 
 # Display status based on results
-# Updated to count 8 services including Market Data
-if [ $running_count -eq 8 ]; then
+# Updated to count 9 services including AI Orchestration
+if [ $running_count -eq 9 ]; then
     echo -e "${GREEN}✅ All services started successfully!${NC}\n"
-elif [ $running_count -ge 6 ]; then
-    echo -e "${YELLOW}⚠️  $running_count/8 services are running${NC}"
+elif [ $running_count -ge 7 ]; then
+    echo -e "${YELLOW}⚠️  $running_count/9 services are running${NC}"
     echo -e "${YELLOW}    System is operational with limited functionality${NC}\n"
-elif [ $running_count -ge 4 ]; then
-    echo -e "${YELLOW}⚠️  Only $running_count/8 services are running${NC}"
+elif [ $running_count -ge 5 ]; then
+    echo -e "${YELLOW}⚠️  Only $running_count/9 services are running${NC}"
     echo -e "${YELLOW}    Check logs for failed services${NC}\n"
 else
-    echo -e "${RED}❌ Only $running_count/8 services started${NC}"
+    echo -e "${RED}❌ Only $running_count/9 services started${NC}"
     echo -e "${RED}    System may not be functional. Check logs for errors${NC}\n"
 fi
 
@@ -345,6 +357,8 @@ echo "  • Frontend:       http://localhost:$PORT_FRONTEND_MAIN"
 echo "  • API Gateway:    http://localhost:$PORT_GATEWAY_MAIN"
 echo "  • Health Check:   http://localhost:$PORT_GATEWAY_MAIN/health/all"
 echo "  • Market Data API: http://localhost:$PORT_SERVICE_MARKET/api/v1/market/quote/AAPL"
+echo "  • AI Orchestration: http://localhost:$PORT_SERVICE_ORCHESTRATION"
+echo "  • Approval Dashboard: http://localhost:$PORT_FRONTEND_MAIN/approval-dashboard.html"
 echo "  • Prisma Studio:  http://localhost:5555 (run: npx prisma studio)"
 echo ""
 
@@ -363,6 +377,7 @@ echo "  • Terminal:       tail -f /tmp/terminal.log"
 echo "  • Workspace:      tail -f /tmp/workspace.log"
 echo "  • Portfolio:      tail -f /tmp/portfolio.log"
 echo "  • Market Data:    tail -f /tmp/market-data.log"
+echo "  • Orchestration:  tail -f /tmp/orchestration.log"
 echo "  • Frontend:       tail -f /tmp/frontend.log"
 echo ""
 
@@ -374,8 +389,9 @@ echo ""
 
 echo "⚙️  Useful Commands:"
 echo "  • Stop all:       pkill -f 'node|npm'"
-echo "  • Check ports:    lsof -i :$PORT_FRONTEND_MAIN,$PORT_GATEWAY_MAIN,$PORT_SERVICE_USER,$PORT_SERVICE_AI,$PORT_SERVICE_TERMINAL,$PORT_SERVICE_WORKSPACE,$PORT_SERVICE_PORTFOLIO"
+echo "  • Check ports:    lsof -i :$PORT_FRONTEND_MAIN,$PORT_GATEWAY_MAIN,$PORT_SERVICE_USER,$PORT_SERVICE_AI,$PORT_SERVICE_TERMINAL,$PORT_SERVICE_WORKSPACE,$PORT_SERVICE_PORTFOLIO,$PORT_SERVICE_ORCHESTRATION"
 echo "  • Health check:   curl http://localhost:$PORT_GATEWAY_MAIN/health/all | jq"
+echo "  • Spawn agents:   ./orchestrate-ai.sh spawn business-analyst 'Analyze requirements'"
 echo "  • Install Redis:  brew install redis (macOS) or apt install redis (Linux)"
 echo ""
 
@@ -393,9 +409,24 @@ echo -e "${YELLOW}⚠️  Note: Database connection required for full functional
 echo -e "${YELLOW}    Run 'npx prisma migrate deploy' if database is not initialized${NC}"
 echo ""
 
+# AI Orchestration CLI Tools
+echo -e "${CYAN}🛠️  AI Orchestration CLI Tools:${NC}"
+echo "  • Quick Helper:       ./cli-tools.sh (shows all commands)"
+echo "  • Approval Monitor:   ./cli-tools.sh approval"
+echo "  • Agent Manager:      ./cli-tools.sh agents"
+echo "  • Web Dashboard:      ./cli-tools.sh dashboard"
+echo "  • Service Health:     ./cli-tools.sh health"
+echo ""
+echo -e "${CYAN}🌐 Web Interfaces:${NC}"
+echo "  • Orchestration API:  http://localhost:$PORT_SERVICE_ORCHESTRATION/health"
+echo "  • Dashboard:          http://localhost:$PORT_FRONTEND_MAIN/orchestration"
+echo "  • Approval UI:        http://localhost:$PORT_FRONTEND_MAIN/approval-dashboard.html"
+echo ""
+
 if [ $running_count -ge 5 ]; then
     echo -e "${GREEN}🎉 Portfolio Management System is ready!${NC}"
     echo -e "${GREEN}   Open http://localhost:$PORT_FRONTEND_MAIN in your browser to get started${NC}"
+    echo -e "${GREEN}   AI Orchestration: http://localhost:$PORT_SERVICE_ORCHESTRATION/health${NC}"
 else
     echo -e "${YELLOW}⚠️  Some services failed to start. Check the logs above for details.${NC}"
 fi
@@ -415,6 +446,8 @@ cleanup() {
     pkill -f "node.*terminal" 2>/dev/null
     pkill -f "node.*workspace" 2>/dev/null
     pkill -f "node.*portfolio" 2>/dev/null
+    pkill -f "node.*orchestration" 2>/dev/null
+    pkill -f "tsx.*orchestration-runner" 2>/dev/null
     pkill -f "next dev" 2>/dev/null
     
     # General cleanup

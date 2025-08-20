@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort, getServicePort } from '@shared/config/ports.config';
+// TODO: Fix shared config import after project restructure\n// import { portConfig, getServiceUrl, getFrontendPort, getGatewayPort, getServicePort } from '@shared/config/ports.config';
 import { io, Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils/logger";

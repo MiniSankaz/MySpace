@@ -7,6 +7,7 @@ import { Router } from "express";
 import { aiOrchestrationController } from "../controllers/ai-orchestration.controller";
 import { authMiddleware } from "../middleware/auth";
 import { requestLoggerMiddleware } from "../middleware/request-logger";
+import approvalGatesRoutes from "./approval-gates.routes";
 
 const router = Router();
 
@@ -99,6 +100,15 @@ router.post(
   "/agents/sessions/:sessionId/tasks",
   aiOrchestrationController.assignTask.bind(aiOrchestrationController),
 );
+
+// ======================
+// Approval Gates Routes
+// ======================
+
+/**
+ * Mount approval gates routes under /approval
+ */
+router.use("/approval", approvalGatesRoutes);
 
 // ======================
 // Health Check Route

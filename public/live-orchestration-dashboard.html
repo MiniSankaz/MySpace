@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Live AI Orchestration Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .log { font-family: 'Courier New', monospace; font-size: 12px; }
+        .scroll-bottom { scroll-behavior: smooth; }
+        @keyframes pulse-green { 0%, 100% { background-color: rgb(34, 197, 94); } 50% { background-color: rgb(22, 163, 74); } }
+        @keyframes pulse-red { 0%, 100% { background-color: rgb(239, 68, 68); } 50% { background-color: rgb(220, 38, 38); } }
+        .pulse-green { animation: pulse-green 1s infinite; }
+        .pulse-red { animation: pulse-red 1s infinite; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Header -->
+    <div class="bg-gray-800 border-b border-gray-700 p-4">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold">🤖 Live AI Orchestration Dashboard</h1>
+            <div class="flex items-center space-x-4">
+                <span id="connectionStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-red-600">
+                    Checking...
+                </span>
+                <span id="currentTime" class="text-sm text-gray-400"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="bg-gray-800 border-b border-gray-700 p-4">
+        <div class="grid grid-cols-5 gap-4 text-center">
+            <div>
+                <div class="text-2xl font-bold text-blue-400" id="totalAgents">0</div>
+                <div class="text-xs text-gray-400">Total</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-yellow-400" id="activeAgents">0</div>
+                <div class="text-xs text-gray-400">Active</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-green-400" id="completedAgents">0</div>
+                <div class="text-xs text-gray-400">Completed</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-red-400" id="failedAgents">0</div>
+                <div class="text-xs text-gray-400">Failed</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-purple-400" id="uptime">0s</div>
+                <div class="text-xs text-gray-400">Uptime</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+        
+        <!-- Real-time Agent List -->
+        <div class="bg-gray-800 rounded-lg p-4">
+            <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
+                <span>📊 Real-time Agent List</span>
+                <button onclick="refreshAgents()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">
+                    Refresh
+                </button>
+            </h2>
+            <div id="agentsList" class="space-y-2 max-h-96 overflow-y-auto">
+                <div class="text-gray-500 text-center py-4">Loading agents...</div>
+            </div>
+        </div>
+
+        <!-- Test & Control Panel -->
+        <div class="space-y-4">
+            <!-- Connection Test -->
+            <div class="bg-gray-800 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3">🔧 Connection Test</h3>
+                <div class="space-y-2">
+                    <button onclick="testConnection()" class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm">
+                        Test Orchestration Connection
+                    </button>
+                    <button onclick="testGateway()" class="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-sm">
+                        Test Gateway Connection
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spawn Agents -->
+            <div class="bg-gray-800 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3">🚀 Spawn Real Agents</h3>
+                <div class="space-y-2">
+                    <button onclick="spawnSingleAgent()" class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 rounded text-sm">
+                        Spawn Business Analyst
+                    </button>
+                    <button onclick="spawnParallelAgents()" class="w-full px-3 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-sm">
+                        Spawn 3 Parallel Agents
+                    </button>
+                    <button onclick="clearAllAgents()" class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">
+                        Clear Completed Agents
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Activity Log -->
+            <div class="bg-gray-800 rounded-lg p-4">
+                <h3 class="text-lg font-semibold mb-3 flex items-center justify-between">
+                    <span>📝 Live Activity Log</span>
+                    <button onclick="clearLog()" class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs">
+                        Clear
+                    </button>
+                </h3>
+                <div id="activityLog" class="log bg-gray-900 p-3 rounded max-h-64 overflow-y-auto text-green-400">
+                    <div class="text-gray-500">Activity log will appear here...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Status Bar -->
+    <div class="bg-gray-800 border-t border-gray-700 p-3">
+        <div class="flex justify-between items-center text-sm text-gray-400">
+            <div>
+                <span>Orchestration: </span>
+                <span id="orchestrationUrl" class="text-yellow-400">http://localhost:4191</span>
+            </div>
+            <div>
+                <span>Gateway: </span>
+                <span id="gatewayUrl" class="text-blue-400">http://localhost:4110</span>
+            </div>
+            <div>
+                <span>Last Update: </span>
+                <span id="lastUpdate" class="text-green-400">Never</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const ORCHESTRATION_URL = 'http://localhost:4191';
+        const GATEWAY_URL = 'http://localhost:4110';
+        
+        let refreshInterval;
+        let isConnected = false;
+
+        // Initialize
+        function init() {
+            log('🚀 Dashboard initializing...');
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // Test connections
+            testConnection();
+            
+            // Start auto-refresh
+            startAutoRefresh();
+            
+            log('✅ Dashboard ready!');
+        }
+
+        function updateTime() {
+            document.getElementById('currentTime').textContent = 
+                new Date().toLocaleTimeString();
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('activityLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // Keep only last 50 entries
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.firstChild);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('activityLog').innerHTML = '';
+            log('📝 Log cleared');
+        }
+
+        async function testConnection() {
+            log('🔍 Testing orchestration connection...');
+            
+            try {
+                const response = await fetch(ORCHESTRATION_URL + '/health');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateConnectionStatus(true);
+                    updateStats(data);
+                    log(`✅ Orchestration connected! Uptime: ${Math.floor(data.uptime)}s`);
+                    isConnected = true;
+                } else {
+                    throw new Error('Health check failed');
+                }
+            } catch (error) {
+                updateConnectionStatus(false);
+                log(`❌ Orchestration connection failed: ${error.message}`);
+                isConnected = false;
+            }
+        }
+
+        async function testGateway() {
+            log('🔍 Testing gateway connection...');
+            
+            try {
+                const response = await fetch(GATEWAY_URL + '/api/agents');
+                
+                if (response.ok) {
+                    const agents = await response.json();
+                    log(`✅ Gateway connected! Found ${agents.length} agents`);
+                    displayAgents(agents);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Gateway connection failed: ${error.message}`);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'px-3 py-1 rounded-full text-xs font-semibold pulse-green';
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'px-3 py-1 rounded-full text-xs font-semibold pulse-red';
+            }
+        }
+
+        function updateStats(data) {
+            if (data && data.agents) {
+                document.getElementById('totalAgents').textContent = data.agents.total || 0;
+                document.getElementById('activeAgents').textContent = data.agents.active || 0;
+                document.getElementById('completedAgents').textContent = data.agents.completed || 0;
+                document.getElementById('failedAgents').textContent = data.agents.failed || 0;
+            }
+            
+            if (data && data.uptime) {
+                document.getElementById('uptime').textContent = Math.floor(data.uptime) + 's';
+            }
+            
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        async function refreshAgents() {
+            log('🔄 Refreshing agent list...');
+            
+            try {
+                // Try gateway first, then direct
+                let response, agents;
+                
+                try {
+                    response = await fetch(GATEWAY_URL + '/api/agents');
+                    agents = await response.json();
+                    log(`📊 Loaded ${agents.length} agents via gateway`);
+                } catch {
+                    // Fallback to direct orchestration
+                    response = await fetch(ORCHESTRATION_URL + '/api/agents');
+                    agents = await response.json();
+                    log(`📊 Loaded ${agents.length} agents via direct connection`);
+                }
+                
+                displayAgents(agents);
+                
+            } catch (error) {
+                log(`❌ Failed to load agents: ${error.message}`);
+                document.getElementById('agentsList').innerHTML = 
+                    '<div class="text-red-400 text-center py-4">Failed to load agents</div>';
+            }
+        }
+
+        function displayAgents(agents) {
+            const container = document.getElementById('agentsList');
+            
+            if (!agents || agents.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-center py-4">No agents found</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            agents.forEach(agent => {
+                const statusColors = {
+                    'working': 'text-yellow-400',
+                    'completed': 'text-green-400',
+                    'failed': 'text-red-400',
+                    'initializing': 'text-blue-400'
+                };
+
+                const statusColor = statusColors[agent.status] || 'text-gray-400';
+                
+                const agentDiv = document.createElement('div');
+                agentDiv.className = 'bg-gray-900 rounded p-3 border-l-4 border-blue-500';
+                agentDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="font-semibold text-sm">${agent.id}</div>
+                        <div class="${statusColor} text-xs uppercase">${agent.status}</div>
+                    </div>
+                    <div class="text-xs text-gray-400 mb-2">Type: ${agent.type}</div>
+                    <div class="text-xs text-gray-300 mb-2">${agent.task?.description || 'No description'}</div>
+                    <div class="text-xs text-gray-500">
+                        Started: ${new Date(agent.startTime).toLocaleTimeString()}
+                        ${agent.endTime ? ` | Ended: ${new Date(agent.endTime).toLocaleTimeString()}` : ''}
+                    </div>
+                    ${agent.output && agent.output.length > 0 ? `
+                        <details class="mt-2">
+                            <summary class="text-xs text-blue-400 cursor-pointer">Output (${agent.output.length} lines)</summary>
+                            <pre class="text-xs text-gray-300 mt-1 bg-gray-800 p-2 rounded max-h-20 overflow-y-auto">${agent.output.join('\\n').substring(0, 200)}${agent.output.join('\\n').length > 200 ? '...' : ''}</pre>
+                        </details>
+                    ` : ''}
+                `;
+                container.appendChild(agentDiv);
+            });
+        }
+
+        async function spawnSingleAgent() {
+            log('🚀 Spawning single business analyst agent...');
+            
+            const agentData = {
+                type: 'business-analyst',
+                task: {
+                    description: 'Real-time test agent',
+                    prompt: 'Analyze the current time and respond with: LIVE_AGENT_SUCCESS_' + Date.now(),
+                    priority: 100
+                }
+            };
+
+            try {
+                const response = await fetch(ORCHESTRATION_URL + '/api/spawn-agent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(agentData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ Agent spawned: ${result.agentId}`);
+                    
+                    // Wait 2 seconds then refresh
+                    setTimeout(() => {
+                        refreshAgents();
+                        testConnection();
+                    }, 2000);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ Failed to spawn agent: ${error.message}`);
+            }
+        }
+
+        async function spawnParallelAgents() {
+            log('🚀 Spawning 3 parallel agents...');
+            
+            const agents = [
+                {
+                    type: 'business-analyst',
+                    task: {
+                        description: 'Parallel Task 1',
+                        prompt: 'Respond with: PARALLEL_1_SUCCESS_' + Date.now(),
+                        priority: 90
+                    }
+                },
+                {
+                    type: 'code-reviewer',
+                    task: {
+                        description: 'Parallel Task 2', 
+                        prompt: 'Respond with: PARALLEL_2_SUCCESS_' + Date.now(),
+                        priority: 90
+                    }
+                },
+                {
+                    type: 'test-runner',
+                    task: {
+                        description: 'Parallel Task 3',
+                        prompt: 'Respond with: PARALLEL_3_SUCCESS_' + Date.now(),
+                        priority: 90
+                    }
+                }
+            ];
+
+            try {
+                const promises = agents.map(agentData => 
+                    fetch(ORCHESTRATION_URL + '/api/spawn-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(agentData)
+                    })
+                );
+
+                const responses = await Promise.all(promises);
+                const results = await Promise.all(responses.map(r => r.json()));
+                
+                log(`✅ Spawned ${results.length} parallel agents`);
+                results.forEach(result => {
+                    if (result.agentId) {
+                        log(`   → Agent: ${result.agentId}`);
+                    }
+                });
+
+                // Wait 3 seconds then refresh
+                setTimeout(() => {
+                    refreshAgents();
+                    testConnection();
+                }, 3000);
+
+            } catch (error) {
+                log(`❌ Failed to spawn parallel agents: ${error.message}`);
+            }
+        }
+
+        async function clearAllAgents() {
+            log('🗑️ Clearing completed agents...');
+            
+            try {
+                const response = await fetch(ORCHESTRATION_URL + '/api/agents/clear', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    log('✅ Completed agents cleared');
+                    setTimeout(() => {
+                        refreshAgents();
+                        testConnection();
+                    }, 1000);
+                } else {
+                    log('⚠️ Clear endpoint not available, refreshing list...');
+                    refreshAgents();
+                }
+            } catch (error) {
+                log(`❌ Failed to clear agents: ${error.message}`);
+            }
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            refreshInterval = setInterval(() => {
+                if (isConnected) {
+                    testConnection();
+                    refreshAgents();
+                }
+            }, 10000); // Refresh every 10 seconds
+            
+            log('🔄 Auto-refresh enabled (10s interval)');
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>

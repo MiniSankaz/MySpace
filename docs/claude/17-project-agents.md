@@ -15,6 +15,7 @@
    - Designs system architecture
    - Plans phased implementations
    - Language: English
+   - **Testing**: Uses Testing Service for automated validation
 
 3. **devops-maturity-auditor** - DevOps Assessment
    - Audits CI/CD pipelines
@@ -27,6 +28,7 @@
    - Prevents breaking changes
    - Validates Git workflows
    - Language: Thai
+   - **Testing**: Auto-runs compliance tests via Testing Service
 
 5. **dev-life-consultant** - Holistic Consulting
    - Software architecture advice
@@ -40,11 +42,13 @@
    - Reviews code quality
    - Checks security practices
    - Validates performance
+   - **Testing**: Auto-runs unit tests via Testing Service
 
 7. **technical-architect** - System Design
    - Creates system architectures
    - Designs APIs
    - Plans integrations
+   - **Testing**: Uses Testing Service for performance benchmarks
 
 8. **system-analyst** - System Analysis
    - Analyzes requirements
@@ -98,6 +102,52 @@ Agents are configured in:
 
 1. **Choose the Right Agent**: Match agent expertise to task
 2. **Provide Clear Context**: Give agents complete information
+3. **Leverage Testing Service**: Agents can auto-run tests without permission
+4. **Use Auto-Approved Commands**: Speed up testing with whitelisted commands
+
+## Testing Service Integration
+
+All agents can use the Testing Service (port 4180) for automated testing:
+
+### Auto-Approved Commands (No Permission Needed)
+```bash
+# Health checks
+curl -s http://localhost:*/health
+
+# API testing
+curl -X GET http://localhost:*/api/v1/*
+
+# Test scripts
+./test-*.sh
+npm test
+npm run test:*
+
+# Testing Service
+curl http://localhost:4180/api/v1/test/run
+curl http://localhost:4180/api/v1/test/validate
+```
+
+### Testing Workflows by Agent
+
+**Code Reviewer**:
+- Auto-runs unit tests
+- Validates code coverage
+- Generates test reports
+
+**Technical Architect**:
+- Performance benchmarking
+- Load testing
+- System integration tests
+
+**SOP Enforcer**:
+- Compliance validation
+- Standards checking
+- Breaking change detection
+
+**Development Planner**:
+- Test plan validation
+- Coverage assessment
+- Risk analysis
 3. **Follow Workflows**: Use established workflows for common tasks
 4. **Update Documentation**: Keep CLAUDE.md updated after changes
 5. **Language Preference**: Use Thai for sop-enforcer, English for others

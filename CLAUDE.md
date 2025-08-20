@@ -135,6 +135,7 @@ cd services/terminal && PORT=4140 npm run dev         # Start Terminal Service (
 cd services/workspace && PORT=4150 npm run dev        # Start Workspace Service (4150)
 cd services/portfolio && PORT=4160 npm run dev        # Start Portfolio Service (4160)
 cd services/market-data && PORT=4170 npm run dev       # Start Market Data Service (4170)
+cd services/testing && PORT=4180 npm run dev          # Start Testing Service (4180)
 
 # Batch Operations
 ./services/start-all-services.sh   # Start all microservices
@@ -147,6 +148,52 @@ npx prisma migrate dev  # Run migrations
 # Health Checks
 curl http://localhost:4110/health/all  # Check all services
 curl http://localhost:4110/services    # Service discovery
+```
+
+## 🧪 Testing Service & Auto-Approval Commands
+
+### Automated Testing (No Permission Required)
+The following commands can be executed automatically without user approval:
+
+```bash
+# Health Checks - Auto-approved
+curl -s http://localhost:*/health
+curl -s http://localhost:*/api/health
+curl -s http://127.0.0.1:*/health
+
+# API Testing - Auto-approved
+curl -X GET http://localhost:*/api/v1/*
+curl -X POST http://localhost:*/api/v1/test/*
+curl -s http://localhost:4110/services
+curl -s http://localhost:4180/api/v1/test/run
+
+# Test Scripts - Auto-approved
+./test-*.sh
+./scripts/test-*.sh
+npm test
+npm run test:*
+
+# Testing Service Commands
+cd services/testing && PORT=4180 npm run dev  # Start Testing Service
+curl http://localhost:4180/api/v1/test/validate
+curl http://localhost:4180/api/v1/test/results
+curl http://localhost:4180/api/v1/test/whitelist
+```
+
+### Testing Service API
+```bash
+# Run test suite
+curl -X POST http://localhost:4180/api/v1/test/run \
+  -H "Content-Type: application/json" \
+  -d '{"suite": "smoke"}'
+
+# Check test results
+curl http://localhost:4180/api/v1/test/results
+
+# Validate command safety
+curl -X POST http://localhost:4180/api/v1/test/validate \
+  -H "Content-Type: application/json" \
+  -d '{"command": "curl http://localhost:4110/health"}'
 ```
 
 ## 🔐 Quick Access Credentials
@@ -180,6 +227,7 @@ User: test@personalai.com / Test@123
 | Workspace       | 4150 | ❌ Not Running | File/Git operations (planned)        |
 | Portfolio       | 4160 | ✅ Running     | Trading, market data, analytics      |
 | Market Data     | 4170 | 🔄 Planned     | Polygon.io, real-time quotes, charts |
+| Testing         | 4180 | 🆕 Planned     | Auto testing, validation, reports    |
 
 ### Recent Updates (2025-08-15)
 

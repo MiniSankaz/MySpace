@@ -104,6 +104,33 @@ export class ServiceRegistry {
         historicalPort: 4172
       }
     });
+
+    this.register({
+      id: "testing-1",
+      name: "testing",
+      host: "localhost",
+      port: 4180,  // Testing Service
+      healthUrl: "http://localhost:4180/health",
+      isHealthy: true,
+      metadata: {
+        description: "Automated Testing Service",
+        autoApproved: true
+      }
+    });
+
+    this.register({
+      id: "orchestration-1",
+      name: "orchestration",
+      host: "localhost",
+      port: 4191,  // AI Orchestration Service
+      healthUrl: "http://localhost:4191/health",
+      isHealthy: true,
+      metadata: {
+        description: "AI Agent Orchestration Service",
+        wsPort: 4191,
+        features: ["agent-spawning", "task-chains", "parallel-agents"]
+      }
+    });
   }
 
   register(instance: ServiceInstance): void {

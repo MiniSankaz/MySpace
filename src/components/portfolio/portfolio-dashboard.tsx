@@ -30,6 +30,9 @@ import {
   PortfolioMetrics,
 } from "@/services/microservices/portfolio-service";
 import { cn } from "@/lib/utils";
+import { CurrencyToggle } from "@/components/portfolio/CurrencyToggle";
+import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
+import { formatCurrency as formatCurrencyUtil, formatPercent, convertCurrency, Currency } from "@/utils/currency";
 
 interface PortfolioDashboardProps {
   userId: string;
@@ -43,6 +46,9 @@ export function PortfolioDashboard({ userId }: PortfolioDashboardProps) {
   const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Currency preference hook
+  const { currency, toggleCurrency, autoDetect, toggleAutoDetect } = useCurrencyPreference();
 
   useEffect(() => {
     if (userId) {
@@ -107,17 +113,15 @@ export function PortfolioDashboard({ userId }: PortfolioDashboardProps) {
     setRefreshing(false);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+  // Format currency based on user preference
+  const formatCurrency = (value: number, options?: { showSign?: boolean }) => {
+    // Convert from USD to display currency if needed
+    const displayValue = currency === 'THB' ? convertCurrency(value, 'USD', 'THB') : value;
+    return formatCurrencyUtil(displayValue, currency, options);
   };
 
-  const formatPercent = (value: number) => {
-    return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+  const formatPercentage = (value: number) => {
+    return formatPercent(value, { showSign: true });
   };
 
   if (loading) {
@@ -156,6 +160,15 @@ export function PortfolioDashboard({ userId }: PortfolioDashboardProps) {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
+          
+          {/* Currency Toggle */}
+          <CurrencyToggle
+            currency={currency}
+            onCurrencyChange={toggleCurrency}
+            autoDetect={autoDetect}
+            onAutoDetectChange={toggleAutoDetect}
+            variant="dropdown"
+          />
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
@@ -175,7 +188,7 @@ export function PortfolioDashboard({ userId }: PortfolioDashboardProps) {
             />
             <MetricCard
               title="Day Change"
-              value={formatCurrency(metrics?.dayChange || 0)}
+              value={formatCurrency(metrics?.dayChange || 0, { showSign: true })}
               change={metrics?.dayChangePercent}
               icon={<Activity className="h-4 w-4" />}
               valueColor={
@@ -188,7 +201,7 @@ export function PortfolioDashboard({ userId }: PortfolioDashboardProps) {
             />
             <MetricCard
               title="Total Return"
-              value={formatCurrency(selectedPortfolio.totalProfitLoss)}
+              value={formatCurrency(selectedPortfolio.totalProfitLoss, { showSign: true })}
               change={selectedPortfolio.totalProfitLossPercent}
               icon={<TrendingUp className="h-4 w-4" />}
               valueColor={
@@ -215,7 +228,7 @@ export function PortfolioDashboard({ userId }: PortfolioDashboardProps) {
             </TabsList>
 
             <TabsContent value="holdings" className="space-y-4">
-              <HoldingsTable portfolio={selectedPortfolio} />
+              <HoldingsTable portfolio={selectedPortfolio} currency={currency} formatCurrency={formatCurrency} />
             </TabsContent>
 
             <TabsContent value="performance" className="space-y-4">
@@ -283,7 +296,15 @@ function MetricCard({
   );
 }
 
-function HoldingsTable({ portfolio }: { portfolio: Portfolio }) {
+function HoldingsTable({ 
+  portfolio, 
+  currency,
+  formatCurrency 
+}: { 
+  portfolio: Portfolio;
+  currency: Currency;
+  formatCurrency: (value: number, options?: { showSign?: boolean }) => string;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -310,13 +331,13 @@ function HoldingsTable({ portfolio }: { portfolio: Portfolio }) {
                   <td className="p-2 font-medium">{holding.symbol}</td>
                   <td className="text-right p-2">{holding.quantity}</td>
                   <td className="text-right p-2">
-                    ${holding.averagePrice.toFixed(2)}
+                    {formatCurrency(holding.averagePrice)}
                   </td>
                   <td className="text-right p-2">
-                    ${holding.currentPrice.toFixed(2)}
+                    {formatCurrency(holding.currentPrice)}
                   </td>
                   <td className="text-right p-2">
-                    ${holding.totalValue.toFixed(2)}
+                    {formatCurrency(holding.totalValue)}
                   </td>
                   <td
                     className={cn(
@@ -326,7 +347,7 @@ function HoldingsTable({ portfolio }: { portfolio: Portfolio }) {
                         : "text-red-600",
                     )}
                   >
-                    ${holding.profitLoss.toFixed(2)}
+                    {formatCurrency(holding.profitLoss, { showSign: true })}
                   </td>
                   <td
                     className={cn(

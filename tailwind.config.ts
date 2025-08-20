@@ -8,6 +8,7 @@ const config: Config = {
     "./src/modules/**/*.{js,ts,jsx,tsx,mdx}",
     "./_library/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
